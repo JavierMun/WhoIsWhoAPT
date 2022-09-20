@@ -66,7 +66,7 @@ Now you can already work with your custom "APT"
 
 - **Obtaining comparison layer between two APTs ("Wizard Spider" and "FIN8") and modifying its colours**
 
-![customcolor3](https://user-images.githubusercontent.com/113699569/191085533-039510bb-70d2-4c76-b2ea-a533acb7361f.PNG)
+![customcolor3](https://user-images.githubusercontent.com/113699569/191191545-493fdcd9-3002-4374-8a4a-d462f287c51c.PNG)
 
 ![customcolor4](https://user-images.githubusercontent.com/113699569/191085534-65a1ed2d-fbe8-42c4-924e-5fb4ea5c4c45.PNG)
 
@@ -78,6 +78,6 @@ Now you can already work with your custom "APT"
 
 - **Obtaining APT "Wizard Spider" layer with modified colour**
 
-![customcolor1](https://user-images.githubusercontent.com/113699569/191085525-b2ec1763-75d0-45ea-93bf-41a333aad38c.PNG)
+![customcolor1](https://user-images.githubusercontent.com/113699569/191191516-714e664c-b5b4-4f66-8e1c-7eb61c742919.PNG)
 
 ![customcolor2](https://user-images.githubusercontent.com/113699569/191085529-84014a29-0b06-4ec0-98ce-a18089a5cd8d.PNG)
