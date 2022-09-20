@@ -49,8 +49,8 @@ Now you can already work with your custom "APT"
 | Command       | Parameters   | Command Details             | 
 | ------------- |-------------| -------------         | 
 | -c, --compare     | \<APT Name\> | Compare an APT with all the others APTs  | 
-| -v, --versus      | \<APT1 Name\> \<APT2 Name\> | Compare two APTs and extract the comparison matrix  | 
-| -l, --layer       | \<APT Name\>| Create a layer with selected APT\'s TTPs | 
+| -v, --versus      | \<APT1 Name\> \<APT2 Name\> | Compare two APTs and extract the comparison matrix. Default layer colour: (AP1 -> Green) (APT2 -> Blue) (Matching TTP -> Purple) | 
+| -l, --layer       | \<APT Name\>| Create a layer with selected APT\'s TTPs. Default colour: Green| 
 | -col, --colours   | \<APT1 Colour\> \<APT2 Colour\> \<Match Colour\>| Choose the colours with which the data will be represented in the layer. Most be a colour hexcode.| 
 
 ### Usage examples  
