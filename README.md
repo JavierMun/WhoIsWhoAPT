@@ -9,7 +9,7 @@
 
 **WhoIsWhoAPT** is a tool whose purpose is to help malware analysts, threat hunters and researchers to interrelate the different APT groups (Advanced Persistent Threats) based on their tactics, techniques and procedures (TTP) assigned by **MITRE ATT&CK®** (https://attack.mitre.org/) to each group, thus obtaining their relationship index. In addition, the tool allows you to compare your own TTP sets with the rest of the APTs defined in MITRE, thus obtaining their degree of similarity.
 
-Finally, it is possible from an APT to generate a layer with its TTPs or from two APTs to be able to generate a layer in which the TTPs of each group are differentiated and in which they coincide. These layers are intended to work with the **MITER ATT&CK® Navigator tool** (https://mitre-attack.github.io/attack-navigator/) thus facilitating their reading and analysis/modification.
+Finally, it is possible from an APT to generate a layer with its TTPs or from two APTs to be able to generate a layer in which the TTPs of each group are differentiated and in which they coincide. These layers are intended to work with the **MITRE ATT&CK® Navigator tool** (https://mitre-attack.github.io/attack-navigator/) thus facilitating their reading and analysis/modification.
 
 Hope you can find my tool useful and if you want to report any bugs, add/suggest new features or ask any questions do not hesitate to contact me on LinkedIn. <p>
   <a href="https://www.linkedin.com/in/javier-mu%C3%B1oz-alc%C3%A1zar-644b11162" rel="nofollow noreferrer">
@@ -29,7 +29,7 @@ Hope you can find my tool useful and if you want to report any bugs, add/suggest
 
 > **\* Note1: The creation of the virtual environment is recommended, although it is not necessary for the tool's execution.**
 
-> **\* Note2: Although it is not necessary, I recommend to download the "resources" folder and its content along with the tool as it prevents the tool from having to download the latest version of MITER ATT&CK® and configure the APTs database on its first run, an action that can take several minutes**
+> **\* Note2: Although it is not necessary, I recommend to download the "resources" folder and its content along with the tool as it prevents the tool from having to download the latest version of MITRE ATT&CK® and configure the APTs database on its first run, an action that can take several minutes**
 
 
 ## Usage
