@@ -1,4 +1,4 @@
-import type { HealthResponse } from "./types";
+import type { ActorComparisonResponse, ActorListItem, HealthResponse, SimilarityMetric } from "./types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
 
@@ -22,3 +22,17 @@ export function getHealth(): Promise<HealthResponse> {
   return request<HealthResponse>("/api/health");
 }
 
+export function getActors(): Promise<ActorListItem[]> {
+  return request<ActorListItem[]>("/api/actors");
+}
+
+export function compareActor(actorId: string, metric: SimilarityMetric, topN: number): Promise<ActorComparisonResponse> {
+  return request<ActorComparisonResponse>("/api/compare/actor", {
+    method: "POST",
+    body: JSON.stringify({
+      actor_id: actorId,
+      metric,
+      top_n: topN
+    })
+  });
+}

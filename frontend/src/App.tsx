@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 
 import { getHealth } from "./api/client";
 import type { HealthResponse } from "./api/types";
+import { ActorComparisonPanel } from "./components/ActorComparisonPanel";
 import "./styles.css";
 
 function App() {
@@ -27,7 +28,7 @@ function App() {
         <nav className="nav-list">
           <a className="nav-item active" href="/">
             <Activity size={18} aria-hidden="true" />
-            <span>Status</span>
+            <span>Compare</span>
           </a>
           <a className="nav-item disabled" href="/settings" aria-disabled="true">
             <Settings size={18} aria-hidden="true" />
@@ -37,30 +38,17 @@ function App() {
       </aside>
 
       <section className="content-area">
-        <header className="page-header">
-          <p className="eyebrow">Foundation</p>
-          <h1>Local threat intelligence workspace</h1>
-        </header>
+        <ActorComparisonPanel />
 
-        <div className="status-panel">
-          <div>
-            <p className="panel-label">Backend</p>
-            <p className={health ? "status ok" : "status pending"}>{health ? health.status : "checking"}</p>
-          </div>
-          <div>
-            <p className="panel-label">Environment</p>
-            <p>{health?.environment ?? "unknown"}</p>
-          </div>
-          <div>
-            <p className="panel-label">Service</p>
-            <p>{health?.service ?? "WhoIsWhoAPT"}</p>
-          </div>
-          {error ? <p className="error-text">{error}</p> : null}
-        </div>
+        <footer className="backend-strip">
+          <span className={health ? "status-dot ok" : "status-dot pending"} aria-hidden="true" />
+          <span>Backend {health ? health.status : "checking"}</span>
+          <span>{health?.environment ?? "unknown"}</span>
+          {error ? <span className="error-text">{error}</span> : null}
+        </footer>
       </section>
     </main>
   );
 }
 
 export default App;
-
