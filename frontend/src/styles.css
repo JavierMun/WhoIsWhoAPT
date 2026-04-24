@@ -182,6 +182,13 @@ h1 {
   align-items: start;
 }
 
+.ttp-profile-layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 440px) minmax(280px, 360px) minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+
 .matrix-layout {
   display: grid;
   grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
@@ -376,6 +383,10 @@ h1 {
 
 .incident-results {
   min-height: 680px;
+}
+
+.profile-results {
+  min-height: 720px;
 }
 
 .heatmap-panel {
@@ -667,6 +678,11 @@ h1 {
   align-content: start;
 }
 
+.ttp-profile-form,
+.saved-profile-panel {
+  align-content: start;
+}
+
 .incident-technique-summary span {
   overflow-wrap: anywhere;
 }
@@ -711,6 +727,73 @@ h1 {
   color: #33424c;
   font-size: 0.88rem;
   line-height: 1.4;
+}
+
+.unknown-chip {
+  border-color: #f2b8ad;
+  background: #fff0ed;
+  color: #b42318;
+  cursor: default;
+}
+
+.profile-inspector {
+  display: grid;
+  gap: 14px;
+  border-top: 1px solid #edf1f2;
+  padding-top: 16px;
+}
+
+.profile-inspector h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.profile-inspector p {
+  margin: 6px 0 0;
+  color: #52606a;
+  line-height: 1.4;
+}
+
+.profile-technique-groups {
+  display: grid;
+  gap: 12px;
+  max-height: 420px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.profile-technique-group {
+  display: grid;
+  gap: 8px;
+  border: 1px solid #edf1f2;
+  border-radius: 6px;
+  background: #fbfcfc;
+  padding: 10px;
+}
+
+.profile-technique-group > strong {
+  color: #123f35;
+}
+
+.profile-technique-group ul {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.profile-technique-group li {
+  display: grid;
+  gap: 3px;
+  color: #33424c;
+  font-size: 0.86rem;
+  line-height: 1.35;
+}
+
+.profile-technique-group li span {
+  color: #172026;
+  font-weight: 800;
 }
 
 .matrix-controls {
@@ -1012,6 +1095,7 @@ h1 {
   .comparison-layout,
   .custom-layout,
   .incident-layout,
+  .ttp-profile-layout,
   .matrix-layout,
   .network-layout {
     grid-template-columns: 1fr;

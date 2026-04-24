@@ -67,11 +67,12 @@ export function getCustomSets(): Promise<CustomTTPSet[]> {
   return request<CustomTTPSet[]>("/api/custom-sets");
 }
 
-export function createCustomSet(name: string, techniqueIds: string[]): Promise<CustomTTPSet> {
+export function createCustomSet(name: string, techniqueIds: string[], description?: string): Promise<CustomTTPSet> {
   return request<CustomTTPSet>("/api/custom-sets", {
     method: "POST",
     body: JSON.stringify({
       name,
+      description,
       technique_ids: techniqueIds
     })
   });

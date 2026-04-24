@@ -5,10 +5,9 @@ import type { HealthResponse } from "./api/types";
 import { ActorComparisonPanel } from "./components/ActorComparisonPanel";
 import { ActorMatrixHeatmapPanel } from "./components/ActorMatrixHeatmapPanel";
 import { ActorNetworkGraphPanel } from "./components/ActorNetworkGraphPanel";
-import { CustomTTPSetPanel } from "./components/CustomTTPSetPanel";
-import { IncidentAnalysisPanel } from "./components/IncidentAnalysisPanel";
 import { Layout, type ModuleKey } from "./components/Layout";
 import { SettingsPanel } from "./components/SettingsPanel";
+import { TTPProfilesPanel } from "./components/TTPProfilesPanel";
 import "./styles.css";
 
 function App() {
@@ -27,12 +26,7 @@ function App() {
   return (
     <Layout activeModule={activeModule} onModuleChange={setActiveModule}>
       {activeModule === "compare" ? <ActorComparisonPanel /> : null}
-      {activeModule === "ttp-profiles" ? (
-        <div className="module-stack">
-          <CustomTTPSetPanel />
-          <IncidentAnalysisPanel />
-        </div>
-      ) : null}
+      {activeModule === "ttp-profiles" ? <TTPProfilesPanel /> : null}
       {activeModule === "visual-analysis" ? (
         <div className="module-stack">
           <ActorMatrixHeatmapPanel />
