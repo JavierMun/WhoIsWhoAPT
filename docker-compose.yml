@@ -1,0 +1,28 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    environment:
+      WHOISWHOAPT_ENVIRONMENT: development
+      WHOISWHOAPT_LOG_LEVEL: INFO
+      WHOISWHOAPT_DATABASE_URL: sqlite:////data/whoiswhoapt.db
+      WHOISWHOAPT_SETTINGS_FILE: /data/config.json
+      WHOISWHOAPT_CORS_ORIGINS: '["http://localhost:5173"]'
+    ports:
+      - "8000:8000"
+    volumes:
+      - whoiswhoapt-data:/data
+
+  frontend:
+    build:
+      context: ./frontend
+    environment:
+      VITE_API_BASE_URL: ""
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+volumes:
+  whoiswhoapt-data:
+
