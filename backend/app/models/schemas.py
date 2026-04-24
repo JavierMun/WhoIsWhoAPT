@@ -226,6 +226,7 @@ class ActorComparisonRequest(BaseModel):
 
     actor_id: str
     target_actor_id: str | None = None
+    target_ids: list[str] | None = None
     metric: SimilarityMetric = "jaccard"
     top_n: int | None = Field(default=None, ge=1, le=100)
     include_self: bool = False

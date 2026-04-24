@@ -143,6 +143,48 @@ def test_compare_actor_vs_actor() -> None:
     assert body["results"][0]["score"] == 1 / 3
 
 
+def test_compare_actor_against_selected_targets() -> None:
+    """Actor comparison should support an explicit candidate subset."""
+    client = _client_with_seeded_actors()
+
+    response = client.post(
+        "/api/compare/actor",
+        json={"actor_id": "actor-a", "target_ids": ["actor-c"], "metric": "jaccard", "top_n": 10},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [result["matched_entity_id"] for result in body["results"]] == ["actor-c"]
+    assert body["results"][0]["score"] == 0
+
+
+def test_compare_actor_rejects_empty_selected_targets() -> None:
+    """An explicit empty target list should return a clear validation error."""
+    client = _client_with_seeded_actors()
+
+    response = client.post(
+        "/api/compare/actor",
+        json={"actor_id": "actor-a", "target_ids": [], "metric": "jaccard"},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"] == "Target actor list must include at least one actor"
+
+
+def test_compare_actor_rejects_unknown_selected_targets() -> None:
+    """Unknown selected target actor IDs should not silently produce partial results."""
+    client = _client_with_seeded_actors()
+
+    response = client.post(
+        "/api/compare/actor",
+        json={"actor_id": "actor-a", "target_ids": ["actor-b", "actor-missing"], "metric": "jaccard"},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"] == "Unknown target actor IDs"
+    assert response.json()["detail"] == {"target_ids": ["actor-missing"]}
+
+
 def test_compare_saved_custom_set_vs_all() -> None:
     """Saved custom TTP sets should be usable by comparison ID."""
     client = _client_with_seeded_actors()

@@ -48,13 +48,19 @@ export function getActors(): Promise<ActorListItem[]> {
   return request<ActorListItem[]>("/api/actors");
 }
 
-export function compareActor(actorId: string, metric: SimilarityMetric, topN: number): Promise<ActorComparisonResponse> {
+export function compareActor(
+  actorId: string,
+  metric: SimilarityMetric,
+  topN: number,
+  targetIds?: string[]
+): Promise<ActorComparisonResponse> {
   return request<ActorComparisonResponse>("/api/compare/actor", {
     method: "POST",
     body: JSON.stringify({
       actor_id: actorId,
       metric,
-      top_n: topN
+      top_n: topN,
+      ...(targetIds ? { target_ids: targetIds } : {})
     })
   });
 }

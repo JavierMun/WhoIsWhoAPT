@@ -72,6 +72,9 @@ def compare_actor(
         )
 
     candidates = _actor_candidates(session, active_source)
+    if request.target_ids is not None:
+        candidates = _target_actor_candidates(candidates, request.target_ids)
+
     results = compare_against_entities(
         input_techniques,
         candidates,
@@ -168,6 +171,20 @@ def _actor_candidates(session: Session, source: str) -> list[EntityTechniqueSet]
     """Load actor candidates for the active source."""
     rows = session.scalars(select(entities.Actor).where(entities.Actor.source == source)).all()
     return [_actor_entity(row) for row in rows]
+
+
+def _target_actor_candidates(candidates: list[EntityTechniqueSet], target_ids: list[str]) -> list[EntityTechniqueSet]:
+    """Filter actor candidates to an explicit selected target list."""
+    requested_ids = list(dict.fromkeys(target_ids))
+    if not requested_ids:
+        raise AppError("Target actor list must include at least one actor", status_code=422)
+
+    candidates_by_id = {candidate.id: candidate for candidate in candidates}
+    missing_ids = sorted(set(requested_ids) - set(candidates_by_id))
+    if missing_ids:
+        raise AppError("Unknown target actor IDs", status_code=422, detail={"target_ids": missing_ids})
+
+    return [candidates_by_id[target_id] for target_id in requested_ids]
 
 
 def _actor_entity(actor: entities.Actor) -> EntityTechniqueSet:
