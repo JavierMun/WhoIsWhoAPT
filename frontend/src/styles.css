@@ -331,6 +331,11 @@ h1 {
   list-style: none;
 }
 
+.empty-result {
+  padding: 22px 20px;
+  color: #52606a;
+}
+
 .result-row {
   display: grid;
   grid-template-columns: 42px 1fr;

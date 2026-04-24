@@ -398,6 +398,9 @@ function CustomComparisonResults({ comparison, loading }: { comparison: ActorCom
         <span className="metric-label">{comparison.metric === "jaccard" ? "Jaccard" : "Weighted"}</span>
       </div>
       <ol className="result-list">
+        {comparison.results.length === 0 ? (
+          <li className="empty-result">No comparable actors found. Load MITRE data before comparing custom sets.</li>
+        ) : null}
         {comparison.results.map((result, index) => (
           <li className="result-row" key={result.matched_entity_id}>
             <div className="rank">{index + 1}</div>
@@ -447,7 +450,8 @@ function extractNavigatorTechniqueIds(layer: NavigatorLayer): string[] {
       }
       return technique.techniqueID ?? technique.techniqueId ?? technique.technique_id;
     })
-    .filter((techniqueId): techniqueId is string => typeof techniqueId === "string" && /^T\d{4}(?:\.\d{3})?$/.test(techniqueId));
+    .map((techniqueId) => (typeof techniqueId === "string" ? techniqueId.trim().toUpperCase() : null))
+    .filter((techniqueId): techniqueId is string => techniqueId !== null && /^T\d{4}(?:\.\d{3})?$/.test(techniqueId));
 
   return sortedTechniqueIds(techniqueIds);
 }

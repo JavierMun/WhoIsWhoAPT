@@ -20,7 +20,7 @@ def create_custom_set(
     session: Annotated[Session, Depends(get_db_session)],
 ) -> entities.CustomTTPSet:
     """Save a custom TTP set for later comparison."""
-    technique_ids = sorted(set(request.technique_ids))
+    technique_ids = _normalize_technique_ids(request.technique_ids)
     _validate_technique_ids(session, technique_ids)
     custom_set = entities.CustomTTPSet(
         name=request.name,
@@ -62,3 +62,8 @@ def _validate_technique_ids(session: Session, technique_ids: list[str]) -> None:
     invalid_ids = sorted(set(technique_ids) - existing_ids)
     if invalid_ids:
         raise AppError("Unknown technique IDs", status_code=422, detail={"technique_ids": invalid_ids})
+
+
+def _normalize_technique_ids(technique_ids: list[str]) -> list[str]:
+    """Normalize user-provided technique IDs before validation and persistence."""
+    return sorted({technique_id.strip().upper() for technique_id in technique_ids if technique_id.strip()})

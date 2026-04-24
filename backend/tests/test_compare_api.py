@@ -58,6 +58,19 @@ def test_compare_custom_inline_vs_all() -> None:
     assert body["results"][0]["score"] == 1.0
 
 
+def test_compare_custom_inline_normalizes_technique_ids() -> None:
+    """Inline custom comparisons should tolerate lowercase technique IDs."""
+    client = _client_with_seeded_actors()
+
+    response = client.post(
+        "/api/compare/custom",
+        json={"name": "Incident", "technique_ids": [" t1001 ", "t1002"], "metric": "jaccard"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["results"][0]["matched_entity_id"] == "actor-a"
+
+
 def test_compare_actor_vs_actor() -> None:
     """Direct actor comparison should return one requested match."""
     client = _client_with_seeded_actors()

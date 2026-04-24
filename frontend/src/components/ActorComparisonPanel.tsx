@@ -212,6 +212,9 @@ function ComparisonResults({ comparison, loading }: { comparison: ActorCompariso
       </div>
 
       <ol className="result-list">
+        {comparison.results.length === 0 ? (
+          <li className="empty-result">No comparable actors found. Load MITRE data or choose another actor.</li>
+        ) : null}
         {comparison.results.map((result, index) => (
           <li className="result-row" key={result.matched_entity_id}>
             <div className="rank">{index + 1}</div>

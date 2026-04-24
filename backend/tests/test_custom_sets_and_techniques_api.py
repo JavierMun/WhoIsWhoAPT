@@ -45,6 +45,19 @@ def test_get_custom_set_by_id() -> None:
     assert response.json()["technique_ids"] == ["T1001", "T1059.001"]
 
 
+def test_create_custom_set_normalizes_technique_ids() -> None:
+    """Custom set persistence should tolerate lowercase and duplicate IDs."""
+    client = _client_with_seeded_techniques()
+
+    response = client.post(
+        "/api/custom-sets",
+        json={"name": "Manual Set", "technique_ids": [" t1001 ", "T1001"]},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["technique_ids"] == ["T1001"]
+
+
 def test_create_custom_set_rejects_unknown_techniques() -> None:
     """Custom set persistence should validate technique IDs."""
     client = _client_with_seeded_techniques()

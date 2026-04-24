@@ -85,8 +85,9 @@ def compare_custom_set(
         input_name = custom_set.name
         input_techniques = set(custom_set.technique_ids)
     elif request.technique_ids is not None:
-        _validate_technique_ids(session, request.technique_ids)
-        input_techniques = set(request.technique_ids)
+        technique_ids = _normalize_technique_ids(request.technique_ids)
+        _validate_technique_ids(session, technique_ids)
+        input_techniques = set(technique_ids)
     else:
         raise AppError("Provide either custom_set_id or technique_ids", status_code=422)
 
@@ -146,6 +147,11 @@ def _validate_technique_ids(session: Session, technique_ids: list[str]) -> None:
     invalid_ids = sorted(requested_ids - existing_ids)
     if invalid_ids:
         raise AppError("Unknown technique IDs", status_code=422, detail={"technique_ids": invalid_ids})
+
+
+def _normalize_technique_ids(technique_ids: list[str]) -> list[str]:
+    """Normalize user-provided technique IDs before validation and comparison."""
+    return sorted({technique_id.strip().upper() for technique_id in technique_ids if technique_id.strip()})
 
 
 def _rarity_weights_for_direct_comparison(
