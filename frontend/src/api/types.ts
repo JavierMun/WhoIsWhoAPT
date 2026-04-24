@@ -76,3 +76,22 @@ export interface CustomTTPSet {
   created_at: string;
   updated_at: string;
 }
+
+export interface MatrixMetadata {
+  source: string;
+  metric: SimilarityMetric;
+  generated_at: string;
+  actor_count: number;
+}
+
+export interface MatrixActor {
+  id: string;
+  name: string;
+  source: string;
+}
+
+export interface MatrixResponse {
+  metadata: MatrixMetadata;
+  actors: MatrixActor[];
+  matrix: number[][];
+}

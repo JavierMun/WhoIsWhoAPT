@@ -3,6 +3,7 @@ import type {
   ActorListItem,
   CustomTTPSet,
   HealthResponse,
+  MatrixResponse,
   SimilarityMetric,
   TechniqueListItem
 } from "./types";
@@ -98,4 +99,15 @@ export function compareCustomSet(
     method: "POST",
     body: JSON.stringify(body)
   });
+}
+
+export function computeMatrix(metric: SimilarityMetric): Promise<MatrixResponse> {
+  return request<MatrixResponse>("/api/matrix", {
+    method: "POST",
+    body: JSON.stringify({ metric })
+  });
+}
+
+export function getMatrixResult(): Promise<MatrixResponse> {
+  return request<MatrixResponse>("/api/matrix/result");
 }
