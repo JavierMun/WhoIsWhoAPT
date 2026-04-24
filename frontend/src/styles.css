@@ -52,10 +52,16 @@ a {
   display: flex;
   align-items: center;
   gap: 10px;
+  width: 100%;
   min-height: 40px;
+  border: 0;
   border-radius: 6px;
+  background: transparent;
   padding: 0 10px;
   color: #42505a;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
 }
 
 .nav-item.active {
@@ -64,13 +70,25 @@ a {
   font-weight: 650;
 }
 
-.nav-item.disabled {
-  color: #87929a;
-  cursor: default;
+.nav-item:hover {
+  background: #f2f6f5;
+  color: #123f35;
 }
 
 .content-area {
   padding: 40px;
+}
+
+.module-stack {
+  display: grid;
+  gap: 34px;
+}
+
+.module-stack > .custom-workspace,
+.module-stack > .incident-workspace,
+.module-stack > .matrix-workspace,
+.module-stack > .network-workspace {
+  margin-top: 0;
 }
 
 .eyebrow,
@@ -366,6 +384,10 @@ h1 {
 
 .network-panel {
   min-height: 620px;
+}
+
+.settings-panel {
+  min-height: 260px;
 }
 
 .results-header {
@@ -919,6 +941,20 @@ h1 {
   text-anchor: middle;
 }
 
+.settings-status {
+  display: grid;
+  grid-template-columns: auto minmax(180px, 260px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+  padding: 22px 20px;
+  color: #33424c;
+}
+
+.settings-status p {
+  margin: 4px 0 0;
+  color: #52606a;
+}
+
 .backend-strip {
   flex-wrap: wrap;
   gap: 10px;
@@ -964,6 +1000,10 @@ h1 {
     border-bottom: 1px solid #d9e0e3;
   }
 
+  .nav-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .content-area {
     padding: 28px 18px;
   }
@@ -991,6 +1031,10 @@ h1 {
     width: 128px;
     min-width: 128px;
     max-width: 128px;
+  }
+
+  .settings-status {
+    grid-template-columns: 1fr;
   }
 }
 

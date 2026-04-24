@@ -1,4 +1,3 @@
-import { Activity, Database, Settings } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { getHealth } from "./api/client";
@@ -8,9 +7,12 @@ import { ActorMatrixHeatmapPanel } from "./components/ActorMatrixHeatmapPanel";
 import { ActorNetworkGraphPanel } from "./components/ActorNetworkGraphPanel";
 import { CustomTTPSetPanel } from "./components/CustomTTPSetPanel";
 import { IncidentAnalysisPanel } from "./components/IncidentAnalysisPanel";
+import { Layout, type ModuleKey } from "./components/Layout";
+import { SettingsPanel } from "./components/SettingsPanel";
 import "./styles.css";
 
 function App() {
+  const [activeModule, setActiveModule] = useState<ModuleKey>("compare");
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,39 +25,34 @@ function App() {
   }, []);
 
   return (
-    <main className="app-shell">
-      <aside className="sidebar" aria-label="Application sections">
-        <div className="brand">
-          <Database size={22} aria-hidden="true" />
-          <span>WhoIsWhoAPT</span>
+    <Layout activeModule={activeModule} onModuleChange={setActiveModule}>
+      {activeModule === "compare" ? <ActorComparisonPanel /> : null}
+      {activeModule === "ttp-profiles" ? (
+        <div className="module-stack">
+          <CustomTTPSetPanel />
+          <IncidentAnalysisPanel />
         </div>
-        <nav className="nav-list">
-          <a className="nav-item active" href="/">
-            <Activity size={18} aria-hidden="true" />
-            <span>Compare</span>
-          </a>
-          <a className="nav-item disabled" href="/settings" aria-disabled="true">
-            <Settings size={18} aria-hidden="true" />
-            <span>Settings</span>
-          </a>
-        </nav>
-      </aside>
+      ) : null}
+      {activeModule === "visual-analysis" ? (
+        <div className="module-stack">
+          <ActorMatrixHeatmapPanel />
+          <ActorNetworkGraphPanel />
+        </div>
+      ) : null}
+      {activeModule === "settings" ? <SettingsPanel health={health} error={error} /> : null}
+      <BackendStrip health={health} error={error} />
+    </Layout>
+  );
+}
 
-      <section className="content-area">
-        <ActorComparisonPanel />
-        <IncidentAnalysisPanel />
-        <CustomTTPSetPanel />
-        <ActorMatrixHeatmapPanel />
-        <ActorNetworkGraphPanel />
-
-        <footer className="backend-strip">
-          <span className={health ? "status-dot ok" : "status-dot pending"} aria-hidden="true" />
-          <span>Backend {health ? health.status : "checking"}</span>
-          <span>{health?.environment ?? "unknown"}</span>
-          {error ? <span className="error-text">{error}</span> : null}
-        </footer>
-      </section>
-    </main>
+function BackendStrip({ health, error }: { health: HealthResponse | null; error: string | null }) {
+  return (
+    <footer className="backend-strip">
+      <span className={health ? "status-dot ok" : "status-dot pending"} aria-hidden="true" />
+      <span>Backend {health ? health.status : "checking"}</span>
+      <span>{health?.environment ?? "unknown"}</span>
+      {error ? <span className="error-text">{error}</span> : null}
+    </footer>
   );
 }
 
