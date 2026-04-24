@@ -133,6 +133,12 @@ class UISettings(BaseModel):
     default_similarity_metric: str = "jaccard_weighted"
 
 
+class ScoringSettings(BaseModel):
+    """Similarity scoring settings editable from the API."""
+
+    tactic_weights: dict[str, float] = Field(default_factory=dict)
+
+
 class ApplicationSettings(BaseModel):
     """User-editable application settings."""
 
@@ -140,6 +146,7 @@ class ApplicationSettings(BaseModel):
     mitre: MitreSettings = Field(default_factory=MitreSettings)
     opencti: OpenCTISettings = Field(default_factory=OpenCTISettings)
     ui: UISettings = Field(default_factory=UISettings)
+    scoring: ScoringSettings = Field(default_factory=ScoringSettings)
 
 
 class SourceLoadStatus(BaseModel):
@@ -156,7 +163,19 @@ class SourceLoadStatus(BaseModel):
     technique_count: int = 0
 
 
-SimilarityMetric = Literal["jaccard", "jaccard_weighted"]
+SimilarityMetric = Literal["jaccard", "jaccard_weighted", "tactic_weighted_jaccard"]
+
+
+class TacticBreakdown(BaseModel):
+    """Per-tactic contribution details for a comparison result."""
+
+    tactic: str
+    shared_techniques: list[str] = Field(default_factory=list)
+    input_technique_count: int
+    matched_technique_count: int
+    shared_technique_count: int
+    union_technique_count: int
+    score_contribution: float = Field(ge=0, le=1)
 
 
 class ComparisonResult(BaseModel):
@@ -169,6 +188,7 @@ class ComparisonResult(BaseModel):
     shared_techniques: list[str] = Field(default_factory=list)
     unique_to_input: list[str] = Field(default_factory=list)
     unique_to_matched_entity: list[str] = Field(default_factory=list)
+    tactic_breakdown: list[TacticBreakdown] = Field(default_factory=list)
 
 
 class ComparisonResponse(BaseModel):

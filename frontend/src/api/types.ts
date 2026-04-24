@@ -5,7 +5,17 @@ export interface HealthResponse {
   timestamp: string;
 }
 
-export type SimilarityMetric = "jaccard" | "jaccard_weighted";
+export type SimilarityMetric = "jaccard" | "jaccard_weighted" | "tactic_weighted_jaccard";
+
+export interface TacticBreakdown {
+  tactic: string;
+  shared_techniques: string[];
+  input_technique_count: number;
+  matched_technique_count: number;
+  shared_technique_count: number;
+  union_technique_count: number;
+  score_contribution: number;
+}
 
 export interface ActorListItem {
   id: string;
@@ -22,6 +32,7 @@ export interface ComparisonResult {
   shared_techniques: string[];
   unique_to_input: string[];
   unique_to_matched_entity: string[];
+  tactic_breakdown: TacticBreakdown[];
 }
 
 export interface ActorComparisonResponse {

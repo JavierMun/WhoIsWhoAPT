@@ -393,6 +393,57 @@ h1 {
   line-height: 1.45;
 }
 
+.tactic-breakdown {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.tactic-row {
+  display: grid;
+  gap: 5px;
+  border: 1px solid #edf1f2;
+  border-radius: 6px;
+  background: #fbfcfc;
+  padding: 8px;
+}
+
+.tactic-row-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: #33424c;
+  font-size: 0.84rem;
+}
+
+.tactic-row-header span {
+  color: #0d704f;
+  font-weight: 800;
+}
+
+.tactic-meter {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e6ecef;
+}
+
+.tactic-meter span {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+  border-radius: inherit;
+  background: #136f63;
+}
+
+.tactic-row p {
+  margin: 0;
+  color: #52606a;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
 .muted {
   color: #70808a;
 }

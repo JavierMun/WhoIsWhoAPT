@@ -249,6 +249,13 @@ Stored in `config.json` (or SQLite settings table). Editable from the UI Setting
   "ui": {
     "default_top_n": 10,
     "default_similarity_metric": "jaccard_weighted"
+  },
+  "scoring": {
+    "tactic_weights": {
+      "persistence": 2.0,
+      "command-and-control": 1.5,
+      "exfiltration": 1.5
+    }
   }
 }
 ```

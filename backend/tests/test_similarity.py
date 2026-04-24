@@ -1,6 +1,11 @@
 """Similarity metric edge-case tests."""
 
-from app.analytics.similarity import jaccard_similarity, weighted_jaccard_similarity
+from app.analytics.similarity import (
+    jaccard_similarity,
+    tactic_breakdown,
+    tactic_weighted_jaccard_similarity,
+    weighted_jaccard_similarity,
+)
 
 
 def test_jaccard_identical_sets() -> None:
@@ -33,3 +38,30 @@ def test_weighted_jaccard_partial_overlap() -> None:
     )
 
     assert score == 0.3
+
+
+def test_tactic_weighted_jaccard_uses_configured_tactic_weights() -> None:
+    """Tactic-weighted Jaccard should emphasize overlap in configured tactics."""
+    score = tactic_weighted_jaccard_similarity(
+        {"T1001", "T1002"},
+        {"T1002", "T1003"},
+        {"T1001": "execution", "T1002": "persistence", "T1003": "execution"},
+        {"persistence": 3.0, "execution": 1.0},
+    )
+
+    assert score == 3 / 5
+
+
+def test_tactic_breakdown_groups_shared_techniques_and_contributions() -> None:
+    """Breakdown should group shared techniques by tactic and sum to the score."""
+    breakdown = tactic_breakdown(
+        {"T1001", "T1002"},
+        {"T1002", "T1003"},
+        {"T1001": "execution", "T1002": "persistence", "T1003": "execution"},
+        {"T1001": 1.0, "T1002": 3.0, "T1003": 1.0},
+    )
+
+    persistence = next(item for item in breakdown if item.tactic == "persistence")
+    assert persistence.shared_techniques == ["T1002"]
+    assert persistence.shared_technique_count == 1
+    assert persistence.score_contribution == 3 / 5

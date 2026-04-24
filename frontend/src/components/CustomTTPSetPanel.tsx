@@ -2,7 +2,7 @@ import { AlertCircle, FileJson, Loader2, Plus, Save, Search, X } from "lucide-re
 import { useEffect, useMemo, useState } from "react";
 
 import { compareCustomSet, createCustomSet, getCustomSets, getTechniques } from "../api/client";
-import type { ActorComparisonResponse, CustomTTPSet, SimilarityMetric, TechniqueListItem } from "../api/types";
+import type { ActorComparisonResponse, CustomTTPSet, SimilarityMetric, TacticBreakdown, TechniqueListItem } from "../api/types";
 
 const DEFAULT_TOP_N = 10;
 
@@ -296,6 +296,7 @@ export function CustomTTPSetPanel() {
               >
                 <option value="jaccard">Jaccard</option>
                 <option value="jaccard_weighted">Weighted</option>
+                <option value="tactic_weighted_jaccard">Tactic weighted</option>
               </select>
             </label>
 
@@ -395,7 +396,7 @@ function CustomComparisonResults({ comparison, loading }: { comparison: ActorCom
           <p className="panel-label">Custom input</p>
           <h2>{comparison.input_name}</h2>
         </div>
-        <span className="metric-label">{comparison.metric === "jaccard" ? "Jaccard" : "Weighted"}</span>
+        <span className="metric-label">{metricLabel(comparison.metric)}</span>
       </div>
       <ol className="result-list">
         {comparison.results.length === 0 ? (
@@ -416,11 +417,39 @@ function CustomComparisonResults({ comparison, loading }: { comparison: ActorCom
               <p className="technique-preview">
                 {result.shared_techniques.slice(0, 8).join(", ") || "No shared techniques"}
               </p>
+              <TacticBreakdownList items={result.tactic_breakdown} />
             </div>
           </li>
         ))}
       </ol>
     </section>
+  );
+}
+
+function TacticBreakdownList({ items }: { items: TacticBreakdown[] }) {
+  const visibleItems = items.filter((item) => item.union_technique_count > 0).slice(0, 4);
+  if (visibleItems.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="tactic-breakdown" aria-label="Tactic breakdown">
+      {visibleItems.map((item) => (
+        <div className="tactic-row" key={item.tactic}>
+          <div className="tactic-row-header">
+            <strong>{formatTactic(item.tactic)}</strong>
+            <span>{formatScore(item.score_contribution)}</span>
+          </div>
+          <div className="tactic-meter" aria-hidden="true">
+            <span style={{ width: `${Math.round(item.score_contribution * 100)}%` }} />
+          </div>
+          <p>
+            {item.shared_technique_count}/{item.union_technique_count} shared
+            {item.shared_techniques.length > 0 ? `: ${item.shared_techniques.slice(0, 4).join(", ")}` : ""}
+          </p>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -458,4 +487,26 @@ function extractNavigatorTechniqueIds(layer: NavigatorLayer): string[] {
 
 function sortedTechniqueIds(techniqueIds: string[]): string[] {
   return Array.from(new Set(techniqueIds)).sort((left, right) => left.localeCompare(right));
+}
+
+function formatScore(score: number): string {
+  return `${Math.round(score * 100)}%`;
+}
+
+function metricLabel(metric: SimilarityMetric): string {
+  if (metric === "jaccard_weighted") {
+    return "Weighted";
+  }
+  if (metric === "tactic_weighted_jaccard") {
+    return "Tactic weighted";
+  }
+  return "Jaccard";
+}
+
+function formatTactic(tactic: string): string {
+  return tactic
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
+    .join(" ");
 }

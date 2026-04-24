@@ -18,9 +18,12 @@ from app.models.schemas import ApplicationSettings
 class FakeSettingsStore:
     """Settings store stub for API tests."""
 
+    def __init__(self, settings: ApplicationSettings | None = None) -> None:
+        self.settings = settings or ApplicationSettings(active_source="mitre")
+
     def load(self) -> ApplicationSettings:
         """Return default MITRE settings."""
-        return ApplicationSettings(active_source="mitre")
+        return self.settings
 
 
 def test_compare_actor_vs_all_returns_ranked_explanation() -> None:
@@ -40,6 +43,32 @@ def test_compare_actor_vs_all_returns_ranked_explanation() -> None:
     assert body["results"][0]["shared_techniques"] == ["T1002"]
     assert body["results"][0]["unique_to_input"] == ["T1001"]
     assert body["results"][0]["unique_to_matched_entity"] == ["T1003"]
+    persistence = next(item for item in body["results"][0]["tactic_breakdown"] if item["tactic"] == "persistence")
+    assert persistence["shared_techniques"] == ["T1002"]
+
+
+def test_compare_actor_with_tactic_weighted_jaccard() -> None:
+    """Tactic weights should influence scores without changing baseline metrics."""
+    client = _client_with_seeded_actors(
+        ApplicationSettings(
+            active_source="mitre",
+            scoring={"tactic_weights": {"execution": 1.0, "persistence": 3.0}},
+        )
+    )
+
+    response = client.post(
+        "/api/compare/actor",
+        json={"actor_id": "actor-a", "metric": "tactic_weighted_jaccard", "top_n": 1},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["metric"] == "tactic_weighted_jaccard"
+    assert body["results"][0]["matched_entity_id"] == "actor-b"
+    assert body["results"][0]["score"] == 3 / 5
+    persistence = next(item for item in body["results"][0]["tactic_breakdown"] if item["tactic"] == "persistence")
+    assert persistence["shared_techniques"] == ["T1002"]
+    assert persistence["score_contribution"] == 3 / 5
 
 
 def test_compare_custom_inline_vs_all() -> None:
@@ -110,7 +139,7 @@ def test_compare_saved_custom_set_vs_all() -> None:
     assert body["results"][0]["matched_entity_id"] == "actor-a"
 
 
-def _client_with_seeded_actors() -> TestClient:
+def _client_with_seeded_actors(settings: ApplicationSettings | None = None) -> TestClient:
     """Create a test client with isolated in-memory actor data."""
     engine = create_engine(
         "sqlite://",
@@ -127,7 +156,10 @@ def _client_with_seeded_actors() -> TestClient:
                 _actor("actor-a", "Alpha", ["T1001", "T1002"], now),
                 _actor("actor-b", "Beta", ["T1002", "T1003"], now),
                 _actor("actor-c", "Gamma", ["T2001"], now),
-                *[_technique(technique_id) for technique_id in ["T1001", "T1002", "T1003", "T2001"]],
+                _technique("T1001", "execution"),
+                _technique("T1002", "persistence"),
+                _technique("T1003", "execution"),
+                _technique("T2001", "collection"),
             ]
         )
         session.commit()
@@ -141,7 +173,7 @@ def _client_with_seeded_actors() -> TestClient:
 
     app = create_app()
     app.dependency_overrides[get_db_session] = override_db
-    app.dependency_overrides[get_settings_store] = lambda: FakeSettingsStore()
+    app.dependency_overrides[get_settings_store] = lambda: FakeSettingsStore(settings)
     return TestClient(app)
 
 
@@ -165,12 +197,12 @@ def _actor(actor_id: str, name: str, technique_ids: list[str], last_updated: dat
     )
 
 
-def _technique(technique_id: str) -> Technique:
+def _technique(technique_id: str, tactic: str = "execution") -> Technique:
     """Build a technique row for custom TTP validation."""
     return Technique(
         technique_id=technique_id,
         name=f"{technique_id} name",
-        tactic="execution",
+        tactic=tactic,
         is_subtechnique="." in technique_id,
         parent_id=technique_id.split(".", maxsplit=1)[0] if "." in technique_id else None,
     )

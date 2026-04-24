@@ -18,7 +18,13 @@ from app.database import get_db_session
 from app.dependencies import get_settings_store
 from app.errors import AppError
 from app.models import entities
-from app.models.schemas import ActorComparisonRequest, ComparisonResponse, ComparisonResult, CustomComparisonRequest
+from app.models.schemas import (
+    ActorComparisonRequest,
+    ComparisonResponse,
+    ComparisonResult,
+    CustomComparisonRequest,
+    TacticBreakdown,
+)
 from app.settings_store import SettingsStore
 
 router = APIRouter()
@@ -31,16 +37,25 @@ def compare_actor(
     settings_store: Annotated[SettingsStore, Depends(get_settings_store)],
 ) -> ComparisonResponse:
     """Compare one actor against all actors, or directly against another actor."""
-    active_source = settings_store.load().active_source
+    settings = settings_store.load()
+    active_source = settings.active_source
     actor = _get_actor(session, request.actor_id)
     input_techniques = _technique_ids(actor.techniques)
+    technique_tactics = _technique_tactics(session)
 
     if request.target_actor_id is not None:
         target = _get_actor(session, request.target_actor_id)
         target_entity = _actor_entity(target)
         candidates = _actor_candidates(session, active_source)
         weights = _rarity_weights_for_direct_comparison(candidates, request.metric)
-        result = compare_pair(input_techniques, target_entity, metric=request.metric, weights=weights)
+        result = compare_pair(
+            input_techniques,
+            target_entity,
+            metric=request.metric,
+            weights=weights,
+            technique_tactics=technique_tactics,
+            tactic_weights=settings.scoring.tactic_weights,
+        )
         return ComparisonResponse(
             input_id=actor.id,
             input_name=actor.name,
@@ -56,6 +71,8 @@ def compare_actor(
         metric=request.metric,
         top_n=request.top_n,
         exclude_entity_id=None if request.include_self else actor.id,
+        technique_tactics=technique_tactics,
+        tactic_weights=settings.scoring.tactic_weights,
     )
     return ComparisonResponse(
         input_id=actor.id,
@@ -73,7 +90,8 @@ def compare_custom_set(
     settings_store: Annotated[SettingsStore, Depends(get_settings_store)],
 ) -> ComparisonResponse:
     """Compare an inline or saved custom TTP set against all actors."""
-    active_source = settings_store.load().active_source
+    settings = settings_store.load()
+    active_source = settings.active_source
     input_id: str | None = None
     input_name = request.name or "Custom TTP Set"
 
@@ -96,6 +114,8 @@ def compare_custom_set(
         _actor_candidates(session, active_source),
         metric=request.metric,
         top_n=request.top_n,
+        technique_tactics=_technique_tactics(session),
+        tactic_weights=settings.scoring.tactic_weights,
     )
     return ComparisonResponse(
         input_id=input_id,
@@ -154,6 +174,12 @@ def _normalize_technique_ids(technique_ids: list[str]) -> list[str]:
     return sorted({technique_id.strip().upper() for technique_id in technique_ids if technique_id.strip()})
 
 
+def _technique_tactics(session: Session) -> dict[str, str]:
+    """Return local technique-to-tactic metadata for scoring explanations."""
+    rows = session.execute(select(entities.Technique.technique_id, entities.Technique.tactic)).all()
+    return {technique_id: tactic for technique_id, tactic in rows}
+
+
 def _rarity_weights_for_direct_comparison(
     candidates: list[EntityTechniqueSet],
     metric: str,
@@ -177,4 +203,16 @@ def _result_schema(result: AnalyticsComparisonResult) -> ComparisonResult:
         shared_techniques=result.shared_techniques,
         unique_to_input=result.unique_to_input,
         unique_to_matched_entity=result.unique_to_matched_entity,
+        tactic_breakdown=[
+            TacticBreakdown(
+                tactic=item.tactic,
+                shared_techniques=item.shared_techniques,
+                input_technique_count=item.input_technique_count,
+                matched_technique_count=item.matched_technique_count,
+                shared_technique_count=item.shared_technique_count,
+                union_technique_count=item.union_technique_count,
+                score_contribution=item.score_contribution,
+            )
+            for item in result.tactic_breakdown
+        ],
     )
