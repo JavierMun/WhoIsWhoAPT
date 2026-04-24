@@ -49,6 +49,7 @@ class ComparisonResult:
     unique_to_input_software: list[str]
     unique_to_matched_entity_software: list[str]
     tactic_breakdown: list[TacticBreakdown]
+    rare_shared_techniques: list[str]
 
 
 def compare_against_entities(
@@ -137,6 +138,7 @@ def compare_pair(
 
     explanation = explain_overlap(input_techniques, candidate.techniques)
     software_explanation = explain_overlap(input_software, candidate.software)
+    rare_shared_techniques = _rare_shared_techniques(explanation.shared_techniques, weights or {})
     return ComparisonResult(
         matched_entity_id=candidate.id,
         matched_entity_name=candidate.name,
@@ -158,6 +160,7 @@ def compare_pair(
             technique_tactics,
             contribution_weights,
         ),
+        rare_shared_techniques=rare_shared_techniques,
     )
 
 
@@ -167,3 +170,12 @@ def _tactic_contribution_weight(tactic_value: str, tactic_weights: dict[str, flo
     if not tactics:
         return 1.0
     return max(max(0.0, tactic_weights.get(tactic, 1.0)) for tactic in tactics)
+
+
+def _rare_shared_techniques(shared_techniques: list[str], weights: dict[str, float]) -> list[str]:
+    """Return shared techniques whose rarity weight is above the default unweighted value."""
+    return [
+        technique_id
+        for technique_id in sorted(shared_techniques, key=lambda item: (-weights.get(item, 1.0), item))
+        if weights.get(technique_id, 1.0) > 1.0
+    ]

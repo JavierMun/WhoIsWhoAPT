@@ -7,6 +7,7 @@ import { ActorComparisonPanel } from "./components/ActorComparisonPanel";
 import { ActorMatrixHeatmapPanel } from "./components/ActorMatrixHeatmapPanel";
 import { ActorNetworkGraphPanel } from "./components/ActorNetworkGraphPanel";
 import { CustomTTPSetPanel } from "./components/CustomTTPSetPanel";
+import { IncidentAnalysisPanel } from "./components/IncidentAnalysisPanel";
 import "./styles.css";
 
 function App() {
@@ -42,6 +43,7 @@ function App() {
 
       <section className="content-area">
         <ActorComparisonPanel />
+        <IncidentAnalysisPanel />
         <CustomTTPSetPanel />
         <ActorMatrixHeatmapPanel />
         <ActorNetworkGraphPanel />

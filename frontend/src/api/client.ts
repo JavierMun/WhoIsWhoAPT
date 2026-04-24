@@ -102,6 +102,25 @@ export function compareCustomSet(
   });
 }
 
+export function analyzeIncident(params: {
+  incidentName: string;
+  description?: string;
+  techniqueIds: string[];
+  metric: SimilarityMetric;
+  topN: number;
+}): Promise<ActorComparisonResponse> {
+  return request<ActorComparisonResponse>("/api/analyze/incident", {
+    method: "POST",
+    body: JSON.stringify({
+      incident_name: params.incidentName,
+      description: params.description,
+      technique_ids: params.techniqueIds,
+      metric: params.metric,
+      top_n: params.topN
+    })
+  });
+}
+
 export function computeMatrix(metric: SimilarityMetric): Promise<MatrixResponse> {
   return request<MatrixResponse>("/api/matrix", {
     method: "POST",

@@ -23,6 +23,7 @@ from app.models.schemas import (
     ComparisonResponse,
     ComparisonResult,
     CustomComparisonRequest,
+    IncidentAnalysisRequest,
     SoftwareSummary,
     TacticBreakdown,
 )
@@ -99,12 +100,21 @@ def compare_custom_set(
     settings_store: Annotated[SettingsStore, Depends(get_settings_store)],
 ) -> ComparisonResponse:
     """Compare an inline or saved custom TTP set against all actors."""
+    return compare_custom_techniques(request, session, settings_store)
+
+
+def compare_custom_techniques(
+    request: CustomComparisonRequest | IncidentAnalysisRequest,
+    session: Session,
+    settings_store: SettingsStore,
+) -> ComparisonResponse:
+    """Compare an inline custom or incident TTP set against all actors."""
     settings = settings_store.load()
     active_source = settings.active_source
     input_id: str | None = None
-    input_name = request.name or "Custom TTP Set"
+    input_name = _input_name(request)
 
-    if request.custom_set_id is not None:
+    if isinstance(request, CustomComparisonRequest) and request.custom_set_id is not None:
         custom_set = session.get(entities.CustomTTPSet, request.custom_set_id)
         if custom_set is None:
             raise AppError("Custom TTP set not found", status_code=404)
@@ -133,10 +143,17 @@ def compare_custom_set(
     return ComparisonResponse(
         input_id=input_id,
         input_name=input_name,
-        input_type="custom_set",
+        input_type="incident" if isinstance(request, IncidentAnalysisRequest) else "custom_set",
         metric=request.metric,
         results=[_result_schema(result, software_lookup) for result in results],
     )
+
+
+def _input_name(request: CustomComparisonRequest | IncidentAnalysisRequest) -> str:
+    """Return the display name for a custom comparison-like request."""
+    if isinstance(request, IncidentAnalysisRequest):
+        return request.incident_name
+    return request.name or "Custom TTP Set"
 
 
 def _get_actor(session: Session, actor_id: str) -> entities.Actor:
@@ -250,6 +267,7 @@ def _result_schema(result: AnalyticsComparisonResult, software_lookup: dict[str,
             )
             for item in result.tactic_breakdown
         ],
+        rare_shared_techniques=result.rare_shared_techniques,
     )
 
 

@@ -50,10 +50,12 @@ def compute_actor_similarity_matrix(
     ordered_actors = sorted(actors, key=lambda actor: actor.name.lower())
     weights = rarity_weights([actor.techniques for actor in ordered_actors]) if metric == "jaccard_weighted" else {}
 
-    values: list[list[float]] = []
-    for input_actor in ordered_actors:
-        row: list[float] = []
-        for matched_actor in ordered_actors:
+    values: list[list[float]] = [[0.0 for _ in ordered_actors] for _ in ordered_actors]
+    for input_index, input_actor in enumerate(ordered_actors):
+        for matched_index, matched_actor in enumerate(ordered_actors):
+            if matched_index < input_index:
+                values[input_index][matched_index] = values[matched_index][input_index]
+                continue
             result = compare_pair(
                 input_actor.techniques,
                 matched_actor,
@@ -65,8 +67,7 @@ def compute_actor_similarity_matrix(
                 technique_score_weight=technique_score_weight,
                 software_score_weight=software_score_weight,
             )
-            row.append(max(0.0, min(1.0, result.score)))
-        values.append(row)
+            values[input_index][matched_index] = max(0.0, min(1.0, result.score))
 
     return ActorSimilarityMatrix(
         metadata=MatrixMetadata(

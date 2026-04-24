@@ -97,6 +97,10 @@ h1 {
   margin-top: 34px;
 }
 
+.incident-workspace {
+  margin-top: 34px;
+}
+
 .matrix-workspace {
   margin-top: 34px;
 }
@@ -153,6 +157,13 @@ h1 {
   align-items: start;
 }
 
+.incident-layout {
+  display: grid;
+  grid-template-columns: minmax(300px, 420px) minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+
 .matrix-layout {
   display: grid;
   grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
@@ -189,9 +200,9 @@ h1 {
 }
 
 .field-group input,
-.field-group select {
+.field-group select,
+.field-group textarea {
   width: 100%;
-  min-height: 40px;
   border: 1px solid #cfd8dc;
   border-radius: 6px;
   background: #ffffff;
@@ -199,6 +210,18 @@ h1 {
   font: inherit;
   font-weight: 500;
   padding: 0 10px;
+}
+
+.field-group input,
+.field-group select {
+  min-height: 40px;
+}
+
+.field-group textarea {
+  min-height: 86px;
+  padding: 10px;
+  line-height: 1.45;
+  resize: vertical;
 }
 
 .search-field {
@@ -331,6 +354,10 @@ h1 {
 
 .custom-results {
   min-height: 620px;
+}
+
+.incident-results {
+  min-height: 680px;
 }
 
 .heatmap-panel {
@@ -614,6 +641,56 @@ h1 {
   min-height: 220px;
 }
 
+.incident-controls {
+  align-content: start;
+}
+
+.incident-technique-summary span {
+  overflow-wrap: anywhere;
+}
+
+.file-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  border: 1px solid #cfd8dc;
+  border-radius: 6px;
+  padding: 0 10px;
+  color: #52606a;
+}
+
+.file-input-row input {
+  min-height: 0;
+  border: 0;
+  padding: 0;
+}
+
+.incident-result-row {
+  align-items: start;
+}
+
+.why-match {
+  display: grid;
+  gap: 7px;
+  margin-top: 12px;
+  border: 1px solid #edf1f2;
+  border-radius: 6px;
+  background: #fbfcfc;
+  padding: 10px;
+}
+
+.why-match > strong {
+  color: #123f35;
+}
+
+.why-match p {
+  margin: 0;
+  color: #33424c;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
 .matrix-controls {
   align-content: start;
 }
@@ -894,6 +971,7 @@ h1 {
   .workspace-header,
   .comparison-layout,
   .custom-layout,
+  .incident-layout,
   .matrix-layout,
   .network-layout {
     grid-template-columns: 1fr;

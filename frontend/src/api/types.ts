@@ -50,12 +50,13 @@ export interface ComparisonResult {
   unique_to_input_software: SoftwareSummary[];
   unique_to_matched_entity_software: SoftwareSummary[];
   tactic_breakdown: TacticBreakdown[];
+  rare_shared_techniques: string[];
 }
 
 export interface ActorComparisonResponse {
   input_id: string | null;
   input_name: string;
-  input_type: "actor" | "custom_set";
+  input_type: "actor" | "custom_set" | "incident";
   metric: SimilarityMetric;
   results: ComparisonResult[];
 }

@@ -208,6 +208,7 @@ class ComparisonResult(BaseModel):
     unique_to_input_software: list[SoftwareSummary] = Field(default_factory=list)
     unique_to_matched_entity_software: list[SoftwareSummary] = Field(default_factory=list)
     tactic_breakdown: list[TacticBreakdown] = Field(default_factory=list)
+    rare_shared_techniques: list[str] = Field(default_factory=list)
 
 
 class ComparisonResponse(BaseModel):
@@ -215,7 +216,7 @@ class ComparisonResponse(BaseModel):
 
     input_id: str | None = None
     input_name: str
-    input_type: Literal["actor", "custom_set"]
+    input_type: Literal["actor", "custom_set", "incident"]
     metric: SimilarityMetric
     results: list[ComparisonResult] = Field(default_factory=list)
 
@@ -259,6 +260,16 @@ class CustomComparisonRequest(BaseModel):
     top_n: int | None = Field(default=None, ge=1, le=100)
 
 
+class IncidentAnalysisRequest(BaseModel):
+    """Request for incident-observed TTPs against all actors."""
+
+    incident_name: str = Field(min_length=1, max_length=255)
+    description: str | None = None
+    technique_ids: list[str] = Field(default_factory=list)
+    metric: SimilarityMetric = "jaccard"
+    top_n: int | None = Field(default=10, ge=1, le=100)
+
+
 class ExportMetadata(BaseModel):
     """Metadata attached to exported comparison results."""
 
@@ -267,7 +278,7 @@ class ExportMetadata(BaseModel):
     generated_at: datetime
     input_id: str | None = None
     input_name: str
-    input_type: Literal["actor", "custom_set"]
+    input_type: Literal["actor", "custom_set", "incident"]
     top_n: int | None = None
 
 
