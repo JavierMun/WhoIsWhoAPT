@@ -14,7 +14,7 @@ class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         """Format a log record as JSON."""
         payload: dict[str, Any] = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),  # noqa: UP017 - local dev still supports Python 3.10.
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
@@ -45,4 +45,3 @@ def configure_logging(level: str) -> None:
             },
         }
     )
-

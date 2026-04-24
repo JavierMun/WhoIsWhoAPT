@@ -3,4 +3,4 @@ uvicorn[standard]==0.34.2
 sqlalchemy==2.0.40
 pydantic-settings==2.9.1
 python-dotenv==1.1.0
-
+mitreattack-python==4.0.1

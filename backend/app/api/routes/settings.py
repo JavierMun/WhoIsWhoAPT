@@ -1,5 +1,7 @@
 """Application settings endpoints."""
 
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, status
 
 from app.dependencies import get_settings_store
@@ -10,7 +12,7 @@ router = APIRouter()
 
 
 @router.get("", response_model=ApplicationSettings)
-def read_settings(store: SettingsStore = Depends(get_settings_store)) -> ApplicationSettings:
+def read_settings(store: Annotated[SettingsStore, Depends(get_settings_store)]) -> ApplicationSettings:
     """Return persisted application settings."""
     return store.load()
 
@@ -18,8 +20,7 @@ def read_settings(store: SettingsStore = Depends(get_settings_store)) -> Applica
 @router.put("", response_model=ApplicationSettings, status_code=status.HTTP_200_OK)
 def update_settings(
     settings: ApplicationSettings,
-    store: SettingsStore = Depends(get_settings_store),
+    store: Annotated[SettingsStore, Depends(get_settings_store)],
 ) -> ApplicationSettings:
     """Persist application settings and return the saved value."""
     return store.save(settings)
-

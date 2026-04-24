@@ -5,7 +5,6 @@ from typing import Literal
 
 from pydantic import AnyHttpUrl, BaseModel, Field
 
-
 SourceName = Literal["mitre", "opencti", "navigator"]
 PrimarySourceName = Literal["mitre", "opencti"]
 
@@ -111,3 +110,17 @@ class ApplicationSettings(BaseModel):
     mitre: MitreSettings = Field(default_factory=MitreSettings)
     opencti: OpenCTISettings = Field(default_factory=OpenCTISettings)
     ui: UISettings = Field(default_factory=UISettings)
+
+
+class SourceLoadStatus(BaseModel):
+    """Status and summary counts for source ingestion."""
+
+    source: PrimarySourceName
+    status: str
+    version: str | None = None
+    last_loaded_at: datetime | None = None
+    error: str | None = None
+    actor_count: int = 0
+    campaign_count: int = 0
+    software_count: int = 0
+    technique_count: int = 0

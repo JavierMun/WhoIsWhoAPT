@@ -27,6 +27,5 @@ def health_check() -> HealthResponse:
         status="ok",
         service=config.app_name,
         environment=config.environment,
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(timezone.utc),  # noqa: UP017 - local dev still supports Python 3.10.
     )
-

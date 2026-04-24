@@ -1,9 +1,10 @@
 """SQLAlchemy entities for the normalized local data model."""
 
 from datetime import date, datetime
+from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import Date, DateTime, Float, String, Text, func
+from sqlalchemy import Date, DateTime, Float, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.types import JSON
 
@@ -32,7 +33,7 @@ class Actor(EntityMixin, Base):
 
     __tablename__ = "actors"
 
-    techniques: Mapped[list[dict]] = mapped_column(JSON, default=list)
+    techniques: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
     campaigns: Mapped[list[str]] = mapped_column(JSON, default=list)
     software_used: Mapped[list[str]] = mapped_column(JSON, default=list)
     cves_exploited: Mapped[list[str]] = mapped_column(JSON, default=list)
@@ -47,7 +48,7 @@ class Campaign(EntityMixin, Base):
     __tablename__ = "campaigns"
 
     actor_ids: Mapped[list[str]] = mapped_column(JSON, default=list)
-    techniques: Mapped[list[dict]] = mapped_column(JSON, default=list)
+    techniques: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
     software_used: Mapped[list[str]] = mapped_column(JSON, default=list)
     cves_exploited: Mapped[list[str]] = mapped_column(JSON, default=list)
     start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
@@ -60,7 +61,7 @@ class Software(EntityMixin, Base):
     __tablename__ = "software"
 
     software_type: Mapped[str] = mapped_column(String(32))
-    techniques: Mapped[list[dict]] = mapped_column(JSON, default=list)
+    techniques: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
     actor_ids: Mapped[list[str]] = mapped_column(JSON, default=list)
     campaign_ids: Mapped[list[str]] = mapped_column(JSON, default=list)
 
@@ -87,3 +88,18 @@ class CVE(Base):
     affected_products: Mapped[list[str]] = mapped_column(JSON, default=list)
     exploited_by: Mapped[list[str]] = mapped_column(JSON, default=list)
 
+
+class SourceLoadStatus(Base):
+    """Status and summary counts for a primary source ingestion run."""
+
+    __tablename__ = "source_load_status"
+
+    source: Mapped[str] = mapped_column(String(32), primary_key=True)
+    status: Mapped[str] = mapped_column(String(32), default="never_loaded")
+    version: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    last_loaded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    actor_count: Mapped[int] = mapped_column(Integer, default=0)
+    campaign_count: Mapped[int] = mapped_column(Integer, default=0)
+    software_count: Mapped[int] = mapped_column(Integer, default=0)
+    technique_count: Mapped[int] = mapped_column(Integer, default=0)
