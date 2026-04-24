@@ -91,6 +91,16 @@ class Technique(BaseModel):
     parent_id: str | None = None
 
 
+class TechniqueListItem(BaseModel):
+    """Technique list item for custom TTP set creation."""
+
+    technique_id: str
+    name: str
+    tactic: str
+    is_subtechnique: bool = False
+    parent_id: str | None = None
+
+
 class CVE(BaseModel):
     """Common Vulnerabilities and Exposures record."""
 

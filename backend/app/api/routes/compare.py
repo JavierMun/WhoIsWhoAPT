@@ -85,6 +85,7 @@ def compare_custom_set(
         input_name = custom_set.name
         input_techniques = set(custom_set.technique_ids)
     elif request.technique_ids is not None:
+        _validate_technique_ids(session, request.technique_ids)
         input_techniques = set(request.technique_ids)
     else:
         raise AppError("Provide either custom_set_id or technique_ids", status_code=422)
@@ -131,6 +132,20 @@ def _actor_entity(actor: entities.Actor) -> EntityTechniqueSet:
 def _technique_ids(raw_refs: list[dict[str, Any]]) -> set[str]:
     """Extract technique IDs from stored TechniqueRef JSON payloads."""
     return {str(ref["technique_id"]) for ref in raw_refs if ref.get("technique_id")}
+
+
+def _validate_technique_ids(session: Session, technique_ids: list[str]) -> None:
+    """Ensure inline custom comparison technique IDs exist locally."""
+    if not technique_ids:
+        raise AppError("Custom comparison must include at least one technique", status_code=422)
+
+    requested_ids = set(technique_ids)
+    existing_ids = set(
+        session.scalars(select(entities.Technique.technique_id).where(entities.Technique.technique_id.in_(requested_ids)))
+    )
+    invalid_ids = sorted(requested_ids - existing_ids)
+    if invalid_ids:
+        raise AppError("Unknown technique IDs", status_code=422, detail={"technique_ids": invalid_ids})
 
 
 def _rarity_weights_for_direct_comparison(

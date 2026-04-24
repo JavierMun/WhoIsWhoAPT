@@ -11,7 +11,7 @@ from sqlalchemy.pool import StaticPool
 from app.database import Base, get_db_session
 from app.dependencies import get_settings_store
 from app.main import create_app
-from app.models.entities import Actor
+from app.models.entities import Actor, Technique
 from app.models.schemas import ApplicationSettings
 
 
@@ -114,6 +114,7 @@ def _client_with_seeded_actors() -> TestClient:
                 _actor("actor-a", "Alpha", ["T1001", "T1002"], now),
                 _actor("actor-b", "Beta", ["T1002", "T1003"], now),
                 _actor("actor-c", "Gamma", ["T2001"], now),
+                *[_technique(technique_id) for technique_id in ["T1001", "T1002", "T1003", "T2001"]],
             ]
         )
         session.commit()
@@ -148,4 +149,15 @@ def _actor(actor_id: str, name: str, technique_ids: list[str], last_updated: dat
         target_sectors=[],
         target_countries=[],
         motivation=None,
+    )
+
+
+def _technique(technique_id: str) -> Technique:
+    """Build a technique row for custom TTP validation."""
+    return Technique(
+        technique_id=technique_id,
+        name=f"{technique_id} name",
+        tactic="execution",
+        is_subtechnique="." in technique_id,
+        parent_id=technique_id.split(".", maxsplit=1)[0] if "." in technique_id else None,
     )

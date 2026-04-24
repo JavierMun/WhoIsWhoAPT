@@ -93,6 +93,10 @@ h1 {
   gap: 28px;
 }
 
+.custom-workspace {
+  margin-top: 34px;
+}
+
 .workspace-header,
 .results-header,
 .result-title-line,
@@ -129,6 +133,13 @@ h1 {
 .comparison-layout {
   display: grid;
   grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.custom-layout {
+  display: grid;
+  grid-template-columns: minmax(300px, 420px) minmax(240px, 300px) minmax(0, 1fr);
   gap: 22px;
   align-items: start;
 }
@@ -241,6 +252,33 @@ h1 {
   font-weight: 750;
 }
 
+.secondary-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  border: 1px solid #cfd8dc;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #26343d;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 750;
+}
+
+.secondary-action:disabled {
+  color: #87929a;
+  cursor: not-allowed;
+}
+
+.action-row,
+.split-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
 .primary-action:disabled {
   background: #9cadb4;
   cursor: not-allowed;
@@ -266,6 +304,10 @@ h1 {
 .results-panel {
   min-height: 520px;
   overflow: hidden;
+}
+
+.custom-results {
+  min-height: 620px;
 }
 
 .results-header {
@@ -360,6 +402,90 @@ h1 {
   text-align: center;
 }
 
+.technique-picker {
+  display: grid;
+  gap: 6px;
+  max-height: 280px;
+  overflow: auto;
+  border: 1px solid #d9e0e3;
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.technique-option {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  border: 0;
+  border-radius: 6px;
+  background: #f7f9fa;
+  color: #172026;
+  cursor: pointer;
+  padding: 9px;
+  text-align: left;
+}
+
+.technique-option:hover {
+  background: #e8f2ef;
+}
+
+.technique-option span {
+  font-weight: 800;
+}
+
+.technique-option small {
+  color: #52606a;
+  font-size: 0.82rem;
+}
+
+.selected-techniques {
+  display: grid;
+  gap: 10px;
+}
+
+.mini-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.mini-header button {
+  border: 0;
+  background: transparent;
+  color: #136f63;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 750;
+}
+
+.chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  min-height: 36px;
+}
+
+.technique-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  border: 1px solid #bdd5ce;
+  border-radius: 999px;
+  background: #e8f2ef;
+  color: #123f35;
+  cursor: pointer;
+  padding: 0 9px;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 750;
+}
+
+.saved-panel {
+  min-height: 220px;
+}
+
 .backend-strip {
   flex-wrap: wrap;
   gap: 10px;
@@ -410,7 +536,8 @@ h1 {
   }
 
   .workspace-header,
-  .comparison-layout {
+  .comparison-layout,
+  .custom-layout {
     grid-template-columns: 1fr;
   }
 

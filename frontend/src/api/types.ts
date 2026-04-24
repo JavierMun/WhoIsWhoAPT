@@ -31,3 +31,20 @@ export interface ActorComparisonResponse {
   metric: SimilarityMetric;
   results: ComparisonResult[];
 }
+
+export interface TechniqueListItem {
+  technique_id: string;
+  name: string;
+  tactic: string;
+  is_subtechnique: boolean;
+  parent_id: string | null;
+}
+
+export interface CustomTTPSet {
+  id: string;
+  name: string;
+  description: string | null;
+  technique_ids: string[];
+  created_at: string;
+  updated_at: string;
+}

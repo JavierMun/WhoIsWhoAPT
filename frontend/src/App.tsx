@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { getHealth } from "./api/client";
 import type { HealthResponse } from "./api/types";
 import { ActorComparisonPanel } from "./components/ActorComparisonPanel";
+import { CustomTTPSetPanel } from "./components/CustomTTPSetPanel";
 import "./styles.css";
 
 function App() {
@@ -39,6 +40,7 @@ function App() {
 
       <section className="content-area">
         <ActorComparisonPanel />
+        <CustomTTPSetPanel />
 
         <footer className="backend-strip">
           <span className={health ? "status-dot ok" : "status-dot pending"} aria-hidden="true" />
