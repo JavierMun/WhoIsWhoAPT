@@ -103,3 +103,20 @@ class SourceLoadStatus(Base):
     campaign_count: Mapped[int] = mapped_column(Integer, default=0)
     software_count: Mapped[int] = mapped_column(Integer, default=0)
     technique_count: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class CustomTTPSet(Base):
+    """Saved user-defined TTP set for actor comparisons."""
+
+    __tablename__ = "custom_ttp_sets"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    name: Mapped[str] = mapped_column(String(255), index=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    technique_ids: Mapped[list[str]] = mapped_column(JSON, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )

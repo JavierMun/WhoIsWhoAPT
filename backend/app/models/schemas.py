@@ -41,6 +41,26 @@ class Actor(BaseEntity):
     motivation: str | None = None
 
 
+class ActorListItem(BaseModel):
+    """Compact actor list item for selection workflows."""
+
+    id: str
+    name: str
+    aliases: list[str] = Field(default_factory=list)
+    technique_count: int
+
+
+class ActorDetail(BaseModel):
+    """Actor detail response including technique references."""
+
+    id: str
+    name: str
+    aliases: list[str] = Field(default_factory=list)
+    description: str | None = None
+    techniques: list[TechniqueRef] = Field(default_factory=list)
+    technique_count: int
+
+
 class Campaign(BaseEntity):
     """Named operation attributed to one or more actors."""
 
@@ -124,3 +144,67 @@ class SourceLoadStatus(BaseModel):
     campaign_count: int = 0
     software_count: int = 0
     technique_count: int = 0
+
+
+SimilarityMetric = Literal["jaccard", "jaccard_weighted"]
+
+
+class ComparisonResult(BaseModel):
+    """Ranked comparison score with basic overlap explanation."""
+
+    matched_entity_id: str
+    matched_entity_name: str
+    matched_entity_source: str
+    score: float = Field(ge=0, le=1)
+    shared_techniques: list[str] = Field(default_factory=list)
+    unique_to_input: list[str] = Field(default_factory=list)
+    unique_to_matched_entity: list[str] = Field(default_factory=list)
+
+
+class ComparisonResponse(BaseModel):
+    """Comparison response containing input context and ranked matches."""
+
+    input_id: str | None = None
+    input_name: str
+    input_type: Literal["actor", "custom_set"]
+    metric: SimilarityMetric
+    results: list[ComparisonResult] = Field(default_factory=list)
+
+
+class ActorComparisonRequest(BaseModel):
+    """Request for actor-vs-all or actor-vs-actor comparison."""
+
+    actor_id: str
+    target_actor_id: str | None = None
+    metric: SimilarityMetric = "jaccard"
+    top_n: int | None = Field(default=None, ge=1, le=100)
+    include_self: bool = False
+
+
+class CustomTTPSetCreate(BaseModel):
+    """Request body for saving a custom TTP set."""
+
+    name: str = Field(min_length=1, max_length=255)
+    description: str | None = None
+    technique_ids: list[str] = Field(default_factory=list)
+
+
+class CustomTTPSet(BaseModel):
+    """Saved custom TTP set."""
+
+    id: str
+    name: str
+    description: str | None = None
+    technique_ids: list[str] = Field(default_factory=list)
+    created_at: datetime
+    updated_at: datetime
+
+
+class CustomComparisonRequest(BaseModel):
+    """Request for custom TTP set versus all actors."""
+
+    custom_set_id: str | None = None
+    name: str | None = None
+    technique_ids: list[str] | None = None
+    metric: SimilarityMetric = "jaccard"
+    top_n: int | None = Field(default=None, ge=1, le=100)
