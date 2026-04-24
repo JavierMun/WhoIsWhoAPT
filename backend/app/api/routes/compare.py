@@ -1,6 +1,6 @@
 """Comparison API endpoints."""
 
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal, cast
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
@@ -23,6 +23,7 @@ from app.models.schemas import (
     ComparisonResponse,
     ComparisonResult,
     CustomComparisonRequest,
+    SoftwareSummary,
     TacticBreakdown,
 )
 from app.settings_store import SettingsStore
@@ -41,7 +42,9 @@ def compare_actor(
     active_source = settings.active_source
     actor = _get_actor(session, request.actor_id)
     input_techniques = _technique_ids(actor.techniques)
+    input_software = set(actor.software_used)
     technique_tactics = _technique_tactics(session)
+    software_lookup = _software_lookup(session)
 
     if request.target_actor_id is not None:
         target = _get_actor(session, request.target_actor_id)
@@ -55,13 +58,16 @@ def compare_actor(
             weights=weights,
             technique_tactics=technique_tactics,
             tactic_weights=settings.scoring.tactic_weights,
+            input_software=input_software,
+            technique_score_weight=settings.scoring.technique_score_weight,
+            software_score_weight=settings.scoring.software_score_weight,
         )
         return ComparisonResponse(
             input_id=actor.id,
             input_name=actor.name,
             input_type="actor",
             metric=request.metric,
-            results=[_result_schema(result)],
+            results=[_result_schema(result, software_lookup)],
         )
 
     candidates = _actor_candidates(session, active_source)
@@ -73,13 +79,16 @@ def compare_actor(
         exclude_entity_id=None if request.include_self else actor.id,
         technique_tactics=technique_tactics,
         tactic_weights=settings.scoring.tactic_weights,
+        input_software=input_software,
+        technique_score_weight=settings.scoring.technique_score_weight,
+        software_score_weight=settings.scoring.software_score_weight,
     )
     return ComparisonResponse(
         input_id=actor.id,
         input_name=actor.name,
         input_type="actor",
         metric=request.metric,
-        results=[_result_schema(result) for result in results],
+        results=[_result_schema(result, software_lookup) for result in results],
     )
 
 
@@ -116,13 +125,17 @@ def compare_custom_set(
         top_n=request.top_n,
         technique_tactics=_technique_tactics(session),
         tactic_weights=settings.scoring.tactic_weights,
+        input_software=set(),
+        technique_score_weight=settings.scoring.technique_score_weight,
+        software_score_weight=settings.scoring.software_score_weight,
     )
+    software_lookup = _software_lookup(session)
     return ComparisonResponse(
         input_id=input_id,
         input_name=input_name,
         input_type="custom_set",
         metric=request.metric,
-        results=[_result_schema(result) for result in results],
+        results=[_result_schema(result, software_lookup) for result in results],
     )
 
 
@@ -147,6 +160,7 @@ def _actor_entity(actor: entities.Actor) -> EntityTechniqueSet:
         name=actor.name,
         source=actor.source,
         techniques=_technique_ids(actor.techniques),
+        software=set(actor.software_used),
     )
 
 
@@ -180,6 +194,20 @@ def _technique_tactics(session: Session) -> dict[str, str]:
     return {technique_id: tactic for technique_id, tactic in rows}
 
 
+def _software_lookup(session: Session) -> dict[str, SoftwareSummary]:
+    """Return software details keyed by internal software ID."""
+    rows = session.scalars(select(entities.Software)).all()
+    return {
+        row.id: SoftwareSummary(
+            id=row.id,
+            name=row.name,
+            software_type=cast(Literal["malware", "tool"], row.software_type),
+        )
+        for row in rows
+        if row.software_type in {"malware", "tool"}
+    }
+
+
 def _rarity_weights_for_direct_comparison(
     candidates: list[EntityTechniqueSet],
     metric: str,
@@ -193,16 +221,23 @@ def _rarity_weights_for_direct_comparison(
     return rarity_weights([candidate.techniques for candidate in candidates])
 
 
-def _result_schema(result: AnalyticsComparisonResult) -> ComparisonResult:
+def _result_schema(result: AnalyticsComparisonResult, software_lookup: dict[str, SoftwareSummary]) -> ComparisonResult:
     """Convert an analytics result dataclass into the API response schema."""
     return ComparisonResult(
         matched_entity_id=result.matched_entity_id,
         matched_entity_name=result.matched_entity_name,
         matched_entity_source=result.matched_entity_source,
         score=result.score,
+        technique_score=result.technique_score,
+        software_score=result.software_score,
+        technique_score_contribution=result.technique_score_contribution,
+        software_score_contribution=result.software_score_contribution,
         shared_techniques=result.shared_techniques,
         unique_to_input=result.unique_to_input,
         unique_to_matched_entity=result.unique_to_matched_entity,
+        shared_software=_software_items(result.shared_software, software_lookup),
+        unique_to_input_software=_software_items(result.unique_to_input_software, software_lookup),
+        unique_to_matched_entity_software=_software_items(result.unique_to_matched_entity_software, software_lookup),
         tactic_breakdown=[
             TacticBreakdown(
                 tactic=item.tactic,
@@ -215,4 +250,12 @@ def _result_schema(result: AnalyticsComparisonResult) -> ComparisonResult:
             )
             for item in result.tactic_breakdown
         ],
+    )
+
+
+def _software_items(software_ids: list[str], software_lookup: dict[str, SoftwareSummary]) -> list[SoftwareSummary]:
+    """Resolve software IDs in stable display order, skipping missing stale IDs."""
+    return sorted(
+        [software_lookup[software_id] for software_id in software_ids if software_id in software_lookup],
+        key=lambda item: item.name.lower(),
     )

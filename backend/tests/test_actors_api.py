@@ -11,7 +11,7 @@ from sqlalchemy.pool import StaticPool
 from app.database import Base, get_db_session
 from app.dependencies import get_settings_store
 from app.main import create_app
-from app.models.entities import Actor
+from app.models.entities import Actor, Software
 from app.models.schemas import ApplicationSettings
 
 
@@ -51,6 +51,8 @@ def test_actor_detail_returns_techniques() -> None:
         {"technique_id": "T1001", "use_description": None, "detected_in_campaigns": []},
         {"technique_id": "T1002", "use_description": "Observed use.", "detected_in_campaigns": []},
     ]
+    assert body["software_count"] == 1
+    assert body["software_used"] == [{"id": "software-a", "name": "AlphaTool", "software_type": "tool"}]
 
 
 def test_actor_detail_returns_404_for_unknown_actor() -> None:
@@ -80,6 +82,7 @@ def _client_with_seeded_actors() -> TestClient:
                 _actor("actor-a", "Alpha", ["A-Team"], ["T1001", "T1002"], now),
                 _actor("actor-b", "Beta", [], ["T2001"], now),
                 _actor("actor-c", "Other Source", [], ["T3001"], now, source="opencti"),
+                _software("software-a", "AlphaTool", "tool", now),
             ]
         )
         session.commit()
@@ -119,9 +122,26 @@ def _actor(
         last_updated=last_updated,
         techniques=techniques,
         campaigns=[],
-        software_used=[],
+        software_used=["software-a"] if actor_id == "actor-a" else [],
         cves_exploited=[],
         target_sectors=[],
         target_countries=[],
         motivation=None,
+    )
+
+
+def _software(software_id: str, name: str, software_type: str, last_updated: datetime) -> Software:
+    """Build a normalized software row for actor detail tests."""
+    return Software(
+        id=software_id,
+        source_id=f"source-{software_id}",
+        source="mitre",
+        name=name,
+        aliases=[],
+        description=f"{name} description",
+        last_updated=last_updated,
+        software_type=software_type,
+        techniques=[],
+        actor_ids=["actor-a"],
+        campaign_ids=[],
     )

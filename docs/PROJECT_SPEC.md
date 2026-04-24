@@ -255,7 +255,9 @@ Stored in `config.json` (or SQLite settings table). Editable from the UI Setting
       "persistence": 2.0,
       "command-and-control": 1.5,
       "exfiltration": 1.5
-    }
+    },
+    "technique_score_weight": 0.75,
+    "software_score_weight": 0.25
   }
 }
 ```
@@ -274,6 +276,9 @@ The engine should support multiple metrics, selectable by the user:
   and penalizes ubiquitous techniques.
 - **Tactic-weighted Jaccard:** Each tactic (Initial Access, Execution, Persistence...) has a
   configurable weight. Overlap in high-value tactics (e.g., C2, Exfiltration) scores higher.
+- **Software-weighted Jaccard:** Optional combined score that blends TTP similarity with software
+  overlap when both compared actors have software observations. Missing software relationships do
+  not penalize TTP-only comparisons.
 
 The user can configure weights from the UI. Presets for common use cases should be provided
 (e.g., "focus on persistence", "focus on initial access").

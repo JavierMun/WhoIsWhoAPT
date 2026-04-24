@@ -2,7 +2,14 @@ import { AlertCircle, FileJson, Loader2, Plus, Save, Search, X } from "lucide-re
 import { useEffect, useMemo, useState } from "react";
 
 import { compareCustomSet, createCustomSet, getCustomSets, getTechniques } from "../api/client";
-import type { ActorComparisonResponse, CustomTTPSet, SimilarityMetric, TacticBreakdown, TechniqueListItem } from "../api/types";
+import type {
+  ActorComparisonResponse,
+  CustomTTPSet,
+  SimilarityMetric,
+  SoftwareSummary,
+  TacticBreakdown,
+  TechniqueListItem
+} from "../api/types";
 
 const DEFAULT_TOP_N = 10;
 
@@ -297,6 +304,7 @@ export function CustomTTPSetPanel() {
                 <option value="jaccard">Jaccard</option>
                 <option value="jaccard_weighted">Weighted</option>
                 <option value="tactic_weighted_jaccard">Tactic weighted</option>
+                <option value="software_weighted_jaccard">Software weighted</option>
               </select>
             </label>
 
@@ -417,12 +425,29 @@ function CustomComparisonResults({ comparison, loading }: { comparison: ActorCom
               <p className="technique-preview">
                 {result.shared_techniques.slice(0, 8).join(", ") || "No shared techniques"}
               </p>
+              <SoftwarePreview software={result.shared_software} />
               <TacticBreakdownList items={result.tactic_breakdown} />
             </div>
           </li>
         ))}
       </ol>
     </section>
+  );
+}
+
+function SoftwarePreview({ software }: { software: SoftwareSummary[] }) {
+  if (software.length === 0) {
+    return null;
+  }
+
+  const visible = software.slice(0, 6).map((item) => item.name);
+  const hiddenCount = software.length - visible.length;
+
+  return (
+    <p className="software-preview">
+      <strong>Shared software</strong> {visible.join(", ")}
+      {hiddenCount > 0 ? ` +${hiddenCount} more` : ""}
+    </p>
   );
 }
 
@@ -499,6 +524,9 @@ function metricLabel(metric: SimilarityMetric): string {
   }
   if (metric === "tactic_weighted_jaccard") {
     return "Tactic weighted";
+  }
+  if (metric === "software_weighted_jaccard") {
+    return "Software weighted";
   }
   return "Jaccard";
 }

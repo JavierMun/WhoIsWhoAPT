@@ -393,6 +393,18 @@ h1 {
   line-height: 1.45;
 }
 
+.software-preview {
+  margin: 10px 0 0;
+  color: #33424c;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.software-preview strong {
+  margin-right: 6px;
+  color: #123f35;
+}
+
 .tactic-breakdown {
   display: grid;
   gap: 8px;

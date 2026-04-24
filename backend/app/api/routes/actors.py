@@ -1,6 +1,6 @@
 """Minimal actor lookup endpoints for comparison workflows."""
 
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal, cast
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
@@ -10,7 +10,7 @@ from app.database import get_db_session
 from app.dependencies import get_settings_store
 from app.errors import AppError
 from app.models import entities
-from app.models.schemas import ActorDetail, ActorListItem, TechniqueRef
+from app.models.schemas import ActorDetail, ActorListItem, SoftwareSummary, TechniqueRef
 from app.settings_store import SettingsStore
 
 router = APIRouter()
@@ -48,6 +48,7 @@ def actor_detail(
         raise AppError("Actor not found", status_code=404)
 
     techniques = [_technique_ref(ref) for ref in actor.techniques]
+    software_used = _software_summaries(session, actor.software_used)
     return ActorDetail(
         id=actor.id,
         name=actor.name,
@@ -55,6 +56,8 @@ def actor_detail(
         description=actor.description,
         techniques=techniques,
         technique_count=len(techniques),
+        software_used=software_used,
+        software_count=len(software_used),
     )
 
 
@@ -65,3 +68,17 @@ def _technique_ref(raw_ref: dict[str, Any]) -> TechniqueRef:
         use_description=raw_ref.get("use_description"),
         detected_in_campaigns=list(raw_ref.get("detected_in_campaigns", [])),
     )
+
+
+def _software_summaries(session: Session, software_ids: list[str]) -> list[SoftwareSummary]:
+    """Resolve actor software IDs to compact API details."""
+    if not software_ids:
+        return []
+
+    rows = session.scalars(
+        select(entities.Software).where(entities.Software.id.in_(software_ids)).order_by(entities.Software.name)
+    ).all()
+    return [
+        SoftwareSummary(id=row.id, name=row.name, software_type=cast(Literal["malware", "tool"], row.software_type))
+        for row in rows
+    ]

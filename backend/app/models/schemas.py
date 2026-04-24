@@ -50,6 +50,14 @@ class ActorListItem(BaseModel):
     technique_count: int
 
 
+class SoftwareSummary(BaseModel):
+    """Compact software item for actor details and comparison explanations."""
+
+    id: str
+    name: str
+    software_type: Literal["malware", "tool"]
+
+
 class ActorDetail(BaseModel):
     """Actor detail response including technique references."""
 
@@ -59,6 +67,8 @@ class ActorDetail(BaseModel):
     description: str | None = None
     techniques: list[TechniqueRef] = Field(default_factory=list)
     technique_count: int
+    software_used: list[SoftwareSummary] = Field(default_factory=list)
+    software_count: int = 0
 
 
 class Campaign(BaseEntity):
@@ -137,6 +147,8 @@ class ScoringSettings(BaseModel):
     """Similarity scoring settings editable from the API."""
 
     tactic_weights: dict[str, float] = Field(default_factory=dict)
+    technique_score_weight: float = Field(default=0.75, ge=0)
+    software_score_weight: float = Field(default=0.25, ge=0)
 
 
 class ApplicationSettings(BaseModel):
@@ -163,7 +175,7 @@ class SourceLoadStatus(BaseModel):
     technique_count: int = 0
 
 
-SimilarityMetric = Literal["jaccard", "jaccard_weighted", "tactic_weighted_jaccard"]
+SimilarityMetric = Literal["jaccard", "jaccard_weighted", "tactic_weighted_jaccard", "software_weighted_jaccard"]
 
 
 class TacticBreakdown(BaseModel):
@@ -185,9 +197,16 @@ class ComparisonResult(BaseModel):
     matched_entity_name: str
     matched_entity_source: str
     score: float = Field(ge=0, le=1)
+    technique_score: float = Field(default=0, ge=0, le=1)
+    software_score: float = Field(default=0, ge=0, le=1)
+    technique_score_contribution: float = Field(default=0, ge=0, le=1)
+    software_score_contribution: float = Field(default=0, ge=0, le=1)
     shared_techniques: list[str] = Field(default_factory=list)
     unique_to_input: list[str] = Field(default_factory=list)
     unique_to_matched_entity: list[str] = Field(default_factory=list)
+    shared_software: list[SoftwareSummary] = Field(default_factory=list)
+    unique_to_input_software: list[SoftwareSummary] = Field(default_factory=list)
+    unique_to_matched_entity_software: list[SoftwareSummary] = Field(default_factory=list)
     tactic_breakdown: list[TacticBreakdown] = Field(default_factory=list)
 
 

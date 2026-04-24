@@ -2,7 +2,13 @@ import { AlertCircle, BarChart3, Loader2, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { compareActor, getActors } from "../api/client";
-import type { ActorComparisonResponse, ActorListItem, SimilarityMetric, TacticBreakdown } from "../api/types";
+import type {
+  ActorComparisonResponse,
+  ActorListItem,
+  SimilarityMetric,
+  SoftwareSummary,
+  TacticBreakdown
+} from "../api/types";
 
 const DEFAULT_TOP_N = 10;
 
@@ -138,6 +144,7 @@ export function ActorComparisonPanel() {
               <option value="jaccard">Jaccard</option>
               <option value="jaccard_weighted">Weighted Jaccard</option>
               <option value="tactic_weighted_jaccard">Tactic weighted</option>
+              <option value="software_weighted_jaccard">Software weighted</option>
             </select>
           </label>
 
@@ -230,6 +237,7 @@ function ComparisonResults({ comparison, loading }: { comparison: ActorCompariso
                 <span>{result.unique_to_input.length} unique input</span>
               </div>
               <TechniquePreview techniques={result.shared_techniques} />
+              <SoftwarePreview software={result.shared_software} />
               <TacticBreakdownList items={result.tactic_breakdown} />
             </div>
           </li>
@@ -250,6 +258,22 @@ function TechniquePreview({ techniques }: { techniques: string[] }) {
   return (
     <p className="technique-preview">
       {visible.join(", ")}
+      {hiddenCount > 0 ? ` +${hiddenCount} more` : ""}
+    </p>
+  );
+}
+
+function SoftwarePreview({ software }: { software: SoftwareSummary[] }) {
+  if (software.length === 0) {
+    return null;
+  }
+
+  const visible = software.slice(0, 6).map((item) => item.name);
+  const hiddenCount = software.length - visible.length;
+
+  return (
+    <p className="software-preview">
+      <strong>Shared software</strong> {visible.join(", ")}
       {hiddenCount > 0 ? ` +${hiddenCount} more` : ""}
     </p>
   );
@@ -305,6 +329,9 @@ function metricLabel(metric: SimilarityMetric): string {
   }
   if (metric === "tactic_weighted_jaccard") {
     return "Tactic weighted";
+  }
+  if (metric === "software_weighted_jaccard") {
+    return "Software weighted";
   }
   return "Jaccard";
 }

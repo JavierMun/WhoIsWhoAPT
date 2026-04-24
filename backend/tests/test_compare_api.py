@@ -11,7 +11,7 @@ from sqlalchemy.pool import StaticPool
 from app.database import Base, get_db_session
 from app.dependencies import get_settings_store
 from app.main import create_app
-from app.models.entities import Actor, Technique
+from app.models.entities import Actor, Software, Technique
 from app.models.schemas import ApplicationSettings
 
 
@@ -45,6 +45,33 @@ def test_compare_actor_vs_all_returns_ranked_explanation() -> None:
     assert body["results"][0]["unique_to_matched_entity"] == ["T1003"]
     persistence = next(item for item in body["results"][0]["tactic_breakdown"] if item["tactic"] == "persistence")
     assert persistence["shared_techniques"] == ["T1002"]
+    assert body["results"][0]["shared_software"] == [
+        {"id": "software-shared", "name": "SharedTool", "software_type": "tool"}
+    ]
+
+
+def test_compare_actor_with_software_weighted_jaccard() -> None:
+    """Software-weighted metric should blend TTP and software overlap only when requested."""
+    client = _client_with_seeded_actors(
+        ApplicationSettings(
+            active_source="mitre",
+            scoring={"technique_score_weight": 0.5, "software_score_weight": 0.5},
+        )
+    )
+
+    response = client.post(
+        "/api/compare/actor",
+        json={"actor_id": "actor-a", "metric": "software_weighted_jaccard", "top_n": 1},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["metric"] == "software_weighted_jaccard"
+    assert body["results"][0]["matched_entity_id"] == "actor-b"
+    assert body["results"][0]["technique_score"] == 1 / 3
+    assert body["results"][0]["software_score"] == 1 / 3
+    assert body["results"][0]["score"] == 1 / 3
+    assert body["results"][0]["software_score_contribution"] == 1 / 6
 
 
 def test_compare_actor_with_tactic_weighted_jaccard() -> None:
@@ -156,6 +183,9 @@ def _client_with_seeded_actors(settings: ApplicationSettings | None = None) -> T
                 _actor("actor-a", "Alpha", ["T1001", "T1002"], now),
                 _actor("actor-b", "Beta", ["T1002", "T1003"], now),
                 _actor("actor-c", "Gamma", ["T2001"], now),
+                _software("software-shared", "SharedTool", "tool", ["actor-a", "actor-b"], now),
+                _software("software-alpha", "AlphaMalware", "malware", ["actor-a"], now),
+                _software("software-beta", "BetaTool", "tool", ["actor-b"], now),
                 _technique("T1001", "execution"),
                 _technique("T1002", "persistence"),
                 _technique("T1003", "execution"),
@@ -189,11 +219,43 @@ def _actor(actor_id: str, name: str, technique_ids: list[str], last_updated: dat
         last_updated=last_updated,
         techniques=[{"technique_id": technique_id} for technique_id in technique_ids],
         campaigns=[],
-        software_used=[],
+        software_used=_software_ids_for_actor(actor_id),
         cves_exploited=[],
         target_sectors=[],
         target_countries=[],
         motivation=None,
+    )
+
+
+def _software_ids_for_actor(actor_id: str) -> list[str]:
+    """Return seeded software relationships for comparison tests."""
+    if actor_id == "actor-a":
+        return ["software-shared", "software-alpha"]
+    if actor_id == "actor-b":
+        return ["software-shared", "software-beta"]
+    return []
+
+
+def _software(
+    software_id: str,
+    name: str,
+    software_type: str,
+    actor_ids: list[str],
+    last_updated: datetime,
+) -> Software:
+    """Build a normalized software row for comparison tests."""
+    return Software(
+        id=software_id,
+        source_id=f"source-{software_id}",
+        source="mitre",
+        name=name,
+        aliases=[],
+        description=f"{name} description",
+        last_updated=last_updated,
+        software_type=software_type,
+        techniques=[],
+        actor_ids=actor_ids,
+        campaign_ids=[],
     )
 
 

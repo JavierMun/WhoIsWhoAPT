@@ -5,7 +5,17 @@ export interface HealthResponse {
   timestamp: string;
 }
 
-export type SimilarityMetric = "jaccard" | "jaccard_weighted" | "tactic_weighted_jaccard";
+export type SimilarityMetric =
+  | "jaccard"
+  | "jaccard_weighted"
+  | "tactic_weighted_jaccard"
+  | "software_weighted_jaccard";
+
+export interface SoftwareSummary {
+  id: string;
+  name: string;
+  software_type: "malware" | "tool";
+}
 
 export interface TacticBreakdown {
   tactic: string;
@@ -29,9 +39,16 @@ export interface ComparisonResult {
   matched_entity_name: string;
   matched_entity_source: string;
   score: number;
+  technique_score: number;
+  software_score: number;
+  technique_score_contribution: number;
+  software_score_contribution: number;
   shared_techniques: string[];
   unique_to_input: string[];
   unique_to_matched_entity: string[];
+  shared_software: SoftwareSummary[];
+  unique_to_input_software: SoftwareSummary[];
+  unique_to_matched_entity_software: SoftwareSummary[];
   tactic_breakdown: TacticBreakdown[];
 }
 

@@ -24,10 +24,12 @@ def test_mitre_source_normalizes_core_entities() -> None:
     assert [campaign.name for campaign in campaigns] == ["Example Campaign"]
     assert campaigns[0].actor_ids == [actors[0].id]
     assert [ref.technique_id for ref in campaigns[0].techniques] == ["T1059.001"]
+    assert campaigns[0].software_used == [software[0].id]
 
     assert [item.name for item in software] == ["Example Malware"]
     assert software[0].software_type == "malware"
     assert software[0].actor_ids == [actors[0].id]
+    assert software[0].campaign_ids == [campaigns[0].id]
     assert [ref.technique_id for ref in software[0].techniques] == ["T1059"]
 
     technique_by_id = {technique.technique_id: technique for technique in techniques}
@@ -132,6 +134,12 @@ def _fixture_bundle() -> dict[str, Any]:
                 "uses",
                 "malware--33333333-3333-3333-3333-333333333333",
                 "attack-pattern--44444444-4444-4444-4444-444444444444",
+            ),
+            _relationship(
+                "relationship--6",
+                "uses",
+                "campaign--22222222-2222-2222-2222-222222222222",
+                "malware--33333333-3333-3333-3333-333333333333",
             ),
         ]
     }

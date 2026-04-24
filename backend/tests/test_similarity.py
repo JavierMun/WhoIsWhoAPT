@@ -1,6 +1,7 @@
 """Similarity metric edge-case tests."""
 
 from app.analytics.similarity import (
+    blended_similarity,
     jaccard_similarity,
     tactic_breakdown,
     tactic_weighted_jaccard_similarity,
@@ -65,3 +66,18 @@ def test_tactic_breakdown_groups_shared_techniques_and_contributions() -> None:
     assert persistence.shared_techniques == ["T1002"]
     assert persistence.shared_technique_count == 1
     assert persistence.score_contribution == 3 / 5
+
+
+def test_blended_similarity_ignores_software_when_not_applicable() -> None:
+    """Software weighting should not penalize pairs without comparable software evidence."""
+    score, technique_contribution, software_contribution = blended_similarity(
+        technique_score=0.5,
+        software_score=0.0,
+        technique_weight=0.75,
+        software_weight=0.25,
+        include_software=False,
+    )
+
+    assert score == 0.5
+    assert technique_contribution == 0.5
+    assert software_contribution == 0.0

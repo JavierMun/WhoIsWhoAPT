@@ -70,6 +70,34 @@ def tactic_weighted_jaccard_similarity(
     return weighted_jaccard_similarity(input_techniques, matched_techniques, weights)
 
 
+def blended_similarity(
+    technique_score: float,
+    software_score: float,
+    technique_weight: float,
+    software_weight: float,
+    *,
+    include_software: bool,
+) -> tuple[float, float, float]:
+    """Blend normalized technique and software scores into one normalized score.
+
+    Software evidence is sparse in ATT&CK, so callers can disable the software
+    component for a pair when either side has no software relationships.
+    """
+    safe_technique_weight = max(0.0, technique_weight)
+    safe_software_weight = max(0.0, software_weight) if include_software else 0.0
+    total_weight = safe_technique_weight + safe_software_weight
+    if total_weight == 0:
+        return 0.0, 0.0, 0.0
+
+    technique_contribution = max(0.0, min(1.0, technique_score)) * safe_technique_weight / total_weight
+    software_contribution = max(0.0, min(1.0, software_score)) * safe_software_weight / total_weight
+    return (
+        max(0.0, min(1.0, technique_contribution + software_contribution)),
+        technique_contribution,
+        software_contribution,
+    )
+
+
 def rarity_weights(actor_technique_sets: list[set[str]]) -> dict[str, float]:
     """Calculate ATT&CK technique rarity weights from actor usage counts."""
     counts: dict[str, int] = {}
