@@ -494,6 +494,8 @@ POST /api/export/navigator         # export result as Navigator layer
 POST /api/export/csv
 POST /api/export/json
 
+Export endpoints accept already-computed comparison results and format them without recomputing scores.
+
 POST /api/ai/explain               # LLM explanation for a comparison result (Iter 5)
 ```
 

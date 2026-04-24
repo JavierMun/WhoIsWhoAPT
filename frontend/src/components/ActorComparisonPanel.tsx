@@ -1,7 +1,8 @@
-import { AlertCircle, BarChart3, Loader2, Search } from "lucide-react";
+import { AlertCircle, BarChart3, Download, FileJson, Loader2, Search, Table } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { compareActor, getActors } from "../api/client";
+import { downloadComparisonExport } from "../api/exportUtils";
 import type {
   ActorComparisonResponse,
   ActorListItem,
@@ -216,7 +217,22 @@ function ComparisonResults({ comparison, loading }: { comparison: ActorCompariso
           <p className="panel-label">Input</p>
           <h2>{comparison.input_name}</h2>
         </div>
-        <span className="metric-label">{metricLabel(comparison.metric)}</span>
+        <div className="results-actions">
+          <span className="metric-label">{metricLabel(comparison.metric)}</span>
+          <button type="button" title="Export JSON" onClick={() => downloadComparisonExport(comparison, "json")}>
+            <FileJson size={16} aria-hidden="true" />
+          </button>
+          <button type="button" title="Export CSV" onClick={() => downloadComparisonExport(comparison, "csv")}>
+            <Table size={16} aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            title="Export Navigator layer"
+            onClick={() => downloadComparisonExport(comparison, "navigator")}
+          >
+            <Download size={16} aria-hidden="true" />
+          </button>
+        </div>
       </div>
 
       <ol className="result-list">

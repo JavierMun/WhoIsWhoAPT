@@ -104,7 +104,8 @@ h1 {
 .source-pill,
 .backend-strip,
 .status-message,
-.primary-action {
+.primary-action,
+.results-actions {
   display: flex;
   align-items: center;
 }
@@ -323,6 +324,29 @@ h1 {
 
 .metric-label {
   padding: 7px 10px;
+}
+
+.results-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.results-actions button {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid #cfd8dc;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #33424c;
+  cursor: pointer;
+}
+
+.results-actions button:hover {
+  background: #e8f2ef;
+  color: #123f35;
 }
 
 .result-list {

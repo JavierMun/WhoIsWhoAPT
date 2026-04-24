@@ -1,7 +1,8 @@
-import { AlertCircle, FileJson, Loader2, Plus, Save, Search, X } from "lucide-react";
+import { AlertCircle, Download, FileJson, Loader2, Plus, Save, Search, Table, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { compareCustomSet, createCustomSet, getCustomSets, getTechniques } from "../api/client";
+import { downloadComparisonExport } from "../api/exportUtils";
 import type {
   ActorComparisonResponse,
   CustomTTPSet,
@@ -404,7 +405,22 @@ function CustomComparisonResults({ comparison, loading }: { comparison: ActorCom
           <p className="panel-label">Custom input</p>
           <h2>{comparison.input_name}</h2>
         </div>
-        <span className="metric-label">{metricLabel(comparison.metric)}</span>
+        <div className="results-actions">
+          <span className="metric-label">{metricLabel(comparison.metric)}</span>
+          <button type="button" title="Export JSON" onClick={() => downloadComparisonExport(comparison, "json")}>
+            <FileJson size={16} aria-hidden="true" />
+          </button>
+          <button type="button" title="Export CSV" onClick={() => downloadComparisonExport(comparison, "csv")}>
+            <Table size={16} aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            title="Export Navigator layer"
+            onClick={() => downloadComparisonExport(comparison, "navigator")}
+          >
+            <Download size={16} aria-hidden="true" />
+          </button>
+        </div>
       </div>
       <ol className="result-list">
         {comparison.results.length === 0 ? (

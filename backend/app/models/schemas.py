@@ -257,3 +257,22 @@ class CustomComparisonRequest(BaseModel):
     technique_ids: list[str] | None = None
     metric: SimilarityMetric = "jaccard"
     top_n: int | None = Field(default=None, ge=1, le=100)
+
+
+class ExportMetadata(BaseModel):
+    """Metadata attached to exported comparison results."""
+
+    source: PrimarySourceName | str
+    metric: SimilarityMetric
+    generated_at: datetime
+    input_id: str | None = None
+    input_name: str
+    input_type: Literal["actor", "custom_set"]
+    top_n: int | None = None
+
+
+class ComparisonExportRequest(BaseModel):
+    """Request body for exporting an already-computed comparison response."""
+
+    metadata: ExportMetadata
+    comparison: ComparisonResponse
