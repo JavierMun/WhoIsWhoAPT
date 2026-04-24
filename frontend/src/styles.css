@@ -101,6 +101,10 @@ h1 {
   margin-top: 34px;
 }
 
+.network-workspace {
+  margin-top: 34px;
+}
+
 .workspace-header,
 .results-header,
 .result-title-line,
@@ -150,6 +154,13 @@ h1 {
 }
 
 .matrix-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.network-layout {
   display: grid;
   grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
   gap: 22px;
@@ -323,6 +334,10 @@ h1 {
 }
 
 .heatmap-panel {
+  min-height: 620px;
+}
+
+.network-panel {
   min-height: 620px;
 }
 
@@ -603,6 +618,21 @@ h1 {
   align-content: start;
 }
 
+.network-controls {
+  align-content: start;
+}
+
+.field-hint {
+  color: #52606a;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.field-group input[type="range"] {
+  padding: 0;
+  accent-color: #136f63;
+}
+
 .heatmap-legend {
   display: grid;
   gap: 8px;
@@ -726,6 +756,92 @@ h1 {
   min-height: 420px;
 }
 
+.graph-legend {
+  display: grid;
+  gap: 9px;
+  border: 1px solid #d9e0e3;
+  border-radius: 8px;
+  background: #f7f9fa;
+  padding: 12px;
+}
+
+.graph-legend .mini-header span,
+.graph-legend p {
+  color: #52606a;
+  font-size: 0.84rem;
+}
+
+.graph-legend p {
+  margin: 0;
+  line-height: 1.35;
+}
+
+.cluster-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.cluster-swatches span {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 0 1px #cfd8dc;
+}
+
+.network-header {
+  align-items: flex-start;
+}
+
+.graph-notice {
+  border-bottom: 1px solid #edf1f2;
+  background: #f7f9fa;
+  color: #52606a;
+  padding: 10px 20px;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.network-canvas {
+  min-height: 560px;
+  overflow: hidden;
+  background:
+    linear-gradient(#edf1f2 1px, transparent 1px),
+    linear-gradient(90deg, #edf1f2 1px, transparent 1px),
+    #fbfcfc;
+  background-size: 28px 28px;
+}
+
+.network-canvas svg {
+  display: block;
+  width: 100%;
+  height: 560px;
+}
+
+.network-edge {
+  stroke: #87929a;
+  stroke-linecap: round;
+  stroke-opacity: 0.42;
+}
+
+.network-node {
+  stroke: #ffffff;
+  stroke-width: 2.5;
+  filter: drop-shadow(0 2px 3px rgb(23 32 38 / 0.22));
+}
+
+.network-canvas text {
+  fill: #26343d;
+  font-size: 0.72rem;
+  font-weight: 800;
+  paint-order: stroke;
+  pointer-events: none;
+  stroke: #ffffff;
+  stroke-width: 4px;
+  text-anchor: middle;
+}
+
 .backend-strip {
   flex-wrap: wrap;
   gap: 10px;
@@ -778,7 +894,8 @@ h1 {
   .workspace-header,
   .comparison-layout,
   .custom-layout,
-  .matrix-layout {
+  .matrix-layout,
+  .network-layout {
     grid-template-columns: 1fr;
   }
 

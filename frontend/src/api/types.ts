@@ -95,3 +95,20 @@ export interface MatrixResponse {
   actors: MatrixActor[];
   matrix: number[][];
 }
+
+export interface ClusterLabel {
+  actor_id: string;
+  actor_name: string;
+  source: string;
+  cluster_id: number;
+}
+
+export interface ClusterResponse {
+  source: string;
+  metric: SimilarityMetric;
+  generated_at: string;
+  actor_count: number;
+  cluster_count: number;
+  min_similarity: number;
+  labels: ClusterLabel[];
+}

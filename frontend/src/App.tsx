@@ -5,6 +5,7 @@ import { getHealth } from "./api/client";
 import type { HealthResponse } from "./api/types";
 import { ActorComparisonPanel } from "./components/ActorComparisonPanel";
 import { ActorMatrixHeatmapPanel } from "./components/ActorMatrixHeatmapPanel";
+import { ActorNetworkGraphPanel } from "./components/ActorNetworkGraphPanel";
 import { CustomTTPSetPanel } from "./components/CustomTTPSetPanel";
 import "./styles.css";
 
@@ -43,6 +44,7 @@ function App() {
         <ActorComparisonPanel />
         <CustomTTPSetPanel />
         <ActorMatrixHeatmapPanel />
+        <ActorNetworkGraphPanel />
 
         <footer className="backend-strip">
           <span className={health ? "status-dot ok" : "status-dot pending"} aria-hidden="true" />

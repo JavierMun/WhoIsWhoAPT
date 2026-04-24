@@ -307,3 +307,24 @@ class MatrixResponse(BaseModel):
     metadata: MatrixMetadata
     actors: list[MatrixActor] = Field(default_factory=list)
     matrix: list[list[float]] = Field(default_factory=list)
+
+
+class ClusterLabel(BaseModel):
+    """Cluster assignment for one actor."""
+
+    actor_id: str
+    actor_name: str
+    source: str
+    cluster_id: int
+
+
+class ClusterResponse(BaseModel):
+    """Cluster labels generated from the latest actor similarity matrix."""
+
+    source: PrimarySourceName | str
+    metric: SimilarityMetric | str
+    generated_at: datetime | str
+    actor_count: int
+    cluster_count: int
+    min_similarity: float = Field(ge=0, le=1)
+    labels: list[ClusterLabel] = Field(default_factory=list)

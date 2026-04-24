@@ -1,6 +1,7 @@
 import type {
   ActorComparisonResponse,
   ActorListItem,
+  ClusterResponse,
   CustomTTPSet,
   HealthResponse,
   MatrixResponse,
@@ -110,4 +111,8 @@ export function computeMatrix(metric: SimilarityMetric): Promise<MatrixResponse>
 
 export function getMatrixResult(): Promise<MatrixResponse> {
   return request<MatrixResponse>("/api/matrix/result");
+}
+
+export function getClusters(minSimilarity = 0.15): Promise<ClusterResponse> {
+  return request<ClusterResponse>(`/api/clusters?min_similarity=${encodeURIComponent(minSimilarity)}`);
 }

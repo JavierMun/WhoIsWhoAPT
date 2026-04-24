@@ -20,6 +20,18 @@ router = APIRouter()
 _latest_matrix: ActorSimilarityMatrix | None = None
 
 
+def get_latest_matrix() -> ActorSimilarityMatrix | None:
+    """Return the latest in-process matrix result, if one exists."""
+    return _latest_matrix
+
+
+def set_latest_matrix(matrix: ActorSimilarityMatrix | None) -> None:
+    """Store the latest in-process matrix result."""
+    global _latest_matrix  # noqa: PLW0603 - intentional small in-process cache for synchronous MVP.
+
+    _latest_matrix = matrix
+
+
 @router.post("", response_model=MatrixResponse)
 def compute_matrix(
     request: MatrixRequest,
@@ -27,28 +39,32 @@ def compute_matrix(
     settings_store: Annotated[SettingsStore, Depends(get_settings_store)],
 ) -> MatrixResponse:
     """Synchronously compute and store the latest all-vs-all actor matrix."""
-    global _latest_matrix  # noqa: PLW0603 - intentional small in-process cache for synchronous MVP.
-
     settings = settings_store.load()
     actors = _actor_candidates(session, settings.active_source)
-    _latest_matrix = compute_actor_similarity_matrix(
-        actors,
-        source=settings.active_source,
-        metric=request.metric,
-        technique_tactics=_technique_tactics(session),
-        tactic_weights=settings.scoring.tactic_weights,
-        technique_score_weight=settings.scoring.technique_score_weight,
-        software_score_weight=settings.scoring.software_score_weight,
+    set_latest_matrix(
+        compute_actor_similarity_matrix(
+            actors,
+            source=settings.active_source,
+            metric=request.metric,
+            technique_tactics=_technique_tactics(session),
+            tactic_weights=settings.scoring.tactic_weights,
+            technique_score_weight=settings.scoring.technique_score_weight,
+            software_score_weight=settings.scoring.software_score_weight,
+        )
     )
-    return _response_schema(_latest_matrix)
+    latest_matrix = get_latest_matrix()
+    if latest_matrix is None:
+        raise AppError("Matrix has not been computed yet", status_code=404)
+    return _response_schema(latest_matrix)
 
 
 @router.get("/result", response_model=MatrixResponse)
 def get_matrix_result() -> MatrixResponse:
     """Return the latest computed actor matrix."""
-    if _latest_matrix is None:
+    latest_matrix = get_latest_matrix()
+    if latest_matrix is None:
         raise AppError("Matrix has not been computed yet", status_code=404)
-    return _response_schema(_latest_matrix)
+    return _response_schema(latest_matrix)
 
 
 def _actor_candidates(session: Session, source: str) -> list[EntityTechniqueSet]:

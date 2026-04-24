@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
+    "d3-force": "latest",
     "vite": "latest",
     "typescript": "latest",
     "react": "latest",
@@ -19,6 +20,7 @@
   },
   "devDependencies": {
     "@eslint/js": "latest",
+    "@types/d3-force": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "eslint": "latest",
@@ -27,4 +29,3 @@
     "typescript-eslint": "latest"
   }
 }
-
