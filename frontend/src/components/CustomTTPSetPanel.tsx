@@ -303,7 +303,7 @@ export function CustomTTPSetPanel() {
                 }}
               >
                 <option value="jaccard">Jaccard</option>
-                <option value="jaccard_weighted">Weighted</option>
+                <option value="jaccard_weighted">Weighted Jaccard</option>
                 <option value="tactic_weighted_jaccard">Tactic weighted</option>
                 <option value="software_weighted_jaccard">Software weighted</option>
               </select>
@@ -369,13 +369,21 @@ export function CustomTTPSetPanel() {
           </button>
         </section>
 
-        <CustomComparisonResults comparison={comparison} loading={comparing} />
+        <CustomComparisonResults comparison={comparison} loading={comparing} topN={topN} />
       </div>
     </section>
   );
 }
 
-function CustomComparisonResults({ comparison, loading }: { comparison: ActorComparisonResponse | null; loading: boolean }) {
+function CustomComparisonResults({
+  comparison,
+  loading,
+  topN
+}: {
+  comparison: ActorComparisonResponse | null;
+  loading: boolean;
+  topN: number;
+}) {
   if (loading) {
     return (
       <section className="results-panel custom-results" aria-live="polite">
@@ -398,6 +406,8 @@ function CustomComparisonResults({ comparison, loading }: { comparison: ActorCom
     );
   }
 
+  const canExport = comparison.results.length > 0;
+
   return (
     <section className="results-panel custom-results" aria-live="polite">
       <div className="results-header">
@@ -407,16 +417,27 @@ function CustomComparisonResults({ comparison, loading }: { comparison: ActorCom
         </div>
         <div className="results-actions">
           <span className="metric-label">{metricLabel(comparison.metric)}</span>
-          <button type="button" title="Export JSON" onClick={() => downloadComparisonExport(comparison, "json")}>
+          <button
+            type="button"
+            title={canExport ? "Export JSON" : "Run a comparison with results before exporting"}
+            disabled={!canExport}
+            onClick={() => downloadComparisonExport(comparison, "json", "mitre", topN)}
+          >
             <FileJson size={16} aria-hidden="true" />
           </button>
-          <button type="button" title="Export CSV" onClick={() => downloadComparisonExport(comparison, "csv")}>
+          <button
+            type="button"
+            title={canExport ? "Export CSV" : "Run a comparison with results before exporting"}
+            disabled={!canExport}
+            onClick={() => downloadComparisonExport(comparison, "csv", "mitre", topN)}
+          >
             <Table size={16} aria-hidden="true" />
           </button>
           <button
             type="button"
-            title="Export Navigator layer"
-            onClick={() => downloadComparisonExport(comparison, "navigator")}
+            title={canExport ? "Export Navigator layer" : "Run a comparison with results before exporting"}
+            disabled={!canExport}
+            onClick={() => downloadComparisonExport(comparison, "navigator", "mitre", topN)}
           >
             <Download size={16} aria-hidden="true" />
           </button>
@@ -536,7 +557,7 @@ function formatScore(score: number): string {
 
 function metricLabel(metric: SimilarityMetric): string {
   if (metric === "jaccard_weighted") {
-    return "Weighted";
+    return "Weighted Jaccard";
   }
   if (metric === "tactic_weighted_jaccard") {
     return "Tactic weighted";

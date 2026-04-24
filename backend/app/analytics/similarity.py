@@ -176,7 +176,7 @@ def _tactic_weights_for_techniques(
 ) -> dict[str, float]:
     """Map each technique to its configured tactic weight for weighted scoring."""
     return {
-        technique_id: max(0.0, tactic_weights.get(_tactic_for(technique_id, technique_tactics), DEFAULT_TACTIC_WEIGHT))
+        technique_id: _weight_for_tactic_value(_tactic_for(technique_id, technique_tactics), tactic_weights)
         for technique_id in technique_ids
     }
 
@@ -184,3 +184,11 @@ def _tactic_weights_for_techniques(
 def _tactic_for(technique_id: str, technique_tactics: dict[str, str]) -> str:
     """Return a stable tactic bucket for techniques missing local metadata."""
     return technique_tactics.get(technique_id) or "unknown"
+
+
+def _weight_for_tactic_value(tactic_value: str, tactic_weights: dict[str, float]) -> float:
+    """Return the strongest configured weight for single or comma-separated tactics."""
+    tactics = [item.strip() for item in tactic_value.split(",") if item.strip()]
+    if not tactics:
+        return DEFAULT_TACTIC_WEIGHT
+    return max(max(0.0, tactic_weights.get(tactic, DEFAULT_TACTIC_WEIGHT)) for tactic in tactics)

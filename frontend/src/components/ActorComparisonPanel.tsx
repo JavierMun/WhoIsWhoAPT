@@ -181,13 +181,21 @@ export function ActorComparisonPanel() {
           {error ? <StatusMessage tone="error" message={error} /> : null}
         </form>
 
-        <ComparisonResults comparison={comparison} loading={compareLoading} />
+        <ComparisonResults comparison={comparison} loading={compareLoading} topN={topN} />
       </div>
     </section>
   );
 }
 
-function ComparisonResults({ comparison, loading }: { comparison: ActorComparisonResponse | null; loading: boolean }) {
+function ComparisonResults({
+  comparison,
+  loading,
+  topN
+}: {
+  comparison: ActorComparisonResponse | null;
+  loading: boolean;
+  topN: number;
+}) {
   if (loading) {
     return (
       <section className="results-panel" aria-live="polite">
@@ -210,6 +218,8 @@ function ComparisonResults({ comparison, loading }: { comparison: ActorCompariso
     );
   }
 
+  const canExport = comparison.results.length > 0;
+
   return (
     <section className="results-panel" aria-live="polite">
       <div className="results-header">
@@ -219,16 +229,27 @@ function ComparisonResults({ comparison, loading }: { comparison: ActorCompariso
         </div>
         <div className="results-actions">
           <span className="metric-label">{metricLabel(comparison.metric)}</span>
-          <button type="button" title="Export JSON" onClick={() => downloadComparisonExport(comparison, "json")}>
+          <button
+            type="button"
+            title={canExport ? "Export JSON" : "Run a comparison with results before exporting"}
+            disabled={!canExport}
+            onClick={() => downloadComparisonExport(comparison, "json", "mitre", topN)}
+          >
             <FileJson size={16} aria-hidden="true" />
           </button>
-          <button type="button" title="Export CSV" onClick={() => downloadComparisonExport(comparison, "csv")}>
+          <button
+            type="button"
+            title={canExport ? "Export CSV" : "Run a comparison with results before exporting"}
+            disabled={!canExport}
+            onClick={() => downloadComparisonExport(comparison, "csv", "mitre", topN)}
+          >
             <Table size={16} aria-hidden="true" />
           </button>
           <button
             type="button"
-            title="Export Navigator layer"
-            onClick={() => downloadComparisonExport(comparison, "navigator")}
+            title={canExport ? "Export Navigator layer" : "Run a comparison with results before exporting"}
+            disabled={!canExport}
+            onClick={() => downloadComparisonExport(comparison, "navigator", "mitre", topN)}
           >
             <Download size={16} aria-hidden="true" />
           </button>
@@ -341,7 +362,7 @@ function formatScore(score: number): string {
 
 function metricLabel(metric: SimilarityMetric): string {
   if (metric === "jaccard_weighted") {
-    return "Weighted";
+    return "Weighted Jaccard";
   }
   if (metric === "tactic_weighted_jaccard") {
     return "Tactic weighted";

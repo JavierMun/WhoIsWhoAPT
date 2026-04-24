@@ -53,6 +53,18 @@ def test_tactic_weighted_jaccard_uses_configured_tactic_weights() -> None:
     assert score == 3 / 5
 
 
+def test_tactic_weighted_jaccard_handles_multi_tactic_values() -> None:
+    """Configured secondary tactics should still influence weighted scoring."""
+    score = tactic_weighted_jaccard_similarity(
+        {"T1001", "T1002"},
+        {"T1002", "T1003"},
+        {"T1001": "execution", "T1002": "execution, persistence", "T1003": "execution"},
+        {"persistence": 3.0, "execution": 1.0},
+    )
+
+    assert score == 3 / 5
+
+
 def test_tactic_breakdown_groups_shared_techniques_and_contributions() -> None:
     """Breakdown should group shared techniques by tactic and sum to the score."""
     breakdown = tactic_breakdown(

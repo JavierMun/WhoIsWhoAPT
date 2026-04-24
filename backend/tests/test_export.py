@@ -52,6 +52,28 @@ def test_comparison_export_navigator_contains_unique_shared_techniques() -> None
     assert layer["techniques"][0]["comment"] == "Shared with: Beta"
 
 
+def test_comparison_export_navigator_is_valid_without_shared_techniques() -> None:
+    """Navigator export should remain valid when result rows have no overlap."""
+    payload = _export_payload(shared_techniques=[])
+
+    layer = json.loads(comparison_export_navigator(payload))
+
+    assert layer["domain"] == "enterprise-attack"
+    assert layer["techniques"] == []
+    assert {"name": "top_n", "value": "10"} in layer["metadata"]
+
+
+def test_comparison_export_csv_is_valid_without_results() -> None:
+    """CSV export should include headers even when there are no rows."""
+    payload = _export_payload()
+    payload.comparison.results = []
+
+    exported = comparison_export_csv(payload)
+
+    assert exported.startswith("source,metric,generated_at")
+    assert list(csv.DictReader(StringIO(exported))) == []
+
+
 def test_export_endpoints_return_downloadable_content() -> None:
     """Export endpoints should format posted results without recomputation."""
     client = TestClient(create_app())
@@ -63,7 +85,7 @@ def test_export_endpoints_return_downloadable_content() -> None:
     assert "matched_entity_name" in response.text
 
 
-def _export_payload() -> ComparisonExportRequest:
+def _export_payload(shared_techniques: list[str] | None = None) -> ComparisonExportRequest:
     """Build a compact export payload fixture."""
     generated_at = datetime(2026, 4, 24, 10, 0, tzinfo=timezone.utc)  # noqa: UP017 - local dev supports 3.10.
     return ComparisonExportRequest(
@@ -89,7 +111,7 @@ def _export_payload() -> ComparisonExportRequest:
                     score=0.5,
                     technique_score=0.5,
                     software_score=1.0,
-                    shared_techniques=["T1001", "T1002"],
+                    shared_techniques=["T1001", "T1002"] if shared_techniques is None else shared_techniques,
                     unique_to_input=["T1003"],
                     unique_to_matched_entity=["T1004"],
                     shared_software=[

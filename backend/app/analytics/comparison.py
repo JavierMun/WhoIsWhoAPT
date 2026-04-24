@@ -110,7 +110,7 @@ def compare_pair(
             tactic_weights,
         )
         contribution_weights = {
-            technique_id: max(0.0, tactic_weights.get(technique_tactics.get(technique_id, "unknown"), 1.0))
+            technique_id: _tactic_contribution_weight(technique_tactics.get(technique_id, "unknown"), tactic_weights)
             for technique_id in input_techniques | candidate.techniques
         }
     else:
@@ -159,3 +159,11 @@ def compare_pair(
             contribution_weights,
         ),
     )
+
+
+def _tactic_contribution_weight(tactic_value: str, tactic_weights: dict[str, float]) -> float:
+    """Return the strongest configured tactic weight for contribution display."""
+    tactics = [item.strip() for item in tactic_value.split(",") if item.strip()]
+    if not tactics:
+        return 1.0
+    return max(max(0.0, tactic_weights.get(tactic, 1.0)) for tactic in tactics)

@@ -20,9 +20,10 @@ export type ExportFormat = "json" | "csv" | "navigator";
 export function downloadComparisonExport(
   comparison: ActorComparisonResponse,
   format: ExportFormat,
-  source = "mitre"
+  source = "mitre",
+  topN = comparison.results.length
 ): void {
-  const payload = exportPayload(comparison, source);
+  const payload = exportPayload(comparison, source, topN);
   const filenameBase = safeFilename(`${comparison.input_name}-${comparison.metric}`);
 
   if (format === "csv") {
@@ -42,7 +43,7 @@ export function downloadComparisonExport(
   downloadText(`${filenameBase}.json`, "application/json", JSON.stringify(payload, null, 2));
 }
 
-function exportPayload(comparison: ActorComparisonResponse, source: string): ExportPayload {
+function exportPayload(comparison: ActorComparisonResponse, source: string, topN: number): ExportPayload {
   return {
     metadata: {
       source,
@@ -51,7 +52,7 @@ function exportPayload(comparison: ActorComparisonResponse, source: string): Exp
       input_id: comparison.input_id,
       input_name: comparison.input_name,
       input_type: comparison.input_type,
-      top_n: comparison.results.length
+      top_n: topN
     },
     comparison
   };

@@ -349,6 +349,12 @@ h1 {
   color: #123f35;
 }
 
+.results-actions button:disabled {
+  background: #f2f5f6;
+  color: #9cadb4;
+  cursor: not-allowed;
+}
+
 .result-list {
   display: grid;
   padding: 0;
