@@ -276,3 +276,34 @@ class ComparisonExportRequest(BaseModel):
 
     metadata: ExportMetadata
     comparison: ComparisonResponse
+
+
+class MatrixRequest(BaseModel):
+    """Request body for full actor matrix computation."""
+
+    metric: SimilarityMetric = "jaccard"
+
+
+class MatrixMetadata(BaseModel):
+    """Metadata for a generated actor similarity matrix."""
+
+    source: PrimarySourceName | str
+    metric: SimilarityMetric
+    generated_at: datetime
+    actor_count: int
+
+
+class MatrixActor(BaseModel):
+    """Actor item aligned with matrix row and column positions."""
+
+    id: str
+    name: str
+    source: str
+
+
+class MatrixResponse(BaseModel):
+    """Frontend-friendly all-vs-all actor similarity matrix."""
+
+    metadata: MatrixMetadata
+    actors: list[MatrixActor] = Field(default_factory=list)
+    matrix: list[list[float]] = Field(default_factory=list)
