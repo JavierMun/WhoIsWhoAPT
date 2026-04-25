@@ -203,7 +203,7 @@ function HeatmapPanel({
   }
 
   const capped = visibleIndexes.length < matrix.actors.length;
-  const showCellText = visibleIndexes.length <= 24;
+  const showCellText = visibleIndexes.length <= 16;
 
   return (
     <section className="results-panel heatmap-panel" aria-live="polite">
@@ -241,7 +241,7 @@ function HeatmapPanel({
                         className="heatmap-cell"
                         key={columnActor.id}
                         style={{ backgroundColor: heatmapColor(value), color: value >= 0.62 ? "#ffffff" : "#172026" }}
-                        title={`${rowActor.name} to ${columnActor.name}: ${formatScore(value)}`}
+                        title={`${rowActor.name} to ${columnActor.name}: ${formatScore(value)} (${value.toFixed(4)})`}
                       >
                         {showCellText ? formatScore(value) : ""}
                       </td>
@@ -336,9 +336,9 @@ function useVisibleActorIndexes(matrix: MatrixResponse | null, actorQuery: strin
 
 function heatmapColor(score: number): string {
   const value = clampScore(score);
-  const hue = 178 - value * 34;
-  const saturation = 38 + value * 24;
-  const lightness = 95 - value * 48;
+  const hue = 38 - value * 28;
+  const saturation = 72 + value * 18;
+  const lightness = 94 - value * 46;
   return `hsl(${hue} ${saturation}% ${lightness}%)`;
 }
 

@@ -286,6 +286,10 @@ h1 {
   margin: 0;
 }
 
+.technique-label {
+  overflow-wrap: anywhere;
+}
+
 .status {
   font-weight: 700;
   text-transform: capitalize;
@@ -875,6 +879,13 @@ h1 {
   font-weight: 750;
 }
 
+.technique-chip span {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .saved-panel {
   min-height: 220px;
 }
@@ -1120,7 +1131,7 @@ h1 {
 .legend-ramp {
   height: 12px;
   border-radius: 999px;
-  background: linear-gradient(90deg, hsl(178 38% 95%), hsl(161 50% 71%), hsl(144 62% 47%));
+  background: linear-gradient(90deg, hsl(38 72% 94%), hsl(24 81% 72%), hsl(10 90% 48%));
 }
 
 .legend-labels {
@@ -1272,6 +1283,7 @@ h1 {
 }
 
 .network-canvas {
+  position: relative;
   min-height: 560px;
   overflow: hidden;
   background:
@@ -1279,6 +1291,15 @@ h1 {
     linear-gradient(90deg, #edf1f2 1px, transparent 1px),
     #fbfcfc;
   background-size: 28px 28px;
+}
+
+.network-viewport-controls {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  background: rgb(255 255 255 / 0.92);
+  box-shadow: 0 8px 20px rgb(23 32 38 / 0.12);
 }
 
 .network-canvas svg {

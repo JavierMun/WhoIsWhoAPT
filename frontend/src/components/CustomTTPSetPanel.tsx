@@ -3,6 +3,13 @@ import { useEffect, useMemo, useState } from "react";
 
 import { compareCustomSet, createCustomSet, getCustomSets, getTechniques } from "../api/client";
 import { downloadComparisonExport } from "../api/exportUtils";
+import {
+  formatTactic,
+  techniqueLabel,
+  techniqueLookupFromList,
+  techniqueTitle,
+  type TechniqueLookup
+} from "../api/ttpProfileUtils";
 import type {
   ActorComparisonResponse,
   CustomTTPSet,
@@ -59,6 +66,7 @@ export function CustomTTPSetPanel() {
   }, []);
 
   const validTechniqueIds = useMemo(() => new Set(techniques.map((technique) => technique.technique_id)), [techniques]);
+  const techniqueLookup = useMemo(() => techniqueLookupFromList(techniques), [techniques]);
   const selectedTechniques = selectedTechniqueIds
     .map((techniqueId) => techniques.find((technique) => technique.technique_id === techniqueId))
     .filter((technique): technique is TechniqueListItem => Boolean(technique));
@@ -254,7 +262,7 @@ export function CustomTTPSetPanel() {
                   setSelectedTechniqueIds((currentIds) => sortedTechniqueIds([...currentIds, technique.technique_id]));
                 }}
               >
-                <span>{technique.technique_id}</span>
+                <span>{techniqueLabel(technique.technique_id, techniqueLookup)}</span>
                 <small>{technique.name}</small>
               </button>
             ))}
@@ -284,8 +292,9 @@ export function CustomTTPSetPanel() {
                       currentIds.filter((techniqueId) => techniqueId !== technique.technique_id)
                     );
                   }}
+                  title={techniqueTitle(technique.technique_id, techniqueLookup)}
                 >
-                  <span>{technique.technique_id}</span>
+                  <span>{techniqueLabel(technique.technique_id, techniqueLookup)}</span>
                   <X size={14} aria-hidden="true" />
                 </button>
               ))}
@@ -369,7 +378,7 @@ export function CustomTTPSetPanel() {
           </button>
         </section>
 
-        <CustomComparisonResults comparison={comparison} loading={comparing} topN={topN} />
+        <CustomComparisonResults comparison={comparison} loading={comparing} topN={topN} techniqueLookup={techniqueLookup} />
       </div>
     </section>
   );
@@ -378,11 +387,13 @@ export function CustomTTPSetPanel() {
 function CustomComparisonResults({
   comparison,
   loading,
-  topN
+  topN,
+  techniqueLookup
 }: {
   comparison: ActorComparisonResponse | null;
   loading: boolean;
   topN: number;
+  techniqueLookup: TechniqueLookup;
 }) {
   if (loading) {
     return (
@@ -421,7 +432,7 @@ function CustomComparisonResults({
             type="button"
             title={canExport ? "Export JSON" : "Run a comparison with results before exporting"}
             disabled={!canExport}
-            onClick={() => downloadComparisonExport(comparison, "json", "mitre", topN)}
+            onClick={() => downloadComparisonExport(comparison, "json", "mitre", topN, techniqueLookup)}
           >
             <FileJson size={16} aria-hidden="true" />
           </button>
@@ -429,7 +440,7 @@ function CustomComparisonResults({
             type="button"
             title={canExport ? "Export CSV" : "Run a comparison with results before exporting"}
             disabled={!canExport}
-            onClick={() => downloadComparisonExport(comparison, "csv", "mitre", topN)}
+            onClick={() => downloadComparisonExport(comparison, "csv", "mitre", topN, techniqueLookup)}
           >
             <Table size={16} aria-hidden="true" />
           </button>
@@ -437,7 +448,7 @@ function CustomComparisonResults({
             type="button"
             title={canExport ? "Export Navigator layer" : "Run a comparison with results before exporting"}
             disabled={!canExport}
-            onClick={() => downloadComparisonExport(comparison, "navigator", "mitre", topN)}
+            onClick={() => downloadComparisonExport(comparison, "navigator", "mitre", topN, techniqueLookup)}
           >
             <Download size={16} aria-hidden="true" />
           </button>
@@ -460,10 +471,17 @@ function CustomComparisonResults({
                 <span>{result.unique_to_input.length} unmatched input</span>
               </div>
               <p className="technique-preview">
-                {result.shared_techniques.slice(0, 8).join(", ") || "No shared techniques"}
+                {result.shared_techniques.length > 0
+                  ? result.shared_techniques.slice(0, 8).map((techniqueId, itemIndex) => (
+                      <span className="technique-label" key={techniqueId} title={techniqueTitle(techniqueId, techniqueLookup)}>
+                        {itemIndex > 0 ? ", " : ""}
+                        {techniqueLabel(techniqueId, techniqueLookup)}
+                      </span>
+                    ))
+                  : "No shared techniques"}
               </p>
               <SoftwarePreview software={result.shared_software} />
-              <TacticBreakdownList items={result.tactic_breakdown} />
+              <TacticBreakdownList items={result.tactic_breakdown} techniqueLookup={techniqueLookup} />
             </div>
           </li>
         ))}
@@ -488,7 +506,7 @@ function SoftwarePreview({ software }: { software: SoftwareSummary[] }) {
   );
 }
 
-function TacticBreakdownList({ items }: { items: TacticBreakdown[] }) {
+function TacticBreakdownList({ items, techniqueLookup }: { items: TacticBreakdown[]; techniqueLookup: TechniqueLookup }) {
   const visibleItems = items.filter((item) => item.union_technique_count > 0).slice(0, 4);
   if (visibleItems.length === 0) {
     return null;
@@ -507,7 +525,13 @@ function TacticBreakdownList({ items }: { items: TacticBreakdown[] }) {
           </div>
           <p>
             {item.shared_technique_count}/{item.union_technique_count} shared
-            {item.shared_techniques.length > 0 ? `: ${item.shared_techniques.slice(0, 4).join(", ")}` : ""}
+            {item.shared_techniques.length > 0 ? ": " : ""}
+            {item.shared_techniques.slice(0, 4).map((techniqueId, index) => (
+              <span className="technique-label" key={techniqueId} title={techniqueTitle(techniqueId, techniqueLookup)}>
+                {index > 0 ? ", " : ""}
+                {techniqueLabel(techniqueId, techniqueLookup)}
+              </span>
+            ))}
           </p>
         </div>
       ))}
@@ -566,12 +590,4 @@ function metricLabel(metric: SimilarityMetric): string {
     return "Software weighted";
   }
   return "Jaccard";
-}
-
-function formatTactic(tactic: string): string {
-  return tactic
-    .split(/[-_\s]+/)
-    .filter(Boolean)
-    .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
-    .join(" ");
 }

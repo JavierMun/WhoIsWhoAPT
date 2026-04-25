@@ -2,6 +2,7 @@ import { AlertCircle, BarChart3, Loader2, Search, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { compareActor, getActors, getCustomSets, getTechniques } from "../api/client";
+import { formatTactic, techniqueLookupFromList } from "../api/ttpProfileUtils";
 import type {
   ActorComparisonResponse,
   ActorListItem,
@@ -95,6 +96,7 @@ export function ActorComparisonPanel() {
   }, [selectedTargetKeys, targetOptions, targetQuery]);
   const actorTargets = filteredTargets.filter((target) => target.kind === "actor").slice(0, 40);
   const profileTargets = filteredTargets.filter((target) => target.kind === "profile").slice(0, 20);
+  const techniqueLookup = useMemo(() => techniqueLookupFromList(techniques), [techniques]);
   const availableTactics = useMemo(
     () =>
       Array.from(new Set(techniques.map((technique) => technique.tactic).filter(Boolean))).sort((left, right) =>
@@ -368,6 +370,7 @@ export function ActorComparisonPanel() {
           topN={topN}
           comparisonScopeLabel={comparisonScopeLabel}
           tacticScopeLabel={tacticScopeLabel}
+          techniqueLookup={techniqueLookup}
         />
       </div>
     </section>
@@ -415,13 +418,15 @@ function ComparisonResults({
   loading,
   topN,
   comparisonScopeLabel,
-  tacticScopeLabel
+  tacticScopeLabel,
+  techniqueLookup
 }: {
   comparison: ActorComparisonResponse | null;
   loading: boolean;
   topN: number;
   comparisonScopeLabel: string;
   tacticScopeLabel: string;
+  techniqueLookup: ReturnType<typeof techniqueLookupFromList>;
 }) {
   if (loading) {
     return (
@@ -473,6 +478,7 @@ function ComparisonResults({
       topN={topN}
       comparisonScopeLabel={comparisonScopeLabel}
       tacticScopeLabel={tacticScopeLabel}
+      techniqueLookup={techniqueLookup}
     />
   );
 }
@@ -528,12 +534,4 @@ function buildTargetOptions(
 
 function targetKeyFor(target: TargetOption): string {
   return `${target.kind}:${target.id}`;
-}
-
-function formatTactic(tactic: string): string {
-  return tactic
-    .split(/[-_\s]+/)
-    .filter(Boolean)
-    .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
-    .join(" ");
 }

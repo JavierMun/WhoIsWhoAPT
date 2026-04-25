@@ -1,4 +1,5 @@
 import type { ActorComparisonResponse, ComparisonResult } from "./types";
+import { techniqueLabel, type TechniqueLookup } from "./ttpProfileUtils";
 
 type ExportMetadata = {
   source: string;
@@ -21,13 +22,14 @@ export function downloadComparisonExport(
   comparison: ActorComparisonResponse,
   format: ExportFormat,
   source = "mitre",
-  topN = comparison.results.length
+  topN = comparison.results.length,
+  techniqueLookup?: TechniqueLookup
 ): void {
   const payload = exportPayload(comparison, source, topN);
   const filenameBase = safeFilename(`${comparison.input_name}-${comparison.metric}`);
 
   if (format === "csv") {
-    downloadText(`${filenameBase}.csv`, "text/csv", comparisonCsv(payload));
+    downloadText(`${filenameBase}.csv`, "text/csv", comparisonCsv(payload, techniqueLookup));
     return;
   }
 
@@ -58,7 +60,7 @@ function exportPayload(comparison: ActorComparisonResponse, source: string, topN
   };
 }
 
-function comparisonCsv(payload: ExportPayload): string {
+function comparisonCsv(payload: ExportPayload, techniqueLookup?: TechniqueLookup): string {
   const headers = [
     "source",
     "metric",
@@ -92,11 +94,15 @@ function comparisonCsv(payload: ExportPayload): string {
     score(result.score),
     score(result.technique_score),
     score(result.software_score),
-    result.shared_techniques.join(";"),
+    result.shared_techniques.map((techniqueId) => formatTechnique(techniqueId, techniqueLookup)).join(";"),
     result.shared_software.map((item) => item.name).join(";")
   ]);
 
   return [headers, ...rows].map((row) => row.map(csvCell).join(",")).join("\n");
+}
+
+function formatTechnique(techniqueId: string, techniqueLookup?: TechniqueLookup): string {
+  return techniqueLookup ? techniqueLabel(techniqueId, techniqueLookup) : techniqueId;
 }
 
 function comparisonNavigatorLayer(payload: ExportPayload): Record<string, unknown> {

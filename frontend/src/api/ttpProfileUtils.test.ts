@@ -5,6 +5,9 @@ import {
   groupTechniquesByTactic,
   normalizeTechniqueIds,
   parseTechniqueIds,
+  techniqueLabel,
+  techniqueLookupFromList,
+  techniqueTitle,
   unknownTechniqueIds
 } from "./ttpProfileUtils";
 import type { TechniqueListItem } from "./types";
@@ -44,6 +47,17 @@ describe("TTP profile utilities", () => {
       { tactic: "command-and-control", techniques: [technique("T1105", "Ingress Tool Transfer", "command-and-control")] },
       { tactic: "execution", techniques: [technique("T1059", "Command and Scripting Interpreter", "execution")] }
     ]);
+  });
+
+  it("formats technique labels and tactic titles from metadata", () => {
+    const lookup = techniqueLookupFromList([
+      technique("T1059", "Command and Scripting Interpreter", "execution"),
+      technique("T1059.001", "PowerShell", "execution")
+    ]);
+
+    expect(techniqueLabel("T1059", lookup)).toBe("T1059 — Command and Scripting Interpreter");
+    expect(techniqueLabel("T9999", lookup)).toBe("T9999");
+    expect(techniqueTitle("T1059.001", lookup)).toBe("T1059.001 — PowerShell\nTactic: Execution");
   });
 });
 

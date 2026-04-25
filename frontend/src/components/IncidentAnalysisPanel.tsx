@@ -1,9 +1,16 @@
 import { AlertCircle, Download, FileJson, Loader2, Radar, Table, Upload } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-import { analyzeIncident } from "../api/client";
+import { analyzeIncident, getTechniques } from "../api/client";
 import { downloadComparisonExport } from "../api/exportUtils";
-import type { ActorComparisonResponse, SimilarityMetric, SoftwareSummary, TacticBreakdown } from "../api/types";
+import {
+  formatTactic,
+  techniqueLabel,
+  techniqueLookupFromList,
+  techniqueTitle,
+  type TechniqueLookup
+} from "../api/ttpProfileUtils";
+import type { ActorComparisonResponse, SimilarityMetric, SoftwareSummary, TacticBreakdown, TechniqueListItem } from "../api/types";
 
 const DEFAULT_TOP_N = 10;
 
@@ -21,6 +28,7 @@ type NavigatorLayer = {
 };
 
 export function IncidentAnalysisPanel() {
+  const [techniques, setTechniques] = useState<TechniqueListItem[]>([]);
   const [incidentName, setIncidentName] = useState("Observed Incident");
   const [description, setDescription] = useState("");
   const [techniqueInput, setTechniqueInput] = useState("");
@@ -31,7 +39,16 @@ export function IncidentAnalysisPanel() {
   const [error, setError] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<ActorComparisonResponse | null>(null);
 
+  useEffect(() => {
+    getTechniques()
+      .then(setTechniques)
+      .catch(() => {
+        setTechniques([]);
+      });
+  }, []);
+
   const parsedTechniqueIds = parseTechniqueIds(techniqueInput);
+  const techniqueLookup = useMemo(() => techniqueLookupFromList(techniques), [techniques]);
 
   async function handleAnalyze() {
     setError(null);
@@ -166,7 +183,14 @@ export function IncidentAnalysisPanel() {
 
           <div className="selected-actor incident-technique-summary">
             <p>{parsedTechniqueIds.length} normalized techniques</p>
-            <span>{parsedTechniqueIds.slice(0, 10).join(", ") || "Paste IDs or import a Navigator layer"}</span>
+            <span>
+              {parsedTechniqueIds.length > 0
+                ? parsedTechniqueIds
+                    .slice(0, 10)
+                    .map((techniqueId) => techniqueLabel(techniqueId, techniqueLookup))
+                    .join(", ")
+                : "Paste IDs or import a Navigator layer"}
+            </span>
           </div>
 
           <div className="split-controls">
@@ -211,7 +235,7 @@ export function IncidentAnalysisPanel() {
           {error ? <StatusMessage tone="error" message={error} /> : null}
         </form>
 
-        <IncidentResults analysis={analysis} loading={loading} topN={topN} />
+        <IncidentResults analysis={analysis} loading={loading} topN={topN} techniqueLookup={techniqueLookup} />
       </div>
     </section>
   );
@@ -220,11 +244,13 @@ export function IncidentAnalysisPanel() {
 function IncidentResults({
   analysis,
   loading,
-  topN
+  topN,
+  techniqueLookup
 }: {
   analysis: ActorComparisonResponse | null;
   loading: boolean;
   topN: number;
+  techniqueLookup: TechniqueLookup;
 }) {
   if (loading) {
     return (
@@ -263,7 +289,7 @@ function IncidentResults({
             type="button"
             title={canExport ? "Export JSON" : "Run an analysis with results before exporting"}
             disabled={!canExport}
-            onClick={() => downloadComparisonExport(analysis, "json", "mitre", topN)}
+            onClick={() => downloadComparisonExport(analysis, "json", "mitre", topN, techniqueLookup)}
           >
             <FileJson size={16} aria-hidden="true" />
           </button>
@@ -271,7 +297,7 @@ function IncidentResults({
             type="button"
             title={canExport ? "Export CSV" : "Run an analysis with results before exporting"}
             disabled={!canExport}
-            onClick={() => downloadComparisonExport(analysis, "csv", "mitre", topN)}
+            onClick={() => downloadComparisonExport(analysis, "csv", "mitre", topN, techniqueLookup)}
           >
             <Table size={16} aria-hidden="true" />
           </button>
@@ -279,7 +305,7 @@ function IncidentResults({
             type="button"
             title={canExport ? "Export Navigator layer" : "Run an analysis with results before exporting"}
             disabled={!canExport}
-            onClick={() => downloadComparisonExport(analysis, "navigator", "mitre", topN)}
+            onClick={() => downloadComparisonExport(analysis, "navigator", "mitre", topN, techniqueLookup)}
           >
             <Download size={16} aria-hidden="true" />
           </button>
@@ -304,8 +330,8 @@ function IncidentResults({
                 <span>{result.unique_to_matched_entity.length} actor-only techniques</span>
               </div>
 
-              <WhyMatched result={result} />
-              <TacticBreakdownList items={result.tactic_breakdown} />
+              <WhyMatched result={result} techniqueLookup={techniqueLookup} />
+              <TacticBreakdownList items={result.tactic_breakdown} techniqueLookup={techniqueLookup} />
               <SoftwarePreview software={result.shared_software} />
             </div>
           </li>
@@ -315,7 +341,13 @@ function IncidentResults({
   );
 }
 
-function WhyMatched({ result }: { result: ActorComparisonResponse["results"][number] }) {
+function WhyMatched({
+  result,
+  techniqueLookup
+}: {
+  result: ActorComparisonResponse["results"][number];
+  techniqueLookup: TechniqueLookup;
+}) {
   const rareShared = result.rare_shared_techniques ?? [];
   return (
     <div className="why-match">
@@ -324,20 +356,43 @@ function WhyMatched({ result }: { result: ActorComparisonResponse["results"][num
         Technique overlap score {formatScore(result.technique_score)}
         {result.software_score > 0 ? `, software overlap ${formatScore(result.software_score)}` : ""}.
       </p>
-      <TechniqueLine label="Shared techniques" techniques={result.shared_techniques} emptyText="No shared techniques" />
+      <TechniqueLine
+        label="Shared techniques"
+        techniques={result.shared_techniques}
+        emptyText="No shared techniques"
+        techniqueLookup={techniqueLookup}
+      />
       {rareShared.length > 0 ? (
-        <TechniqueLine label="Rare shared techniques" techniques={rareShared} emptyText="" />
+        <TechniqueLine label="Rare shared techniques" techniques={rareShared} emptyText="" techniqueLookup={techniqueLookup} />
       ) : null}
     </div>
   );
 }
 
-function TechniqueLine({ label, techniques, emptyText }: { label: string; techniques: string[]; emptyText: string }) {
+function TechniqueLine({
+  label,
+  techniques,
+  emptyText,
+  techniqueLookup
+}: {
+  label: string;
+  techniques: string[];
+  emptyText: string;
+  techniqueLookup: TechniqueLookup;
+}) {
   const visible = techniques.slice(0, 12);
   const hiddenCount = techniques.length - visible.length;
   return (
     <p className="technique-preview">
-      <strong>{label}</strong> {visible.join(", ") || emptyText}
+      <strong>{label}</strong>{" "}
+      {visible.length > 0
+        ? visible.map((techniqueId, index) => (
+            <span className="technique-label" key={techniqueId} title={techniqueTitle(techniqueId, techniqueLookup)}>
+              {index > 0 ? ", " : ""}
+              {techniqueLabel(techniqueId, techniqueLookup)}
+            </span>
+          ))
+        : emptyText}
       {hiddenCount > 0 ? ` +${hiddenCount} more` : ""}
     </p>
   );
@@ -359,7 +414,7 @@ function SoftwarePreview({ software }: { software: SoftwareSummary[] }) {
   );
 }
 
-function TacticBreakdownList({ items }: { items: TacticBreakdown[] }) {
+function TacticBreakdownList({ items, techniqueLookup }: { items: TacticBreakdown[]; techniqueLookup: TechniqueLookup }) {
   const visibleItems = items.filter((item) => item.union_technique_count > 0).slice(0, 5);
   if (visibleItems.length === 0) {
     return null;
@@ -378,7 +433,13 @@ function TacticBreakdownList({ items }: { items: TacticBreakdown[] }) {
           </div>
           <p>
             {item.shared_technique_count}/{item.union_technique_count} shared
-            {item.shared_techniques.length > 0 ? `: ${item.shared_techniques.slice(0, 5).join(", ")}` : ""}
+            {item.shared_techniques.length > 0 ? ": " : ""}
+            {item.shared_techniques.slice(0, 5).map((techniqueId, index) => (
+              <span className="technique-label" key={techniqueId} title={techniqueTitle(techniqueId, techniqueLookup)}>
+                {index > 0 ? ", " : ""}
+                {techniqueLabel(techniqueId, techniqueLookup)}
+              </span>
+            ))}
           </p>
         </div>
       ))}
@@ -445,12 +506,4 @@ function metricLabel(metric: SimilarityMetric): string {
     return "Software weighted";
   }
   return "Jaccard";
-}
-
-function formatTactic(tactic: string): string {
-  return tactic
-    .split(/[-_\s]+/)
-    .filter(Boolean)
-    .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
-    .join(" ");
 }

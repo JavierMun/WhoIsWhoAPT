@@ -5,7 +5,7 @@ import {
   forceManyBody,
   forceSimulation
 } from "d3-force";
-import { AlertCircle, FileJson, Loader2, Network, RefreshCw } from "lucide-react";
+import { AlertCircle, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, FileJson, Loader2, Network, RefreshCw, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { computeMatrix, getClusters, getMatrixResult } from "../api/client";
@@ -276,8 +276,12 @@ function NetworkHeader({
 function ForceGraph({ nodes, links }: { nodes: GraphNode[]; links: GraphLink[] }) {
   const [layoutNodes, setLayoutNodes] = useState<GraphNode[]>(nodes);
   const [layoutLinks, setLayoutLinks] = useState<GraphLink[]>(links);
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
     const nextNodes = nodes.map((node, index) => {
       const angle = (index / Math.max(1, nodes.length)) * Math.PI * 2;
       return {
@@ -319,8 +323,51 @@ function ForceGraph({ nodes, links }: { nodes: GraphNode[]; links: GraphLink[] }
 
   return (
     <div className="network-canvas">
+      <div className="graph-viewport-controls network-viewport-controls" aria-label="Network graph viewport controls">
+        <button
+          type="button"
+          title="Zoom in"
+          onClick={() => {
+            setZoom((value) => Math.min(1.9, value + 0.15));
+          }}
+        >
+          <ZoomIn size={16} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          title="Zoom out"
+          onClick={() => {
+            setZoom((value) => Math.max(0.6, value - 0.15));
+          }}
+        >
+          <ZoomOut size={16} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          title="Reset graph view"
+          onClick={() => {
+            setZoom(1);
+            setPan({ x: 0, y: 0 });
+          }}
+        >
+          <RotateCcw size={16} aria-hidden="true" />
+        </button>
+        <button type="button" title="Pan left" onClick={() => setPan((value) => ({ ...value, x: value.x - 36 }))}>
+          <ArrowLeft size={16} aria-hidden="true" />
+        </button>
+        <button type="button" title="Pan right" onClick={() => setPan((value) => ({ ...value, x: value.x + 36 }))}>
+          <ArrowRight size={16} aria-hidden="true" />
+        </button>
+        <button type="button" title="Pan up" onClick={() => setPan((value) => ({ ...value, y: value.y - 36 }))}>
+          <ArrowUp size={16} aria-hidden="true" />
+        </button>
+        <button type="button" title="Pan down" onClick={() => setPan((value) => ({ ...value, y: value.y + 36 }))}>
+          <ArrowDown size={16} aria-hidden="true" />
+        </button>
+      </div>
       <svg viewBox={`0 0 ${GRAPH_WIDTH} ${GRAPH_HEIGHT}`} role="img" aria-label="Actor similarity network graph">
-        <g>
+        <g transform={`translate(${pan.x} ${pan.y}) scale(${zoom})`}>
+          <g>
           {layoutLinks.map((link, index) => {
             const source = graphEndpoint(link.source);
             const target = graphEndpoint(link.target);
@@ -341,8 +388,8 @@ function ForceGraph({ nodes, links }: { nodes: GraphNode[]; links: GraphLink[] }
               </line>
             );
           })}
-        </g>
-        <g>
+          </g>
+          <g>
           {layoutNodes.map((node) => (
             <g key={node.id} transform={`translate(${node.x ?? GRAPH_WIDTH / 2}, ${node.y ?? GRAPH_HEIGHT / 2})`}>
               <circle r={nodeRadius(node)} fill={clusterColor(node.clusterId)} className="network-node" />
@@ -350,6 +397,7 @@ function ForceGraph({ nodes, links }: { nodes: GraphNode[]; links: GraphLink[] }
               <text dy={nodeRadius(node) + 13}>{shortActorName(node.name)}</text>
             </g>
           ))}
+          </g>
         </g>
       </svg>
     </div>

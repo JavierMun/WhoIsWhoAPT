@@ -8,6 +8,10 @@ import {
   formatTactic,
   groupTechniquesByTactic,
   parseTechniqueIds,
+  techniqueLabel,
+  techniqueLookupFromList,
+  techniqueTitle,
+  type TechniqueLookup,
   unknownTechniqueIds,
   type NavigatorLayer
 } from "../api/ttpProfileUtils";
@@ -57,7 +61,7 @@ export function TTPProfilesPanel() {
   }, []);
 
   const techniqueLookup = useMemo(
-    () => new Map(techniques.map((technique) => [technique.technique_id, technique])),
+    () => techniqueLookupFromList(techniques),
     [techniques]
   );
   const validTechniqueIds = useMemo(() => new Set(techniques.map((technique) => technique.technique_id)), [techniques]);
@@ -436,7 +440,7 @@ export function TTPProfilesPanel() {
           )}
         </section>
 
-        <ProfileComparisonResults comparison={comparison} loading={comparing} topN={topN} />
+        <ProfileComparisonResults comparison={comparison} loading={comparing} topN={topN} techniqueLookup={techniqueLookup} />
       </div>
     </section>
   );
@@ -467,10 +471,10 @@ function SelectedTechniqueSummary({
             className="technique-chip"
             key={technique.technique_id}
             type="button"
-            title={technique.name}
+            title={techniqueTitle(technique.technique_id, lookup)}
             onClick={() => onRemove(technique.technique_id)}
           >
-            <span>{technique.technique_id}</span>
+            <span>{techniqueLabel(technique.technique_id, lookup)}</span>
             <X size={14} aria-hidden="true" />
           </button>
         ))}
@@ -504,8 +508,9 @@ function ProfileInspector({ profile, groups }: { profile: CustomTTPSet; groups: 
             <ul>
               {group.techniques.map((technique) => (
                 <li key={technique.technique_id}>
-                  <span>{technique.technique_id}</span>
-                  {technique.name}
+                  <span title={`${technique.technique_id} — ${technique.name}\nTactic: ${formatTactic(technique.tactic)}`}>
+                    {technique.technique_id} — {technique.name}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -519,11 +524,13 @@ function ProfileInspector({ profile, groups }: { profile: CustomTTPSet; groups: 
 function ProfileComparisonResults({
   comparison,
   loading,
-  topN
+  topN,
+  techniqueLookup
 }: {
   comparison: ActorComparisonResponse | null;
   loading: boolean;
   topN: number;
+  techniqueLookup: TechniqueLookup;
 }) {
   if (loading) {
     return (
@@ -562,7 +569,7 @@ function ProfileComparisonResults({
             type="button"
             title={canExport ? "Export JSON" : "Run a comparison with results before exporting"}
             disabled={!canExport}
-            onClick={() => downloadComparisonExport(comparison, "json", "mitre", topN)}
+            onClick={() => downloadComparisonExport(comparison, "json", "mitre", topN, techniqueLookup)}
           >
             <FileJson size={16} aria-hidden="true" />
           </button>
@@ -570,7 +577,7 @@ function ProfileComparisonResults({
             type="button"
             title={canExport ? "Export CSV" : "Run a comparison with results before exporting"}
             disabled={!canExport}
-            onClick={() => downloadComparisonExport(comparison, "csv", "mitre", topN)}
+            onClick={() => downloadComparisonExport(comparison, "csv", "mitre", topN, techniqueLookup)}
           >
             <Table size={16} aria-hidden="true" />
           </button>
@@ -578,7 +585,7 @@ function ProfileComparisonResults({
             type="button"
             title={canExport ? "Export Navigator layer" : "Run a comparison with results before exporting"}
             disabled={!canExport}
-            onClick={() => downloadComparisonExport(comparison, "navigator", "mitre", topN)}
+            onClick={() => downloadComparisonExport(comparison, "navigator", "mitre", topN, techniqueLookup)}
           >
             <Download size={16} aria-hidden="true" />
           </button>
@@ -601,8 +608,8 @@ function ProfileComparisonResults({
                 <span>{result.unique_to_input.length} unmatched profile</span>
                 <span>{result.unique_to_matched_entity.length} actor-only techniques</span>
               </div>
-              <WhyMatched result={result} />
-              <TacticBreakdownList items={result.tactic_breakdown} />
+              <WhyMatched result={result} techniqueLookup={techniqueLookup} />
+              <TacticBreakdownList items={result.tactic_breakdown} techniqueLookup={techniqueLookup} />
               <SoftwarePreview software={result.shared_software} />
             </div>
           </li>
@@ -612,7 +619,13 @@ function ProfileComparisonResults({
   );
 }
 
-function WhyMatched({ result }: { result: ActorComparisonResponse["results"][number] }) {
+function WhyMatched({
+  result,
+  techniqueLookup
+}: {
+  result: ActorComparisonResponse["results"][number];
+  techniqueLookup: TechniqueLookup;
+}) {
   const rareShared = result.rare_shared_techniques ?? [];
   return (
     <div className="why-match">
@@ -621,18 +634,43 @@ function WhyMatched({ result }: { result: ActorComparisonResponse["results"][num
         Technique overlap score {formatScore(result.technique_score)}
         {result.software_score > 0 ? `, software overlap ${formatScore(result.software_score)}` : ""}.
       </p>
-      <TechniqueLine label="Shared techniques" techniques={result.shared_techniques} emptyText="No shared techniques" />
-      {rareShared.length > 0 ? <TechniqueLine label="Rare shared techniques" techniques={rareShared} emptyText="" /> : null}
+      <TechniqueLine
+        label="Shared techniques"
+        techniques={result.shared_techniques}
+        emptyText="No shared techniques"
+        techniqueLookup={techniqueLookup}
+      />
+      {rareShared.length > 0 ? (
+        <TechniqueLine label="Rare shared techniques" techniques={rareShared} emptyText="" techniqueLookup={techniqueLookup} />
+      ) : null}
     </div>
   );
 }
 
-function TechniqueLine({ label, techniques, emptyText }: { label: string; techniques: string[]; emptyText: string }) {
+function TechniqueLine({
+  label,
+  techniques,
+  emptyText,
+  techniqueLookup
+}: {
+  label: string;
+  techniques: string[];
+  emptyText: string;
+  techniqueLookup: TechniqueLookup;
+}) {
   const visible = techniques.slice(0, 12);
   const hiddenCount = techniques.length - visible.length;
   return (
     <p className="technique-preview">
-      <strong>{label}</strong> {visible.join(", ") || emptyText}
+      <strong>{label}</strong>{" "}
+      {visible.length > 0
+        ? visible.map((techniqueId, index) => (
+            <span className="technique-label" key={techniqueId} title={techniqueTitle(techniqueId, techniqueLookup)}>
+              {index > 0 ? ", " : ""}
+              {techniqueLabel(techniqueId, techniqueLookup)}
+            </span>
+          ))
+        : emptyText}
       {hiddenCount > 0 ? ` +${hiddenCount} more` : ""}
     </p>
   );
@@ -654,7 +692,7 @@ function SoftwarePreview({ software }: { software: SoftwareSummary[] }) {
   );
 }
 
-function TacticBreakdownList({ items }: { items: TacticBreakdown[] }) {
+function TacticBreakdownList({ items, techniqueLookup }: { items: TacticBreakdown[]; techniqueLookup: TechniqueLookup }) {
   const visibleItems = items.filter((item) => item.union_technique_count > 0).slice(0, 5);
   if (visibleItems.length === 0) {
     return null;
@@ -673,7 +711,13 @@ function TacticBreakdownList({ items }: { items: TacticBreakdown[] }) {
           </div>
           <p>
             {item.shared_technique_count}/{item.union_technique_count} shared
-            {item.shared_techniques.length > 0 ? `: ${item.shared_techniques.slice(0, 5).join(", ")}` : ""}
+            {item.shared_techniques.length > 0 ? ": " : ""}
+            {item.shared_techniques.slice(0, 5).map((techniqueId, index) => (
+              <span className="technique-label" key={techniqueId} title={techniqueTitle(techniqueId, techniqueLookup)}>
+                {index > 0 ? ", " : ""}
+                {techniqueLabel(techniqueId, techniqueLookup)}
+              </span>
+            ))}
           </p>
         </div>
       ))}

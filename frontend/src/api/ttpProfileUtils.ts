@@ -18,6 +18,8 @@ export type TechniqueGroup = {
   techniques: TechniqueListItem[];
 };
 
+export type TechniqueLookup = Map<string, TechniqueListItem>;
+
 export function parseTechniqueIds(value: string): string[] {
   return sortedTechniqueIds(value.toUpperCase().match(/T\d{4}(?:\.\d{3})?/g) ?? []);
 }
@@ -51,7 +53,7 @@ export function extractNavigatorTechniqueIds(layer: NavigatorLayer): string[] {
 
 export function groupTechniquesByTactic(
   techniqueIds: string[],
-  techniqueLookup: Map<string, TechniqueListItem>
+  techniqueLookup: TechniqueLookup
 ): TechniqueGroup[] {
   const groups = new Map<string, TechniqueListItem[]>();
   techniqueIds.forEach((techniqueId) => {
@@ -68,6 +70,20 @@ export function groupTechniquesByTactic(
       tactic,
       techniques: techniques.sort((left, right) => left.technique_id.localeCompare(right.technique_id))
     }));
+}
+
+export function techniqueLookupFromList(techniques: TechniqueListItem[]): TechniqueLookup {
+  return new Map(techniques.map((technique) => [technique.technique_id, technique]));
+}
+
+export function techniqueLabel(techniqueId: string, techniqueLookup: TechniqueLookup): string {
+  const technique = techniqueLookup.get(techniqueId);
+  return technique ? `${technique.technique_id} — ${technique.name}` : techniqueId;
+}
+
+export function techniqueTitle(techniqueId: string, techniqueLookup: TechniqueLookup): string {
+  const technique = techniqueLookup.get(techniqueId);
+  return technique ? `${techniqueLabel(techniqueId, techniqueLookup)}\nTactic: ${formatTactic(technique.tactic)}` : techniqueId;
 }
 
 export function unknownTechniqueIds(techniqueIds: string[], validTechniqueIds: Set<string>): string[] {

@@ -2,6 +2,7 @@ import { BarChart3, Download, FileJson, GitGraph, Table } from "lucide-react";
 import { useState } from "react";
 
 import { downloadComparisonExport } from "../api/exportUtils";
+import type { TechniqueLookup } from "../api/ttpProfileUtils";
 import type { ActorComparisonResponse, SimilarityMetric } from "../api/types";
 import { ComparisonGraphView } from "./ComparisonGraphView";
 import { ComparisonHeatmapView } from "./ComparisonHeatmapView";
@@ -13,12 +14,14 @@ export function ComparisonResultTabs({
   comparison,
   topN,
   comparisonScopeLabel,
-  tacticScopeLabel
+  tacticScopeLabel,
+  techniqueLookup
 }: {
   comparison: ActorComparisonResponse;
   topN: number;
   comparisonScopeLabel: string;
   tacticScopeLabel: string;
+  techniqueLookup: TechniqueLookup;
 }) {
   const [activeView, setActiveView] = useState<ComparisonView>("ranking");
 
@@ -33,16 +36,24 @@ export function ComparisonResultTabs({
         </div>
         <div className="results-actions">
           <span className="metric-label">{metricLabel(comparison.metric)}</span>
-          <button type="button" title="Export JSON" onClick={() => downloadComparisonExport(comparison, "json", "mitre", topN)}>
+          <button
+            type="button"
+            title="Export JSON"
+            onClick={() => downloadComparisonExport(comparison, "json", "mitre", topN, techniqueLookup)}
+          >
             <FileJson size={16} aria-hidden="true" />
           </button>
-          <button type="button" title="Export CSV" onClick={() => downloadComparisonExport(comparison, "csv", "mitre", topN)}>
+          <button
+            type="button"
+            title="Export CSV"
+            onClick={() => downloadComparisonExport(comparison, "csv", "mitre", topN, techniqueLookup)}
+          >
             <Table size={16} aria-hidden="true" />
           </button>
           <button
             type="button"
             title="Export Navigator layer"
-            onClick={() => downloadComparisonExport(comparison, "navigator", "mitre", topN)}
+            onClick={() => downloadComparisonExport(comparison, "navigator", "mitre", topN, techniqueLookup)}
           >
             <Download size={16} aria-hidden="true" />
           </button>
@@ -56,7 +67,7 @@ export function ComparisonResultTabs({
       </div>
 
       <div className="comparison-tab-body">
-        {activeView === "ranking" ? <ComparisonRankingView comparison={comparison} /> : null}
+        {activeView === "ranking" ? <ComparisonRankingView comparison={comparison} techniqueLookup={techniqueLookup} /> : null}
         {activeView === "heatmap" ? <ComparisonHeatmapView comparison={comparison} /> : null}
         {activeView === "graph" ? <ComparisonGraphView comparison={comparison} /> : null}
       </div>

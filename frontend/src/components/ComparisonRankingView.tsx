@@ -1,6 +1,13 @@
+import { techniqueLabel, techniqueTitle, type TechniqueLookup } from "../api/ttpProfileUtils";
 import type { ActorComparisonResponse, SoftwareSummary, TacticBreakdown } from "../api/types";
 
-export function ComparisonRankingView({ comparison }: { comparison: ActorComparisonResponse }) {
+export function ComparisonRankingView({
+  comparison,
+  techniqueLookup
+}: {
+  comparison: ActorComparisonResponse;
+  techniqueLookup: TechniqueLookup;
+}) {
   return (
     <ol className="result-list">
       {comparison.results.map((result, index) => (
@@ -16,10 +23,10 @@ export function ComparisonRankingView({ comparison }: { comparison: ActorCompari
               <span>{result.unique_to_matched_entity.length} unique matched</span>
               <span>{result.unique_to_input.length} unique input</span>
             </div>
-            <TechniquePreview techniques={result.shared_techniques} />
+            <TechniquePreview techniques={result.shared_techniques} techniqueLookup={techniqueLookup} />
             {result.explanation ? <p className="result-explanation">{result.explanation}</p> : null}
             <SoftwarePreview software={result.shared_software} />
-            <TacticBreakdownList items={result.tactic_breakdown} />
+            <TacticBreakdownList items={result.tactic_breakdown} techniqueLookup={techniqueLookup} />
           </div>
         </li>
       ))}
@@ -27,7 +34,7 @@ export function ComparisonRankingView({ comparison }: { comparison: ActorCompari
   );
 }
 
-function TechniquePreview({ techniques }: { techniques: string[] }) {
+function TechniquePreview({ techniques, techniqueLookup }: { techniques: string[]; techniqueLookup: TechniqueLookup }) {
   if (techniques.length === 0) {
     return <p className="technique-preview muted">No shared techniques</p>;
   }
@@ -37,7 +44,12 @@ function TechniquePreview({ techniques }: { techniques: string[] }) {
 
   return (
     <p className="technique-preview">
-      {visible.join(", ")}
+      {visible.map((techniqueId, index) => (
+        <span className="technique-label" key={techniqueId} title={techniqueTitle(techniqueId, techniqueLookup)}>
+          {index > 0 ? ", " : ""}
+          {techniqueLabel(techniqueId, techniqueLookup)}
+        </span>
+      ))}
       {hiddenCount > 0 ? ` +${hiddenCount} more` : ""}
     </p>
   );
@@ -59,7 +71,7 @@ function SoftwarePreview({ software }: { software: SoftwareSummary[] }) {
   );
 }
 
-function TacticBreakdownList({ items }: { items: TacticBreakdown[] }) {
+function TacticBreakdownList({ items, techniqueLookup }: { items: TacticBreakdown[]; techniqueLookup: TechniqueLookup }) {
   const visibleItems = items.filter((item) => item.union_technique_count > 0).slice(0, 4);
   if (visibleItems.length === 0) {
     return null;
@@ -78,7 +90,13 @@ function TacticBreakdownList({ items }: { items: TacticBreakdown[] }) {
           </div>
           <p>
             {item.shared_technique_count}/{item.union_technique_count} shared
-            {item.shared_techniques.length > 0 ? `: ${item.shared_techniques.slice(0, 4).join(", ")}` : ""}
+            {item.shared_techniques.length > 0 ? ": " : ""}
+            {item.shared_techniques.slice(0, 4).map((techniqueId, index) => (
+              <span className="technique-label" key={techniqueId} title={techniqueTitle(techniqueId, techniqueLookup)}>
+                {index > 0 ? ", " : ""}
+                {techniqueLabel(techniqueId, techniqueLookup)}
+              </span>
+            ))}
           </p>
         </div>
       ))}
