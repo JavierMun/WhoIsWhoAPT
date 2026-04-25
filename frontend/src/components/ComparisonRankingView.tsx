@@ -17,6 +17,7 @@ export function ComparisonRankingView({ comparison }: { comparison: ActorCompari
               <span>{result.unique_to_input.length} unique input</span>
             </div>
             <TechniquePreview techniques={result.shared_techniques} />
+            {result.explanation ? <p className="result-explanation">{result.explanation}</p> : null}
             <SoftwarePreview software={result.shared_software} />
             <TacticBreakdownList items={result.tactic_breakdown} />
           </div>

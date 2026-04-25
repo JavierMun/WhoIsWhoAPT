@@ -1,12 +1,13 @@
 import { AlertCircle, BarChart3, Loader2, Search, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-import { compareActor, getActors, getCustomSets } from "../api/client";
+import { compareActor, getActors, getCustomSets, getTechniques } from "../api/client";
 import type {
   ActorComparisonResponse,
   ActorListItem,
   CustomTTPSet,
-  SimilarityMetric
+  SimilarityMetric,
+  TechniqueListItem
 } from "../api/types";
 import { ComparisonResultTabs } from "./ComparisonResultTabs";
 
@@ -23,8 +24,10 @@ type TargetOption = {
 export function ActorComparisonPanel() {
   const [actors, setActors] = useState<ActorListItem[]>([]);
   const [profiles, setProfiles] = useState<CustomTTPSet[]>([]);
+  const [techniques, setTechniques] = useState<TechniqueListItem[]>([]);
   const [actorQuery, setActorQuery] = useState("");
   const [selectedActorId, setSelectedActorId] = useState("");
+  const [selectedTactic, setSelectedTactic] = useState("all");
   const [scope, setScope] = useState<ComparisonScope>("all");
   const [targetQuery, setTargetQuery] = useState("");
   const [selectedTargetKeys, setSelectedTargetKeys] = useState<string[]>([]);
@@ -36,10 +39,11 @@ export function ActorComparisonPanel() {
   const [comparison, setComparison] = useState<ActorComparisonResponse | null>(null);
 
   useEffect(() => {
-    Promise.all([getActors(), getCustomSets()])
-      .then(([items, profileItems]) => {
+    Promise.all([getActors(), getCustomSets(), getTechniques()])
+      .then(([items, profileItems, techniqueItems]) => {
         setActors(items);
         setProfiles(profileItems);
+        setTechniques(techniqueItems);
         setSelectedActorId(items[0]?.id ?? "");
       })
       .catch((apiError: unknown) => {
@@ -91,6 +95,15 @@ export function ActorComparisonPanel() {
   }, [selectedTargetKeys, targetOptions, targetQuery]);
   const actorTargets = filteredTargets.filter((target) => target.kind === "actor").slice(0, 40);
   const profileTargets = filteredTargets.filter((target) => target.kind === "profile").slice(0, 20);
+  const availableTactics = useMemo(
+    () =>
+      Array.from(new Set(techniques.map((technique) => technique.tactic).filter(Boolean))).sort((left, right) =>
+        formatTactic(left).localeCompare(formatTactic(right))
+      ),
+    [techniques]
+  );
+  const selectedTactics = selectedTactic === "all" ? undefined : [selectedTactic];
+  const tacticScopeLabel = selectedTactic === "all" ? "All tactics" : formatTactic(selectedTactic);
   const comparisonScopeLabel =
     scope === "all" ? "All actors" : selectedTargets.map((target) => target.label).join(", ") || "No targets selected";
 
@@ -106,6 +119,10 @@ export function ActorComparisonPanel() {
       setError("Select at least one actor target. TTP profile targets are shown for future profile comparison support.");
       return;
     }
+    if (selectedTactic !== "all" && !availableTactics.includes(selectedTactic)) {
+      setError("Select a valid tactic scope before comparing.");
+      return;
+    }
 
     setCompareLoading(true);
     setError(null);
@@ -117,7 +134,8 @@ export function ActorComparisonPanel() {
           effectiveSelectedActorId,
           metric,
           topN,
-          scope === "selected" ? selectedActorTargetIds : undefined
+          scope === "selected" ? selectedActorTargetIds : undefined,
+          selectedTactics
         )
       );
     } catch (apiError) {
@@ -216,6 +234,25 @@ export function ActorComparisonPanel() {
                 setTopN(Number.isFinite(nextValue) ? Math.min(100, Math.max(1, nextValue)) : DEFAULT_TOP_N);
               }}
             />
+          </label>
+
+          <label className="field-group" htmlFor="tactic-scope-select">
+            <span>Similarity scope</span>
+            <select
+              id="tactic-scope-select"
+              value={selectedTactic}
+              disabled={actorsLoading || availableTactics.length === 0}
+              onChange={(event) => {
+                setSelectedTactic(event.target.value);
+              }}
+            >
+              <option value="all">All tactics</option>
+              {availableTactics.map((tactic) => (
+                <option key={tactic} value={tactic}>
+                  {formatTactic(tactic)}
+                </option>
+              ))}
+            </select>
           </label>
 
           <fieldset className="scope-selector">
@@ -330,6 +367,7 @@ export function ActorComparisonPanel() {
           loading={compareLoading}
           topN={topN}
           comparisonScopeLabel={comparisonScopeLabel}
+          tacticScopeLabel={tacticScopeLabel}
         />
       </div>
     </section>
@@ -376,12 +414,14 @@ function ComparisonResults({
   comparison,
   loading,
   topN,
-  comparisonScopeLabel
+  comparisonScopeLabel,
+  tacticScopeLabel
 }: {
   comparison: ActorComparisonResponse | null;
   loading: boolean;
   topN: number;
   comparisonScopeLabel: string;
+  tacticScopeLabel: string;
 }) {
   if (loading) {
     return (
@@ -415,6 +455,7 @@ function ComparisonResults({
             <p className="panel-label">Input</p>
             <h2>{comparison.input_name}</h2>
             <p className="scope-summary">Comparing against: {comparisonScopeLabel}</p>
+            <p className="scope-summary">Similarity scope: {tacticScopeLabel}</p>
           </div>
           <span className="metric-label">{metricLabel(comparison.metric)}</span>
         </div>
@@ -426,7 +467,14 @@ function ComparisonResults({
     );
   }
 
-  return <ComparisonResultTabs comparison={comparison} topN={topN} comparisonScopeLabel={comparisonScopeLabel} />;
+  return (
+    <ComparisonResultTabs
+      comparison={comparison}
+      topN={topN}
+      comparisonScopeLabel={comparisonScopeLabel}
+      tacticScopeLabel={tacticScopeLabel}
+    />
+  );
 }
 
 function StatusMessage({ tone, message }: { tone: "neutral" | "error"; message: string }) {
@@ -480,4 +528,12 @@ function buildTargetOptions(
 
 function targetKeyFor(target: TargetOption): string {
   return `${target.kind}:${target.id}`;
+}
+
+function formatTactic(tactic: string): string {
+  return tactic
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
+    .join(" ");
 }

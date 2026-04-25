@@ -12,11 +12,13 @@ type ComparisonView = "ranking" | "heatmap" | "graph";
 export function ComparisonResultTabs({
   comparison,
   topN,
-  comparisonScopeLabel
+  comparisonScopeLabel,
+  tacticScopeLabel
 }: {
   comparison: ActorComparisonResponse;
   topN: number;
   comparisonScopeLabel: string;
+  tacticScopeLabel: string;
 }) {
   const [activeView, setActiveView] = useState<ComparisonView>("ranking");
 
@@ -27,6 +29,7 @@ export function ComparisonResultTabs({
           <p className="panel-label">Input</p>
           <h2>{comparison.input_name}</h2>
           <p className="scope-summary">Comparing against: {comparisonScopeLabel}</p>
+          <p className="scope-summary">Similarity scope: {tacticScopeLabel}</p>
         </div>
         <div className="results-actions">
           <span className="metric-label">{metricLabel(comparison.metric)}</span>

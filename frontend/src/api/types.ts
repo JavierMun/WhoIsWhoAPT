@@ -51,6 +51,7 @@ export interface ComparisonResult {
   unique_to_matched_entity_software: SoftwareSummary[];
   tactic_breakdown: TacticBreakdown[];
   rare_shared_techniques: string[];
+  explanation: string | null;
 }
 
 export interface ActorComparisonResponse {

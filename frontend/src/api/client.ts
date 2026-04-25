@@ -52,7 +52,8 @@ export function compareActor(
   actorId: string,
   metric: SimilarityMetric,
   topN: number,
-  targetIds?: string[]
+  targetIds?: string[],
+  tactics?: string[]
 ): Promise<ActorComparisonResponse> {
   return request<ActorComparisonResponse>("/api/compare/actor", {
     method: "POST",
@@ -60,7 +61,8 @@ export function compareActor(
       actor_id: actorId,
       metric,
       top_n: topN,
-      ...(targetIds ? { target_ids: targetIds } : {})
+      ...(targetIds ? { target_ids: targetIds } : {}),
+      ...(tactics && tactics.length > 0 ? { tactics } : {})
     })
   });
 }

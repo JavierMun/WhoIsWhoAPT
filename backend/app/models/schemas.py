@@ -209,6 +209,7 @@ class ComparisonResult(BaseModel):
     unique_to_matched_entity_software: list[SoftwareSummary] = Field(default_factory=list)
     tactic_breakdown: list[TacticBreakdown] = Field(default_factory=list)
     rare_shared_techniques: list[str] = Field(default_factory=list)
+    explanation: str | None = None
 
 
 class ComparisonResponse(BaseModel):
@@ -230,6 +231,7 @@ class ActorComparisonRequest(BaseModel):
     metric: SimilarityMetric = "jaccard"
     top_n: int | None = Field(default=None, ge=1, le=100)
     include_self: bool = False
+    tactics: list[str] | None = None
 
 
 class CustomTTPSetCreate(BaseModel):
@@ -259,6 +261,7 @@ class CustomComparisonRequest(BaseModel):
     technique_ids: list[str] | None = None
     metric: SimilarityMetric = "jaccard"
     top_n: int | None = Field(default=None, ge=1, le=100)
+    tactics: list[str] | None = None
 
 
 class IncidentAnalysisRequest(BaseModel):
@@ -269,6 +272,7 @@ class IncidentAnalysisRequest(BaseModel):
     technique_ids: list[str] = Field(default_factory=list)
     metric: SimilarityMetric = "jaccard"
     top_n: int | None = Field(default=10, ge=1, le=100)
+    tactics: list[str] | None = None
 
 
 class ExportMetadata(BaseModel):

@@ -953,6 +953,13 @@ h1 {
   font-weight: 650;
 }
 
+.result-explanation {
+  margin: 8px 0 0;
+  color: #6c3b12;
+  font-size: 0.88rem;
+  font-weight: 650;
+}
+
 .incident-controls {
   align-content: start;
 }
