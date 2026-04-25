@@ -1,16 +1,14 @@
-import { AlertCircle, BarChart3, Download, FileJson, Loader2, Search, Table, X } from "lucide-react";
+import { AlertCircle, BarChart3, Loader2, Search, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { compareActor, getActors, getCustomSets } from "../api/client";
-import { downloadComparisonExport } from "../api/exportUtils";
 import type {
   ActorComparisonResponse,
   ActorListItem,
   CustomTTPSet,
-  SimilarityMetric,
-  SoftwareSummary,
-  TacticBreakdown
+  SimilarityMetric
 } from "../api/types";
+import { ComparisonResultTabs } from "./ComparisonResultTabs";
 
 const DEFAULT_TOP_N = 10;
 type ComparisonScope = "all" | "selected";
@@ -409,128 +407,26 @@ function ComparisonResults({
 
   const canExport = comparison.results.length > 0;
 
-  return (
-    <section className="results-panel" aria-live="polite">
-      <div className="results-header">
-        <div>
-          <p className="panel-label">Input</p>
-          <h2>{comparison.input_name}</h2>
-          <p className="scope-summary">Comparing against: {comparisonScopeLabel}</p>
-        </div>
-        <div className="results-actions">
+  if (!canExport) {
+    return (
+      <section className="results-panel" aria-live="polite">
+        <div className="results-header">
+          <div>
+            <p className="panel-label">Input</p>
+            <h2>{comparison.input_name}</h2>
+            <p className="scope-summary">Comparing against: {comparisonScopeLabel}</p>
+          </div>
           <span className="metric-label">{metricLabel(comparison.metric)}</span>
-          <button
-            type="button"
-            title={canExport ? "Export JSON" : "Run a comparison with results before exporting"}
-            disabled={!canExport}
-            onClick={() => downloadComparisonExport(comparison, "json", "mitre", topN)}
-          >
-            <FileJson size={16} aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            title={canExport ? "Export CSV" : "Run a comparison with results before exporting"}
-            disabled={!canExport}
-            onClick={() => downloadComparisonExport(comparison, "csv", "mitre", topN)}
-          >
-            <Table size={16} aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            title={canExport ? "Export Navigator layer" : "Run a comparison with results before exporting"}
-            disabled={!canExport}
-            onClick={() => downloadComparisonExport(comparison, "navigator", "mitre", topN)}
-          >
-            <Download size={16} aria-hidden="true" />
-          </button>
         </div>
-      </div>
-
-      <ol className="result-list">
-        {comparison.results.length === 0 ? (
-          <li className="empty-result">No comparable actors found. Load MITRE data or choose another actor.</li>
-        ) : null}
-        {comparison.results.map((result, index) => (
-          <li className="result-row" key={result.matched_entity_id}>
-            <div className="rank">{index + 1}</div>
-            <div className="result-main">
-              <div className="result-title-line">
-                <h3>{result.matched_entity_name}</h3>
-                <strong>{formatScore(result.score)}</strong>
-              </div>
-              <div className="result-meta">
-                <span>{result.shared_techniques.length} shared techniques</span>
-                <span>{result.unique_to_matched_entity.length} unique matched</span>
-                <span>{result.unique_to_input.length} unique input</span>
-              </div>
-              <TechniquePreview techniques={result.shared_techniques} />
-              <SoftwarePreview software={result.shared_software} />
-              <TacticBreakdownList items={result.tactic_breakdown} />
-            </div>
-          </li>
-        ))}
-      </ol>
-    </section>
-  );
-}
-
-function TechniquePreview({ techniques }: { techniques: string[] }) {
-  if (techniques.length === 0) {
-    return <p className="technique-preview muted">No shared techniques</p>;
-  }
-
-  const visible = techniques.slice(0, 8);
-  const hiddenCount = techniques.length - visible.length;
-
-  return (
-    <p className="technique-preview">
-      {visible.join(", ")}
-      {hiddenCount > 0 ? ` +${hiddenCount} more` : ""}
-    </p>
-  );
-}
-
-function SoftwarePreview({ software }: { software: SoftwareSummary[] }) {
-  if (software.length === 0) {
-    return null;
-  }
-
-  const visible = software.slice(0, 6).map((item) => item.name);
-  const hiddenCount = software.length - visible.length;
-
-  return (
-    <p className="software-preview">
-      <strong>Shared software</strong> {visible.join(", ")}
-      {hiddenCount > 0 ? ` +${hiddenCount} more` : ""}
-    </p>
-  );
-}
-
-function TacticBreakdownList({ items }: { items: TacticBreakdown[] }) {
-  const visibleItems = items.filter((item) => item.union_technique_count > 0).slice(0, 4);
-  if (visibleItems.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="tactic-breakdown" aria-label="Tactic breakdown">
-      {visibleItems.map((item) => (
-        <div className="tactic-row" key={item.tactic}>
-          <div className="tactic-row-header">
-            <strong>{formatTactic(item.tactic)}</strong>
-            <span>{formatScore(item.score_contribution)}</span>
-          </div>
-          <div className="tactic-meter" aria-hidden="true">
-            <span style={{ width: `${Math.round(item.score_contribution * 100)}%` }} />
-          </div>
-          <p>
-            {item.shared_technique_count}/{item.union_technique_count} shared
-            {item.shared_techniques.length > 0 ? `: ${item.shared_techniques.slice(0, 4).join(", ")}` : ""}
-          </p>
+        <div className="empty-state">
+          <BarChart3 size={24} aria-hidden="true" />
+          <p>No comparable actors found. Load MITRE data or choose another actor.</p>
         </div>
-      ))}
-    </div>
-  );
+      </section>
+    );
+  }
+
+  return <ComparisonResultTabs comparison={comparison} topN={topN} comparisonScopeLabel={comparisonScopeLabel} />;
 }
 
 function StatusMessage({ tone, message }: { tone: "neutral" | "error"; message: string }) {
@@ -546,10 +442,6 @@ function StatusMessage({ tone, message }: { tone: "neutral" | "error"; message: 
   );
 }
 
-function formatScore(score: number): string {
-  return `${Math.round(score * 100)}%`;
-}
-
 function metricLabel(metric: SimilarityMetric): string {
   if (metric === "jaccard_weighted") {
     return "Weighted Jaccard";
@@ -561,14 +453,6 @@ function metricLabel(metric: SimilarityMetric): string {
     return "Software weighted";
   }
   return "Jaccard";
-}
-
-function formatTactic(tactic: string): string {
-  return tactic
-    .split(/[-_\s]+/)
-    .filter(Boolean)
-    .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
-    .join(" ");
 }
 
 function buildTargetOptions(
