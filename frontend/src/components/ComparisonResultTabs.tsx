@@ -1,6 +1,7 @@
-import { BarChart3, Download, FileJson, GitGraph, Table } from "lucide-react";
+import { BarChart3, Download, FileJson, GitGraph, Save, Table } from "lucide-react";
 import { useState } from "react";
 
+import { saveAnalysis } from "../api/client";
 import { downloadComparisonExport } from "../api/exportUtils";
 import type { TechniqueLookup } from "../api/ttpProfileUtils";
 import type { ActorComparisonResponse, SimilarityMetric } from "../api/types";
@@ -15,15 +16,46 @@ export function ComparisonResultTabs({
   topN,
   comparisonScopeLabel,
   tacticScopeLabel,
+  tactics,
+  targetIds,
   techniqueLookup
 }: {
   comparison: ActorComparisonResponse;
   topN: number;
   comparisonScopeLabel: string;
   tacticScopeLabel: string;
+  tactics?: string[];
+  targetIds?: string[];
   techniqueLookup: TechniqueLookup;
 }) {
   const [activeView, setActiveView] = useState<ComparisonView>("ranking");
+  const [savingAnalysis, setSavingAnalysis] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  async function handleSaveAnalysis() {
+    setSavingAnalysis(true);
+    setSaveMessage(null);
+    setSaveError(null);
+
+    try {
+      const saved = await saveAnalysis({
+        input_type: comparison.input_type === "actor" ? "actor" : "custom",
+        input_id: comparison.input_id,
+        input_name: comparison.input_name,
+        metric: comparison.metric,
+        tactics,
+        target_ids: targetIds,
+        top_n: topN,
+        results: comparison
+      });
+      setSaveMessage(`Saved analysis ${saved.id.slice(0, 8)}.`);
+    } catch (apiError) {
+      setSaveError(apiError instanceof Error ? apiError.message : "Unable to save analysis");
+    } finally {
+      setSavingAnalysis(false);
+    }
+  }
 
   return (
     <section className="results-panel comparison-results-panel" aria-live="polite">
@@ -36,6 +68,16 @@ export function ComparisonResultTabs({
         </div>
         <div className="results-actions">
           <span className="metric-label">{metricLabel(comparison.metric)}</span>
+          <button
+            className="save-analysis-button"
+            type="button"
+            title="Save analysis"
+            disabled={savingAnalysis}
+            onClick={() => void handleSaveAnalysis()}
+          >
+            <Save size={16} aria-hidden="true" />
+            <span>{savingAnalysis ? "Saving" : "Save analysis"}</span>
+          </button>
           <button
             type="button"
             title="Export JSON"
@@ -59,6 +101,8 @@ export function ComparisonResultTabs({
           </button>
         </div>
       </div>
+      {saveMessage ? <div className="analysis-save-status success">{saveMessage}</div> : null}
+      {saveError ? <div className="analysis-save-status error">{saveError}</div> : null}
 
       <div className="comparison-tabs" role="tablist" aria-label="Comparison result views">
         <TabButton active={activeView === "ranking"} label="Ranking" onClick={() => setActiveView("ranking")} />

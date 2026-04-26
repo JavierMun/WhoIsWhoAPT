@@ -1,6 +1,6 @@
 """SQLAlchemy entities for the normalized local data model."""
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Any
 from uuid import uuid4
 
@@ -120,3 +120,20 @@ class CustomTTPSet(Base):
         server_default=func.now(),
         onupdate=func.now(),
     )
+
+
+class Analysis(Base):
+    """Persisted comparison analysis snapshot."""
+
+    __tablename__ = "analyses"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    input_type: Mapped[str] = mapped_column(String(32), index=True)
+    input_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    input_name: Mapped[str] = mapped_column(String(255), index=True)
+    metric: Mapped[str] = mapped_column(String(64), index=True)
+    tactics: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    target_ids: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    top_n: Mapped[int] = mapped_column(Integer)
+    results_json: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

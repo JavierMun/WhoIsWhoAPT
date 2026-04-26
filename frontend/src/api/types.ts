@@ -131,3 +131,32 @@ export interface ClusterResponse {
   min_similarity: number;
   labels: ClusterLabel[];
 }
+
+export type SavedAnalysisInputType = "actor" | "custom";
+
+export interface AnalysisCreateRequest {
+  input_type: SavedAnalysisInputType;
+  input_id: string | null;
+  input_name: string;
+  metric: string;
+  tactics?: string[];
+  target_ids?: string[];
+  top_n: number;
+  results: ActorComparisonResponse;
+}
+
+export interface AnalysisResponse {
+  id: string;
+  input_type: SavedAnalysisInputType;
+  input_id: string | null;
+  input_name: string;
+  metric: string;
+  tactics: string[] | null;
+  target_ids: string[] | null;
+  top_n: number;
+  created_at: string;
+}
+
+export interface AnalysisDetail extends AnalysisResponse {
+  results: ActorComparisonResponse;
+}

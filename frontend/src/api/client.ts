@@ -2,6 +2,9 @@ import type {
   ActorComparisonResponse,
   ActorDetail,
   ActorListItem,
+  AnalysisCreateRequest,
+  AnalysisDetail,
+  AnalysisResponse,
   ClusterResponse,
   HealthResponse,
   MatrixResponse,
@@ -159,4 +162,25 @@ export function getMatrixResult(): Promise<MatrixResponse> {
 
 export function getClusters(minSimilarity = 0.15): Promise<ClusterResponse> {
   return request<ClusterResponse>(`/api/clusters?min_similarity=${encodeURIComponent(minSimilarity)}`);
+}
+
+export function saveAnalysis(payload: AnalysisCreateRequest): Promise<AnalysisResponse> {
+  return request<AnalysisResponse>("/api/analysis/save", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function getAnalyses(): Promise<AnalysisResponse[]> {
+  return request<AnalysisResponse[]>("/api/analysis");
+}
+
+export function getAnalysisDetail(analysisId: string): Promise<AnalysisDetail> {
+  return request<AnalysisDetail>(`/api/analysis/${encodeURIComponent(analysisId)}`);
+}
+
+export async function deleteAnalysis(analysisId: string): Promise<void> {
+  await request<void>(`/api/analysis/${encodeURIComponent(analysisId)}`, {
+    method: "DELETE"
+  });
 }

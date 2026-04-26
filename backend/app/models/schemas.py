@@ -1,7 +1,7 @@
 """Pydantic schemas for API and normalized domain data."""
 
 from datetime import date, datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import AnyHttpUrl, BaseModel, Field
 
@@ -345,3 +345,36 @@ class ClusterResponse(BaseModel):
     cluster_count: int
     min_similarity: float = Field(ge=0, le=1)
     labels: list[ClusterLabel] = Field(default_factory=list)
+
+
+class AnalysisCreateRequest(BaseModel):
+    """Request to persist an already-computed comparison analysis."""
+
+    input_type: Literal["actor", "custom"]
+    input_id: str | None = None
+    input_name: str = Field(min_length=1, max_length=255)
+    metric: str = Field(min_length=1, max_length=64)
+    tactics: list[str] | None = None
+    target_ids: list[str] | None = None
+    top_n: int = Field(ge=1, le=100)
+    results: dict[str, Any]
+
+
+class AnalysisResponse(BaseModel):
+    """Saved analysis summary."""
+
+    id: str
+    input_type: Literal["actor", "custom"]
+    input_id: str | None = None
+    input_name: str
+    metric: str
+    tactics: list[str] | None = None
+    target_ids: list[str] | None = None
+    top_n: int
+    created_at: datetime
+
+
+class AnalysisDetail(AnalysisResponse):
+    """Saved analysis including full stored comparison results."""
+
+    results: dict[str, Any]

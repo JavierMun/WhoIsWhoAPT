@@ -360,6 +360,8 @@ export function ActorComparisonPanel() {
           topN={topN}
           comparisonScopeLabel={comparisonScopeLabel}
           tacticScopeLabel={tacticScopeLabel}
+          tactics={selectedTactics}
+          targetIds={scope === "selected" ? selectedActorTargetIds : undefined}
           techniqueLookup={techniqueLookup}
         />
       </div>
@@ -429,6 +431,8 @@ function ComparisonResults({
   topN,
   comparisonScopeLabel,
   tacticScopeLabel,
+  tactics,
+  targetIds,
   techniqueLookup
 }: {
   comparison: ActorComparisonResponse | null;
@@ -436,6 +440,8 @@ function ComparisonResults({
   topN: number;
   comparisonScopeLabel: string;
   tacticScopeLabel: string;
+  tactics?: string[];
+  targetIds?: string[];
   techniqueLookup: ReturnType<typeof techniqueLookupFromList>;
 }) {
   if (loading) {
@@ -488,6 +494,8 @@ function ComparisonResults({
       topN={topN}
       comparisonScopeLabel={comparisonScopeLabel}
       tacticScopeLabel={tacticScopeLabel}
+      tactics={tactics}
+      targetIds={targetIds}
       techniqueLookup={techniqueLookup}
     />
   );

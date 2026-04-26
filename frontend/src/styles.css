@@ -412,6 +412,17 @@ h1 {
   cursor: pointer;
 }
 
+.results-actions .save-analysis-button {
+  display: inline-flex;
+  width: auto;
+  min-width: 132px;
+  gap: 7px;
+  padding: 0 11px;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 750;
+}
+
 .results-actions button:hover {
   background: #e8f2ef;
   color: #123f35;
@@ -437,6 +448,23 @@ h1 {
   gap: 8px;
   border-bottom: 1px solid #d9e0e3;
   padding: 12px 20px;
+}
+
+.analysis-save-status {
+  border-bottom: 1px solid #edf1f2;
+  padding: 10px 20px;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.analysis-save-status.success {
+  background: #eef8f4;
+  color: #136f63;
+}
+
+.analysis-save-status.error {
+  background: #fff0ed;
+  color: #b42318;
 }
 
 .comparison-tabs button {
