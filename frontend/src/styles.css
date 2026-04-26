@@ -160,6 +160,23 @@ h1 {
   align-items: start;
 }
 
+.saved-analyses-section {
+  display: grid;
+  gap: 18px;
+}
+
+.saved-analyses-heading h2 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.saved-analyses-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 380px) minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+
 .ttp-profile-layout {
   display: grid;
   grid-template-columns: minmax(320px, 440px) minmax(280px, 360px) minmax(0, 1fr);
@@ -329,6 +346,33 @@ h1 {
   cursor: not-allowed;
 }
 
+.refresh-action {
+  width: auto;
+  min-width: 112px;
+  padding: 0 12px;
+}
+
+.danger-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  border: 1px solid #f0b5a8;
+  border-radius: 6px;
+  background: #fff7f5;
+  color: #b42318;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 750;
+  padding: 0 12px;
+}
+
+.danger-action:disabled {
+  color: #c98d84;
+  cursor: not-allowed;
+}
+
 .action-row,
 .split-controls {
   display: grid;
@@ -436,6 +480,80 @@ h1 {
 
 .comparison-results-panel {
   min-height: 680px;
+}
+
+.saved-analysis-list-panel {
+  min-height: 360px;
+}
+
+.saved-analysis-list {
+  display: grid;
+  gap: 10px;
+}
+
+.saved-analysis-item {
+  display: grid;
+  gap: 5px;
+  width: 100%;
+  border: 1px solid #d9e0e3;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #52606a;
+  cursor: pointer;
+  font: inherit;
+  padding: 12px;
+  text-align: left;
+}
+
+.saved-analysis-item:hover,
+.saved-analysis-item.active {
+  border-color: #9bc5b9;
+  background: #f2f8f6;
+  color: #24313a;
+}
+
+.saved-analysis-item.active {
+  box-shadow: inset 3px 0 0 #136f63;
+}
+
+.saved-analysis-name {
+  color: #172026;
+  font-weight: 750;
+}
+
+.saved-analysis-detail-panel {
+  min-width: 0;
+}
+
+.saved-analysis-detail-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.saved-analysis-summary-bar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid #d9e0e3;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 16px 18px;
+}
+
+.saved-analysis-summary-bar h3,
+.saved-analysis-summary-bar p {
+  margin: 0;
+}
+
+.saved-analysis-summary-bar h3 {
+  font-size: 1.05rem;
+}
+
+.saved-analysis-summary-bar p:not(.panel-label) {
+  margin-top: 5px;
+  color: #52606a;
+  font-size: 0.9rem;
 }
 
 .comparison-results-header {
@@ -1425,6 +1543,7 @@ h1 {
 
   .workspace-header,
   .comparison-layout,
+  .saved-analyses-layout,
   .ttp-profile-layout,
   .matrix-layout,
   .network-layout {
@@ -1438,6 +1557,10 @@ h1 {
 
   .comparison-layout {
     display: grid;
+  }
+
+  .saved-analysis-summary-bar {
+    flex-direction: column;
   }
 
   .corner-cell,

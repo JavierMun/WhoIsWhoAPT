@@ -1,7 +1,16 @@
-import { AlertCircle, BarChart3, Loader2, Search, X } from "lucide-react";
+import { AlertCircle, BarChart3, Clock3, Loader2, RefreshCw, Search, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-import { compareActor, compareTTPProfile, getActors, getTechniques, getTTPProfiles } from "../api/client";
+import {
+  compareActor,
+  compareTTPProfile,
+  deleteAnalysis,
+  getActors,
+  getAnalyses,
+  getAnalysisDetail,
+  getTechniques,
+  getTTPProfiles
+} from "../api/client";
 import {
   buildComparableProfiles,
   filterComparableProfiles,
@@ -10,8 +19,24 @@ import {
   profileTypeLabel,
   type ComparableProfile
 } from "../api/profileLibraryUtils";
+import {
+  savedAnalysisDateLabel,
+  savedAnalysisInputTypeLabel,
+  savedAnalysisMetricLabel,
+  savedAnalysisTacticScopeLabel,
+  savedAnalysisTargetScopeLabel,
+  savedAnalysisToViewModel
+} from "../api/savedAnalysisUtils";
 import { formatTactic, techniqueLookupFromList } from "../api/ttpProfileUtils";
-import type { ActorComparisonResponse, ActorListItem, SimilarityMetric, TechniqueListItem, TTPProfile } from "../api/types";
+import type {
+  ActorComparisonResponse,
+  ActorListItem,
+  AnalysisDetail,
+  AnalysisResponse,
+  SimilarityMetric,
+  TechniqueListItem,
+  TTPProfile
+} from "../api/types";
 import { ComparisonResultTabs } from "./ComparisonResultTabs";
 
 const DEFAULT_TOP_N = 10;
@@ -33,6 +58,7 @@ export function ActorComparisonPanel() {
   const [compareLoading, setCompareLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [comparison, setComparison] = useState<ActorComparisonResponse | null>(null);
+  const [savedAnalysesRefreshKey, setSavedAnalysesRefreshKey] = useState(0);
 
   useEffect(() => {
     Promise.all([getActors(), getTTPProfiles(), getTechniques()])
@@ -362,9 +388,17 @@ export function ActorComparisonPanel() {
           tacticScopeLabel={tacticScopeLabel}
           tactics={selectedTactics}
           targetIds={scope === "selected" ? selectedActorTargetIds : undefined}
+          onAnalysisSaved={() => {
+            setSavedAnalysesRefreshKey((currentKey) => currentKey + 1);
+          }}
           techniqueLookup={techniqueLookup}
         />
       </div>
+
+      <SavedAnalysesPanel
+        refreshKey={savedAnalysesRefreshKey}
+        techniqueLookup={techniqueLookup}
+      />
     </section>
   );
 }
@@ -433,6 +467,7 @@ function ComparisonResults({
   tacticScopeLabel,
   tactics,
   targetIds,
+  onAnalysisSaved,
   techniqueLookup
 }: {
   comparison: ActorComparisonResponse | null;
@@ -442,6 +477,7 @@ function ComparisonResults({
   tacticScopeLabel: string;
   tactics?: string[];
   targetIds?: string[];
+  onAnalysisSaved: () => void;
   techniqueLookup: ReturnType<typeof techniqueLookupFromList>;
 }) {
   if (loading) {
@@ -496,8 +532,269 @@ function ComparisonResults({
       tacticScopeLabel={tacticScopeLabel}
       tactics={tactics}
       targetIds={targetIds}
+      onAnalysisSaved={onAnalysisSaved}
       techniqueLookup={techniqueLookup}
     />
+  );
+}
+
+function SavedAnalysesPanel({
+  refreshKey,
+  techniqueLookup
+}: {
+  refreshKey: number;
+  techniqueLookup: ReturnType<typeof techniqueLookupFromList>;
+}) {
+  const [analyses, setAnalyses] = useState<AnalysisResponse[]>([]);
+  const [selectedAnalysisId, setSelectedAnalysisId] = useState<string | null>(null);
+  const [selectedAnalysis, setSelectedAnalysis] = useState<AnalysisDetail | null>(null);
+  const [loadingList, setLoadingList] = useState(true);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [deleteMessage, setDeleteMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    let ignore = false;
+
+    getAnalyses()
+      .then((items) => {
+        if (ignore) {
+          return;
+        }
+        setAnalyses(items);
+        if (items.length > 0) {
+          setLoadingDetail(true);
+        }
+        setSelectedAnalysisId((currentId) => {
+          if (currentId && items.some((item) => item.id === currentId)) {
+            return currentId;
+          }
+          return items[0]?.id ?? null;
+        });
+        if (items.length === 0) {
+          setSelectedAnalysis(null);
+        }
+      })
+      .catch((apiError: unknown) => {
+        if (!ignore) {
+          setError(apiError instanceof Error ? apiError.message : "Unable to load saved analyses");
+        }
+      })
+      .finally(() => {
+        if (!ignore) {
+          setLoadingList(false);
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [refreshKey]);
+
+  useEffect(() => {
+    if (!selectedAnalysisId) {
+      return;
+    }
+
+    let ignore = false;
+    getAnalysisDetail(selectedAnalysisId)
+      .then((detail) => {
+        if (!ignore) {
+          setSelectedAnalysis(detail);
+        }
+      })
+      .catch((apiError: unknown) => {
+        if (!ignore) {
+          setSelectedAnalysis(null);
+          setError(apiError instanceof Error ? apiError.message : "Unable to load saved analysis detail");
+        }
+      })
+      .finally(() => {
+        if (!ignore) {
+          setLoadingDetail(false);
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [selectedAnalysisId]);
+
+  async function handleDeleteSelected() {
+    if (!selectedAnalysis) {
+      return;
+    }
+
+    if (!window.confirm(`Delete saved analysis "${selectedAnalysis.input_name}"? This cannot be undone.`)) {
+      return;
+    }
+
+    setDeleting(true);
+    setError(null);
+    setDeleteMessage(null);
+
+    try {
+      await deleteAnalysis(selectedAnalysis.id);
+      const nextAnalyses = analyses.filter((item) => item.id !== selectedAnalysis.id);
+      setAnalyses(nextAnalyses);
+      setSelectedAnalysisId(nextAnalyses[0]?.id ?? null);
+      setSelectedAnalysis(null);
+      setDeleteMessage("Saved analysis deleted.");
+    } catch (apiError) {
+      setError(apiError instanceof Error ? apiError.message : "Unable to delete saved analysis");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  const selectedViewModel = selectedAnalysis ? savedAnalysisToViewModel(selectedAnalysis) : null;
+
+  return (
+    <section className="saved-analyses-section" aria-labelledby="saved-analyses-title">
+      <div className="workspace-header saved-analyses-heading">
+        <div>
+          <p className="eyebrow">Saved Analyses</p>
+          <h2 id="saved-analyses-title">Saved Analyses</h2>
+        </div>
+        <button
+          className="secondary-action refresh-action"
+          type="button"
+          disabled={loadingList}
+          onClick={() => {
+            setDeleteMessage(null);
+            setLoadingList(true);
+            setError(null);
+            getAnalyses()
+              .then((items) => {
+                setAnalyses(items);
+                if (items.length > 0) {
+                  setLoadingDetail(true);
+                } else {
+                  setSelectedAnalysis(null);
+                }
+                setSelectedAnalysisId((currentId) =>
+                  currentId && items.some((item) => item.id === currentId) ? currentId : items[0]?.id ?? null
+                );
+              })
+              .catch((apiError: unknown) => {
+                setError(apiError instanceof Error ? apiError.message : "Unable to refresh saved analyses");
+              })
+              .finally(() => {
+                setLoadingList(false);
+              });
+          }}
+        >
+          <RefreshCw size={16} aria-hidden="true" />
+          <span>Refresh</span>
+        </button>
+      </div>
+
+      <div className="saved-analyses-layout">
+        <section className="control-panel saved-analysis-list-panel" aria-label="Saved analysis list">
+          {loadingList ? (
+            <div className="empty-state compact-empty-state">
+              <Loader2 className="spin" size={22} aria-hidden="true" />
+              <p>Loading saved analyses</p>
+            </div>
+          ) : null}
+
+          {!loadingList && analyses.length === 0 ? (
+            <div className="empty-state compact-empty-state">
+              <Clock3 size={24} aria-hidden="true" />
+              <p>No saved analyses yet. Run a comparison and click Save analysis.</p>
+            </div>
+          ) : null}
+
+          {!loadingList && analyses.length > 0 ? (
+            <div className="saved-analysis-list">
+              {analyses.map((analysis) => (
+                <button
+                  className={`saved-analysis-item ${analysis.id === selectedAnalysisId ? "active" : ""}`}
+                  key={analysis.id}
+                  type="button"
+                  onClick={() => {
+                    setDeleteMessage(null);
+                    setError(null);
+                    if (analysis.id !== selectedAnalysisId) {
+                      setLoadingDetail(true);
+                    }
+                    setSelectedAnalysisId(analysis.id);
+                  }}
+                >
+                  <span className="saved-analysis-name">{analysis.input_name}</span>
+                  <span>{savedAnalysisInputTypeLabel(analysis.input_type)}</span>
+                  <span>{savedAnalysisMetricLabel(analysis.metric)} - {savedAnalysisTacticScopeLabel(analysis.tactics)}</span>
+                  <span>Top {analysis.top_n} - {savedAnalysisDateLabel(analysis.created_at)}</span>
+                </button>
+              ))}
+            </div>
+          ) : null}
+
+          {deleteMessage ? <StatusMessage tone="neutral" message={deleteMessage} /> : null}
+          {error ? <StatusMessage tone="error" message={error} /> : null}
+        </section>
+
+        <section className="saved-analysis-detail-panel">
+          {loadingDetail ? (
+            <section className="results-panel" aria-live="polite">
+              <div className="empty-state">
+                <Loader2 className="spin" size={22} aria-hidden="true" />
+                <p>Loading saved analysis detail</p>
+              </div>
+            </section>
+          ) : null}
+
+          {!loadingDetail && !selectedAnalysis ? (
+            <section className="results-panel">
+              <div className="empty-state">
+                <Clock3 size={24} aria-hidden="true" />
+                <p>Select a saved analysis to inspect its results.</p>
+              </div>
+            </section>
+          ) : null}
+
+          {!loadingDetail && selectedAnalysis && selectedViewModel ? (
+            <div className="saved-analysis-detail-stack">
+              <div className="saved-analysis-summary-bar">
+                <div>
+                  <p className="panel-label">Saved analysis</p>
+                  <h3>{selectedAnalysis.input_name}</h3>
+                  <p>
+                    {savedAnalysisInputTypeLabel(selectedAnalysis.input_type)} - {savedAnalysisMetricLabel(selectedAnalysis.metric)}
+                  </p>
+                  <p>
+                    {selectedViewModel.tacticScopeLabel} - {savedAnalysisTargetScopeLabel(selectedAnalysis.target_ids)} - Top{" "}
+                    {selectedAnalysis.top_n}
+                  </p>
+                  <p>{savedAnalysisDateLabel(selectedAnalysis.created_at)}</p>
+                </div>
+                <button
+                  className="danger-action"
+                  type="button"
+                  disabled={deleting}
+                  onClick={() => void handleDeleteSelected()}
+                >
+                  <Trash2 size={16} aria-hidden="true" />
+                  <span>{deleting ? "Deleting" : "Delete"}</span>
+                </button>
+              </div>
+
+              <ComparisonResultTabs
+                comparison={selectedViewModel.comparison}
+                topN={selectedViewModel.topN}
+                comparisonScopeLabel={selectedViewModel.comparisonScopeLabel}
+                tacticScopeLabel={selectedViewModel.tacticScopeLabel}
+                tactics={selectedViewModel.tactics}
+                targetIds={selectedViewModel.targetIds}
+                canSave={false}
+                techniqueLookup={techniqueLookup}
+              />
+            </div>
+          ) : null}
+        </section>
+      </div>
+    </section>
   );
 }
 

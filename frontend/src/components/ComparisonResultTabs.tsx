@@ -18,6 +18,8 @@ export function ComparisonResultTabs({
   tacticScopeLabel,
   tactics,
   targetIds,
+  canSave = true,
+  onAnalysisSaved,
   techniqueLookup
 }: {
   comparison: ActorComparisonResponse;
@@ -26,6 +28,8 @@ export function ComparisonResultTabs({
   tacticScopeLabel: string;
   tactics?: string[];
   targetIds?: string[];
+  canSave?: boolean;
+  onAnalysisSaved?: () => void;
   techniqueLookup: TechniqueLookup;
 }) {
   const [activeView, setActiveView] = useState<ComparisonView>("ranking");
@@ -50,6 +54,7 @@ export function ComparisonResultTabs({
         results: comparison
       });
       setSaveMessage(`Saved analysis ${saved.id.slice(0, 8)}.`);
+      onAnalysisSaved?.();
     } catch (apiError) {
       setSaveError(apiError instanceof Error ? apiError.message : "Unable to save analysis");
     } finally {
@@ -68,16 +73,18 @@ export function ComparisonResultTabs({
         </div>
         <div className="results-actions">
           <span className="metric-label">{metricLabel(comparison.metric)}</span>
-          <button
-            className="save-analysis-button"
-            type="button"
-            title="Save analysis"
-            disabled={savingAnalysis}
-            onClick={() => void handleSaveAnalysis()}
-          >
-            <Save size={16} aria-hidden="true" />
-            <span>{savingAnalysis ? "Saving" : "Save analysis"}</span>
-          </button>
+          {canSave ? (
+            <button
+              className="save-analysis-button"
+              type="button"
+              title="Save analysis"
+              disabled={savingAnalysis}
+              onClick={() => void handleSaveAnalysis()}
+            >
+              <Save size={16} aria-hidden="true" />
+              <span>{savingAnalysis ? "Saving" : "Save analysis"}</span>
+            </button>
+          ) : null}
           <button
             type="button"
             title="Export JSON"
