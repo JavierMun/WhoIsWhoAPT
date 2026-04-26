@@ -2,6 +2,7 @@ import { AlertCircle, Grid3X3, Loader2, RefreshCw, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { computeMatrix, getMatrixResult } from "../api/client";
+import { clampScore, comparisonHeatColor } from "../api/comparisonViewUtils";
 import type { MatrixResponse, SimilarityMetric } from "../api/types";
 
 const DEFAULT_VISIBLE_ACTORS = 30;
@@ -240,7 +241,7 @@ function HeatmapPanel({
                       <td
                         className="heatmap-cell"
                         key={columnActor.id}
-                        style={{ backgroundColor: heatmapColor(value), color: value >= 0.62 ? "#ffffff" : "#172026" }}
+                        style={{ backgroundColor: comparisonHeatColor(value), color: value >= 0.62 ? "#ffffff" : "#172026" }}
                         title={`${rowActor.name} to ${columnActor.name}: ${formatScore(value)} (${value.toFixed(4)})`}
                       >
                         {showCellText ? formatScore(value) : ""}
@@ -332,18 +333,6 @@ function useVisibleActorIndexes(matrix: MatrixResponse | null, actorQuery: strin
       .slice(0, visibleLimit)
       .map((item) => item.index);
   }, [actorQuery, matrix, visibleLimit]);
-}
-
-function heatmapColor(score: number): string {
-  const value = clampScore(score);
-  const hue = 38 - value * 28;
-  const saturation = 72 + value * 18;
-  const lightness = 94 - value * 46;
-  return `hsl(${hue} ${saturation}% ${lightness}%)`;
-}
-
-function clampScore(score: number): number {
-  return Math.min(1, Math.max(0, score));
 }
 
 function formatScore(score: number): string {

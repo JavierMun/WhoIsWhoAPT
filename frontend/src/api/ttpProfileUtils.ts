@@ -78,7 +78,7 @@ export function techniqueLookupFromList(techniques: TechniqueListItem[]): Techni
 
 export function techniqueLabel(techniqueId: string, techniqueLookup: TechniqueLookup): string {
   const technique = techniqueLookup.get(techniqueId);
-  return technique ? `${technique.technique_id} — ${technique.name}` : techniqueId;
+  return technique ? `${technique.technique_id} - ${technique.name}` : techniqueId;
 }
 
 export function techniqueTitle(techniqueId: string, techniqueLookup: TechniqueLookup): string {

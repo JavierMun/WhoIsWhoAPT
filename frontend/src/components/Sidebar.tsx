@@ -9,7 +9,7 @@ const NAV_ITEMS: Array<{
 }> = [
   { key: "compare", label: "Compare", icon: Activity },
   { key: "ttp-profiles", label: "TTP Profiles", icon: FileJson },
-  { key: "visual-analysis", label: "Visual Analysis", icon: Network },
+  { key: "visual-analysis", label: "Explore", icon: Network },
   { key: "settings", label: "Settings", icon: Settings }
 ];
 

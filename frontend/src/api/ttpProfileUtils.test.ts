@@ -55,9 +55,9 @@ describe("TTP profile utilities", () => {
       technique("T1059.001", "PowerShell", "execution")
     ]);
 
-    expect(techniqueLabel("T1059", lookup)).toBe("T1059 — Command and Scripting Interpreter");
+    expect(techniqueLabel("T1059", lookup)).toBe("T1059 - Command and Scripting Interpreter");
     expect(techniqueLabel("T9999", lookup)).toBe("T9999");
-    expect(techniqueTitle("T1059.001", lookup)).toBe("T1059.001 — PowerShell\nTactic: Execution");
+    expect(techniqueTitle("T1059.001", lookup)).toBe("T1059.001 - PowerShell\nTactic: Execution");
   });
 });
 

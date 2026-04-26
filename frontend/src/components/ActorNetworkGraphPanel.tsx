@@ -225,7 +225,7 @@ function NetworkPanel({
       {graph.links.length === 0 ? (
         <div className="graph-notice">No edges meet the selected threshold. Lower the threshold to reveal weaker links.</div>
       ) : null}
-      <ForceGraph nodes={graph.nodes} links={graph.links} />
+      <ForceGraph key={graph.nodes.map((node) => node.id).join("|")} nodes={graph.nodes} links={graph.links} />
     </section>
   );
 }
@@ -280,8 +280,6 @@ function ForceGraph({ nodes, links }: { nodes: GraphNode[]; links: GraphLink[] }
   const [pan, setPan] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
     const nextNodes = nodes.map((node, index) => {
       const angle = (index / Math.max(1, nodes.length)) * Math.PI * 2;
       return {

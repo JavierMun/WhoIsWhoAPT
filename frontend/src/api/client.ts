@@ -1,12 +1,13 @@
 import type {
   ActorComparisonResponse,
+  ActorDetail,
   ActorListItem,
   ClusterResponse,
-  CustomTTPSet,
   HealthResponse,
   MatrixResponse,
   SimilarityMetric,
-  TechniqueListItem
+  TechniqueListItem,
+  TTPProfile
 } from "./types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
@@ -48,6 +49,10 @@ export function getActors(): Promise<ActorListItem[]> {
   return request<ActorListItem[]>("/api/actors");
 }
 
+export function getActorDetail(actorId: string): Promise<ActorDetail> {
+  return request<ActorDetail>(`/api/actors/${encodeURIComponent(actorId)}`);
+}
+
 export function compareActor(
   actorId: string,
   metric: SimilarityMetric,
@@ -71,12 +76,12 @@ export function getTechniques(): Promise<TechniqueListItem[]> {
   return request<TechniqueListItem[]>("/api/techniques");
 }
 
-export function getCustomSets(): Promise<CustomTTPSet[]> {
-  return request<CustomTTPSet[]>("/api/custom-sets");
+export function getTTPProfiles(): Promise<TTPProfile[]> {
+  return request<TTPProfile[]>("/api/custom-sets");
 }
 
-export function createCustomSet(name: string, techniqueIds: string[], description?: string): Promise<CustomTTPSet> {
-  return request<CustomTTPSet>("/api/custom-sets", {
+export function createTTPProfile(name: string, techniqueIds: string[], description?: string): Promise<TTPProfile> {
+  return request<TTPProfile>("/api/custom-sets", {
     method: "POST",
     body: JSON.stringify({
       name,
@@ -86,47 +91,32 @@ export function createCustomSet(name: string, techniqueIds: string[], descriptio
   });
 }
 
-export function compareCustomSet(
+export function compareTTPProfile(
   params:
-    | { customSetId: string; metric: SimilarityMetric; topN: number }
-    | { name: string; techniqueIds: string[]; metric: SimilarityMetric; topN: number }
+    | { profileId: string; metric: SimilarityMetric; topN: number; tactics?: string[]; targetIds?: string[] }
+    | { name: string; techniqueIds: string[]; metric: SimilarityMetric; topN: number; tactics?: string[]; targetIds?: string[] }
 ): Promise<ActorComparisonResponse> {
   const body =
-    "customSetId" in params
+    "profileId" in params
       ? {
-          custom_set_id: params.customSetId,
+          custom_set_id: params.profileId,
           metric: params.metric,
-          top_n: params.topN
+          top_n: params.topN,
+          ...(params.targetIds ? { target_ids: params.targetIds } : {}),
+          ...(params.tactics && params.tactics.length > 0 ? { tactics: params.tactics } : {})
         }
       : {
           name: params.name,
           technique_ids: params.techniqueIds,
           metric: params.metric,
-          top_n: params.topN
+          top_n: params.topN,
+          ...(params.targetIds ? { target_ids: params.targetIds } : {}),
+          ...(params.tactics && params.tactics.length > 0 ? { tactics: params.tactics } : {})
         };
 
   return request<ActorComparisonResponse>("/api/compare/custom", {
     method: "POST",
     body: JSON.stringify(body)
-  });
-}
-
-export function analyzeIncident(params: {
-  incidentName: string;
-  description?: string;
-  techniqueIds: string[];
-  metric: SimilarityMetric;
-  topN: number;
-}): Promise<ActorComparisonResponse> {
-  return request<ActorComparisonResponse>("/api/analyze/incident", {
-    method: "POST",
-    body: JSON.stringify({
-      incident_name: params.incidentName,
-      description: params.description,
-      technique_ids: params.techniqueIds,
-      metric: params.metric,
-      top_n: params.topN
-    })
   });
 }
 

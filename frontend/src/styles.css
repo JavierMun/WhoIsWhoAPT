@@ -54,7 +54,7 @@ a {
   gap: 10px;
   width: 100%;
   min-height: 40px;
-  border: 0;
+  border: 1px solid transparent;
   border-radius: 6px;
   background: transparent;
   padding: 0 10px;
@@ -65,9 +65,11 @@ a {
 }
 
 .nav-item.active {
+  border-color: #9bc5b9;
   background: #e8f2ef;
   color: #123f35;
   font-weight: 650;
+  box-shadow: inset 3px 0 0 #136f63;
 }
 
 .nav-item:hover {
@@ -84,8 +86,6 @@ a {
   gap: 34px;
 }
 
-.module-stack > .custom-workspace,
-.module-stack > .incident-workspace,
 .module-stack > .matrix-workspace,
 .module-stack > .network-workspace {
   margin-top: 0;
@@ -109,14 +109,6 @@ h1 {
 .comparison-workspace {
   display: grid;
   gap: 28px;
-}
-
-.custom-workspace {
-  margin-top: 34px;
-}
-
-.incident-workspace {
-  margin-top: 34px;
 }
 
 .matrix-workspace {
@@ -164,20 +156,6 @@ h1 {
 .comparison-layout {
   display: grid;
   grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
-  gap: 22px;
-  align-items: start;
-}
-
-.custom-layout {
-  display: grid;
-  grid-template-columns: minmax(300px, 420px) minmax(240px, 300px) minmax(0, 1fr);
-  gap: 22px;
-  align-items: start;
-}
-
-.incident-layout {
-  display: grid;
-  grid-template-columns: minmax(300px, 420px) minmax(0, 1fr);
   gap: 22px;
   align-items: start;
 }
@@ -379,14 +357,6 @@ h1 {
 .results-panel {
   min-height: 520px;
   overflow: hidden;
-}
-
-.custom-results {
-  min-height: 620px;
-}
-
-.incident-results {
-  min-height: 680px;
 }
 
 .profile-results {
@@ -886,10 +856,6 @@ h1 {
   white-space: nowrap;
 }
 
-.saved-panel {
-  min-height: 220px;
-}
-
 .scope-selector {
   display: grid;
   gap: 10px;
@@ -933,6 +899,12 @@ h1 {
   gap: 8px;
 }
 
+.profile-picker-list,
+.profile-library-list {
+  display: grid;
+  gap: 12px;
+}
+
 .target-picker-list {
   display: grid;
   gap: 6px;
@@ -945,6 +917,11 @@ h1 {
 
 .target-option small {
   display: block;
+}
+
+.selected-option {
+  border-color: #9bc5b9;
+  background: #e8f2ef;
 }
 
 .target-chip {
@@ -971,16 +948,12 @@ h1 {
   font-weight: 650;
 }
 
-.incident-controls {
-  align-content: start;
-}
-
 .ttp-profile-form,
 .saved-profile-panel {
   align-content: start;
 }
 
-.incident-technique-summary span {
+.selected-actor span {
   overflow-wrap: anywhere;
 }
 
@@ -1001,7 +974,7 @@ h1 {
   padding: 0;
 }
 
-.incident-result-row {
+.profile-result-row {
   align-items: start;
 }
 
@@ -1038,6 +1011,11 @@ h1 {
   gap: 14px;
   border-top: 1px solid #edf1f2;
   padding-top: 16px;
+}
+
+.library-inspector {
+  border-top: 0;
+  padding: 20px;
 }
 
 .profile-inspector h2 {
@@ -1400,8 +1378,6 @@ h1 {
 
   .workspace-header,
   .comparison-layout,
-  .custom-layout,
-  .incident-layout,
   .ttp-profile-layout,
   .matrix-layout,
   .network-layout {

@@ -1,8 +1,17 @@
-import { AlertCircle, Download, FileJson, Loader2, Plus, Radar, Save, Search, Table, Upload, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { AlertCircle, Download, FileJson, Loader2, Radar, Save, Search, Upload, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
-import { compareCustomSet, createCustomSet, getCustomSets, getTechniques } from "../api/client";
-import { downloadComparisonExport } from "../api/exportUtils";
+import { createTTPProfile, getActorDetail, getActors, getTechniques, getTTPProfiles } from "../api/client";
+import {
+  buildComparableProfiles,
+  filterComparableProfiles,
+  groupComparableProfiles,
+  profileDetail,
+  profileKey,
+  profileTechniqueIds,
+  profileTypeLabel,
+  type ComparableProfile
+} from "../api/profileLibraryUtils";
 import {
   extractNavigatorTechniqueIds,
   formatTactic,
@@ -11,71 +20,75 @@ import {
   techniqueLabel,
   techniqueLookupFromList,
   techniqueTitle,
+  type NavigatorLayer,
   type TechniqueLookup,
-  unknownTechniqueIds,
-  type NavigatorLayer
+  unknownTechniqueIds
 } from "../api/ttpProfileUtils";
-import type {
-  ActorComparisonResponse,
-  CustomTTPSet,
-  SimilarityMetric,
-  SoftwareSummary,
-  TacticBreakdown,
-  TechniqueListItem
-} from "../api/types";
-
-const DEFAULT_TOP_N = 10;
+import type { ActorDetail, ActorListItem, SoftwareSummary, TechniqueListItem, TTPProfile } from "../api/types";
 
 export function TTPProfilesPanel() {
+  const [actors, setActors] = useState<ActorListItem[]>([]);
+  const [customProfiles, setCustomProfiles] = useState<TTPProfile[]>([]);
   const [techniques, setTechniques] = useState<TechniqueListItem[]>([]);
-  const [profiles, setProfiles] = useState<CustomTTPSet[]>([]);
+  const [actorDetails, setActorDetails] = useState<Record<string, ActorDetail>>({});
+  const requestedActorDetailIds = useRef(new Set<string>());
+  const [failedActorDetailIds, setFailedActorDetailIds] = useState<Set<string>>(() => new Set());
+  const [selectedProfileKey, setSelectedProfileKey] = useState("");
+  const [libraryQuery, setLibraryQuery] = useState("");
   const [profileName, setProfileName] = useState("Observed TTP Profile");
   const [description, setDescription] = useState("");
   const [techniqueInput, setTechniqueInput] = useState("");
   const [selectedTechniqueIds, setSelectedTechniqueIds] = useState<string[]>([]);
   const [techniqueQuery, setTechniqueQuery] = useState("");
   const [tacticFilter, setTacticFilter] = useState("all");
-  const [selectedProfileId, setSelectedProfileId] = useState("");
-  const [metric, setMetric] = useState<SimilarityMetric>("jaccard_weighted");
-  const [topN, setTopN] = useState(DEFAULT_TOP_N);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [comparing, setComparing] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [comparison, setComparison] = useState<ActorComparisonResponse | null>(null);
 
   useEffect(() => {
-    Promise.all([getTechniques(), getCustomSets()])
-      .then(([techniqueItems, profileItems]) => {
+    Promise.all([getActors(), getTTPProfiles(), getTechniques()])
+      .then(([actorItems, customProfileItems, techniqueItems]) => {
+        setActors(actorItems);
+        setCustomProfiles(customProfileItems);
         setTechniques(techniqueItems);
-        setProfiles(profileItems);
-        setSelectedProfileId(profileItems[0]?.id ?? "");
+        const firstProfile = buildComparableProfiles(actorItems, customProfileItems)[0];
+        setSelectedProfileKey(firstProfile?.key ?? "");
       })
       .catch((apiError: unknown) => {
-        setError(apiError instanceof Error ? apiError.message : "Unable to load TTP profile data");
+        setError(apiError instanceof Error ? apiError.message : "Unable to load TTP profile library");
       })
       .finally(() => {
         setLoading(false);
       });
   }, []);
 
-  const techniqueLookup = useMemo(
-    () => techniqueLookupFromList(techniques),
-    [techniques]
-  );
+  const techniqueLookup = useMemo(() => techniqueLookupFromList(techniques), [techniques]);
   const validTechniqueIds = useMemo(() => new Set(techniques.map((technique) => technique.technique_id)), [techniques]);
   const pastedTechniqueIds = parseTechniqueIds(techniqueInput);
-  const profileTechniqueIds = useMemo(
+  const draftTechniqueIds = useMemo(
     () => sortedTechniqueIds([...selectedTechniqueIds, ...pastedTechniqueIds]),
     [pastedTechniqueIds, selectedTechniqueIds]
   );
-  const unknownIds = unknownTechniqueIds(profileTechniqueIds, validTechniqueIds);
-  const validProfileTechniqueIds = profileTechniqueIds.filter((techniqueId) => validTechniqueIds.has(techniqueId));
-  const selectedProfile = profiles.find((profile) => profile.id === selectedProfileId) ?? null;
-  const selectedProfileGroups = selectedProfile
-    ? groupTechniquesByTactic(selectedProfile.technique_ids, techniqueLookup)
-    : [];
+  const unknownIds = unknownTechniqueIds(draftTechniqueIds, validTechniqueIds);
+  const validDraftTechniqueIds = draftTechniqueIds.filter((techniqueId) => validTechniqueIds.has(techniqueId));
+  const comparableProfiles = useMemo(() => buildComparableProfiles(actors, customProfiles), [actors, customProfiles]);
+  const filteredProfiles = useMemo(
+    () => filterComparableProfiles(comparableProfiles, libraryQuery),
+    [comparableProfiles, libraryQuery]
+  );
+  const selectedProfile = comparableProfiles.find((profile) => profile.key === selectedProfileKey) ?? comparableProfiles[0] ?? null;
+  const selectedActorDetail =
+    selectedProfile?.type === "actor" ? actorDetails[selectedProfile.id] ?? null : null;
+  const selectedCustomProfile =
+    selectedProfile?.type === "custom" ? customProfiles.find((profile) => profile.id === selectedProfile.id) ?? null : null;
+  const selectedProfileTechniqueIds = selectedProfile ? profileTechniqueIds(selectedProfile, selectedActorDetail) : [];
+  const selectedProfileGroups = groupTechniquesByTactic(selectedProfileTechniqueIds, techniqueLookup);
+  const detailLoading = Boolean(
+      selectedProfile?.type === "actor" &&
+      !selectedActorDetail &&
+      !failedActorDetailIds.has(selectedProfile.id)
+  );
   const selectedTactics = useMemo(
     () =>
       Array.from(new Set(techniques.map((technique) => technique.tactic))).sort((left, right) =>
@@ -87,7 +100,7 @@ export function TTPProfilesPanel() {
   const filteredTechniques = useMemo(() => {
     const normalizedQuery = techniqueQuery.trim().toLowerCase();
     return techniques
-      .filter((technique) => !profileTechniqueIds.includes(technique.technique_id))
+      .filter((technique) => !draftTechniqueIds.includes(technique.technique_id))
       .filter((technique) => tacticFilter === "all" || technique.tactic === tacticFilter)
       .filter((technique) => {
         if (!normalizedQuery) {
@@ -100,12 +113,37 @@ export function TTPProfilesPanel() {
         );
       })
       .slice(0, 90);
-  }, [profileTechniqueIds, tacticFilter, techniqueQuery, techniques]);
+  }, [draftTechniqueIds, tacticFilter, techniqueQuery, techniques]);
 
-  async function refreshProfiles(nextSelectedId?: string) {
-    const nextProfiles = await getCustomSets();
-    setProfiles(nextProfiles);
-    setSelectedProfileId(nextSelectedId ?? nextProfiles[0]?.id ?? "");
+  useEffect(() => {
+    if (
+      !selectedProfile ||
+      selectedProfile.type !== "actor" ||
+      actorDetails[selectedProfile.id] ||
+      requestedActorDetailIds.current.has(selectedProfile.id)
+    ) {
+      return;
+    }
+
+    requestedActorDetailIds.current.add(selectedProfile.id);
+    getActorDetail(selectedProfile.id)
+      .then((detail) => {
+        setActorDetails((currentDetails) => ({ ...currentDetails, [detail.id]: detail }));
+      })
+      .catch((apiError: unknown) => {
+        setFailedActorDetailIds((currentIds) => new Set([...currentIds, selectedProfile.id]));
+        setError(apiError instanceof Error ? apiError.message : "Unable to load actor profile details");
+      });
+  }, [actorDetails, selectedProfile]);
+
+  async function refreshCustomProfiles(nextSelectedId?: string) {
+    const nextProfiles = await getTTPProfiles();
+    setCustomProfiles(nextProfiles);
+    if (nextSelectedId) {
+      setSelectedProfileKey(profileKey("custom", nextSelectedId));
+    } else if (!selectedProfileKey && nextProfiles[0]) {
+      setSelectedProfileKey(profileKey("custom", nextProfiles[0].id));
+    }
   }
 
   async function handleSave() {
@@ -116,44 +154,24 @@ export function TTPProfilesPanel() {
       setError(`Unknown technique IDs: ${unknownIds.join(", ")}`);
       return;
     }
-    if (validProfileTechniqueIds.length === 0) {
+    if (validDraftTechniqueIds.length === 0) {
       setError("Add at least one known ATT&CK technique before saving.");
       return;
     }
 
     setSaving(true);
     try {
-      const savedProfile = await createCustomSet(
+      const savedProfile = await createTTPProfile(
         profileName.trim() || "TTP Profile",
-        validProfileTechniqueIds,
+        validDraftTechniqueIds,
         description.trim() || undefined
       );
-      await refreshProfiles(savedProfile.id);
+      await refreshCustomProfiles(savedProfile.id);
       setNotice(`Saved ${savedProfile.name}.`);
     } catch (apiError) {
-      setError(apiError instanceof Error ? apiError.message : "Unable to save profile");
+      setError(apiError instanceof Error ? apiError.message : "Unable to save TTP profile");
     } finally {
       setSaving(false);
-    }
-  }
-
-  async function handleCompareSaved() {
-    setError(null);
-    setNotice(null);
-    setComparison(null);
-
-    if (!selectedProfileId) {
-      setError("Select or save a TTP profile before comparing.");
-      return;
-    }
-
-    setComparing(true);
-    try {
-      setComparison(await compareCustomSet({ customSetId: selectedProfileId, metric, topN }));
-    } catch (apiError) {
-      setError(apiError instanceof Error ? apiError.message : "Unable to compare profile");
-    } finally {
-      setComparing(false);
     }
   }
 
@@ -171,7 +189,7 @@ export function TTPProfilesPanel() {
       const invalidIds = unknownTechniqueIds(importedIds, validTechniqueIds);
       const validIds = importedIds.filter((techniqueId) => validTechniqueIds.has(techniqueId));
       if (validIds.length === 0) {
-        setError("Navigator layer did not contain techniques available in the loaded dataset.");
+        setError("Navigator layer did not contain known techniques from the loaded dataset.");
         return;
       }
 
@@ -208,11 +226,11 @@ export function TTPProfilesPanel() {
       <div className="workspace-header">
         <div>
           <p className="eyebrow">TTP Profiles</p>
-          <h1 id="ttp-profile-title">Build, save, and compare reusable profiles</h1>
+          <h1 id="ttp-profile-title">TTP profile library</h1>
         </div>
         <div className="source-pill">
           <Radar size={16} aria-hidden="true" />
-          <span>{validProfileTechniqueIds.length} techniques</span>
+          <span>{comparableProfiles.length} comparable profiles</span>
         </div>
       </div>
 
@@ -224,6 +242,11 @@ export function TTPProfilesPanel() {
             void handleSave();
           }}
         >
+          <div className="mini-header">
+            <strong>Create Custom TTP Profile</strong>
+            <span>{validDraftTechniqueIds.length} techniques</span>
+          </div>
+
           <label className="field-group" htmlFor="ttp-profile-name">
             <span>Name</span>
             <input
@@ -243,7 +266,7 @@ export function TTPProfilesPanel() {
               onChange={(event) => {
                 setDescription(event.target.value);
               }}
-              placeholder="Optional analyst notes or incident context"
+              placeholder="Optional analyst notes or source context"
               rows={3}
             />
           </label>
@@ -262,7 +285,7 @@ export function TTPProfilesPanel() {
           </label>
 
           <label className="field-group" htmlFor="ttp-profile-import">
-            <span>Import Navigator layer</span>
+            <span>Import Navigator profile</span>
             <div className="file-input-row">
               <Upload size={17} aria-hidden="true" />
               <input
@@ -325,7 +348,7 @@ export function TTPProfilesPanel() {
               >
                 <span>{technique.technique_id}</span>
                 <small>
-                  {technique.name} · {formatTactic(technique.tactic)}
+                  {technique.name} - {formatTactic(technique.tactic)}
                 </small>
               </button>
             ))}
@@ -333,7 +356,7 @@ export function TTPProfilesPanel() {
           </div>
 
           <SelectedTechniqueSummary
-            techniqueIds={validProfileTechniqueIds}
+            techniqueIds={validDraftTechniqueIds}
             unknownIds={unknownIds}
             lookup={techniqueLookup}
             onRemove={(techniqueId) => {
@@ -347,102 +370,99 @@ export function TTPProfilesPanel() {
               <X size={17} aria-hidden="true" />
               <span>Clear form</span>
             </button>
-            <button className="primary-action" type="submit" disabled={saving || loading}>
+            <button className="primary-action" type="submit" disabled={saving || loading || validDraftTechniqueIds.length === 0}>
               {saving ? <Loader2 className="spin" size={17} aria-hidden="true" /> : <Save size={17} aria-hidden="true" />}
               <span>{saving ? "Saving" : "Save profile"}</span>
             </button>
           </div>
 
-          {loading ? <StatusMessage tone="neutral" message="Loading profiles and techniques" /> : null}
+          {loading ? <StatusMessage tone="neutral" message="Loading TTP profile library" /> : null}
           {notice ? <StatusMessage tone="neutral" message={notice} /> : null}
           {error ? <StatusMessage tone="error" message={error} /> : null}
         </form>
 
-        <section className="control-panel saved-profile-panel" aria-label="Saved TTP profiles">
+        <section className="control-panel saved-profile-panel" aria-label="TTP profile library">
           <div className="mini-header">
-            <strong>Saved profiles</strong>
-            <span>{profiles.length}</span>
+            <strong>Profile Library</strong>
+            <span>{filteredProfiles.length}/{comparableProfiles.length}</span>
           </div>
-          <label className="field-group" htmlFor="saved-profile-select">
-            <span>Profile</span>
-            <select
-              id="saved-profile-select"
-              value={selectedProfileId}
-              disabled={profiles.length === 0}
-              onChange={(event) => {
-                setSelectedProfileId(event.target.value);
-              }}
-            >
-              {profiles.map((profile) => (
-                <option key={profile.id} value={profile.id}>
-                  {profile.name} ({profile.technique_ids.length})
-                </option>
-              ))}
-            </select>
+
+          <label className="field-group" htmlFor="profile-library-search">
+            <span>Search library</span>
+            <div className="search-field">
+              <Search size={17} aria-hidden="true" />
+              <input
+                id="profile-library-search"
+                type="search"
+                value={libraryQuery}
+                onChange={(event) => {
+                  setLibraryQuery(event.target.value);
+                }}
+                placeholder="Profile name, actor alias"
+              />
+            </div>
           </label>
 
-          <div className="split-controls">
-            <label className="field-group" htmlFor="profile-metric-select">
-              <span>Metric</span>
-              <select
-                id="profile-metric-select"
-                value={metric}
-                onChange={(event) => {
-                  setMetric(event.target.value as SimilarityMetric);
-                }}
-              >
-                <option value="jaccard">Jaccard</option>
-                <option value="jaccard_weighted">Weighted Jaccard</option>
-                <option value="tactic_weighted_jaccard">Tactic weighted</option>
-                <option value="software_weighted_jaccard">Software weighted</option>
-              </select>
-            </label>
-
-            <label className="field-group" htmlFor="profile-top-n-input">
-              <span>Results</span>
-              <input
-                id="profile-top-n-input"
-                type="number"
-                min={1}
-                max={100}
-                value={topN}
-                onChange={(event) => {
-                  const nextValue = Number(event.target.value);
-                  setTopN(Number.isFinite(nextValue) ? Math.min(100, Math.max(1, nextValue)) : DEFAULT_TOP_N);
-                }}
-              />
-            </label>
-          </div>
-
-          <button
-            className="primary-action"
-            type="button"
-            disabled={!selectedProfileId || comparing}
-            onClick={() => void handleCompareSaved()}
-          >
-            {comparing ? <Loader2 className="spin" size={17} aria-hidden="true" /> : <Plus size={17} aria-hidden="true" />}
-            <span>{comparing ? "Comparing" : "Compare profile"}</span>
-          </button>
-
-          {selectedProfile ? (
-            <>
-              <button className="secondary-action" type="button" onClick={() => downloadProfileNavigator(selectedProfile)}>
-                <Download size={17} aria-hidden="true" />
-                <span>Export Navigator</span>
-              </button>
-              <ProfileInspector profile={selectedProfile} groups={selectedProfileGroups} />
-            </>
-          ) : (
-            <div className="empty-state compact-empty">
-              <FileJson size={24} aria-hidden="true" />
-              <p>Save a TTP profile to inspect and compare it.</p>
-            </div>
-          )}
+          <ProfileLibraryList
+            profiles={filteredProfiles}
+            selectedKey={selectedProfile?.key ?? ""}
+            onSelect={(profile) => {
+              setSelectedProfileKey(profile.key);
+              setError(null);
+            }}
+          />
         </section>
 
-        <ProfileComparisonResults comparison={comparison} loading={comparing} topN={topN} techniqueLookup={techniqueLookup} />
+        <ProfileInspector
+          profile={selectedProfile}
+          customProfile={selectedCustomProfile}
+          actorDetail={selectedActorDetail}
+          detailLoading={detailLoading}
+          groups={selectedProfileGroups}
+          techniqueIds={selectedProfileTechniqueIds}
+          techniqueLookup={techniqueLookup}
+        />
       </div>
     </section>
+  );
+}
+
+function ProfileLibraryList({
+  profiles,
+  selectedKey,
+  onSelect
+}: {
+  profiles: ComparableProfile[];
+  selectedKey: string;
+  onSelect: (profile: ComparableProfile) => void;
+}) {
+  const groups = groupComparableProfiles(profiles);
+
+  return (
+    <div className="profile-library-list">
+      {groups.map((group) => (
+        <div className="target-picker-group" key={group.label}>
+          <div className="mini-header">
+            <strong>{group.label}</strong>
+            <span>{group.options.length}</span>
+          </div>
+          <div className="target-picker-list">
+            {group.options.length === 0 ? <p className="muted">No matching profiles found</p> : null}
+            {group.options.map((profile) => (
+              <button
+                className={`technique-option target-option ${profile.key === selectedKey ? "selected-option" : ""}`}
+                key={profile.key}
+                type="button"
+                onClick={() => onSelect(profile)}
+              >
+                <span>{profile.name}</span>
+                <small>{profileDetail(profile)}</small>
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -454,7 +474,7 @@ function SelectedTechniqueSummary({
 }: {
   techniqueIds: string[];
   unknownIds: string[];
-  lookup: Map<string, TechniqueListItem>;
+  lookup: TechniqueLookup;
   onRemove: (techniqueId: string) => void;
 }) {
   const selectedTechniques = techniqueIds.map((techniqueId) => lookup.get(techniqueId)).filter(Boolean) as TechniqueListItem[];
@@ -488,239 +508,116 @@ function SelectedTechniqueSummary({
   );
 }
 
-function ProfileInspector({ profile, groups }: { profile: CustomTTPSet; groups: ReturnType<typeof groupTechniquesByTactic> }) {
-  return (
-    <div className="profile-inspector">
-      <div>
-        <p className="panel-label">Selected profile</p>
-        <h2>{profile.name}</h2>
-        <p>{profile.description || "No description provided."}</p>
-      </div>
-      <div className="result-meta">
-        <span>{profile.technique_ids.length} techniques</span>
-        <span>Updated {formatDate(profile.updated_at)}</span>
-      </div>
-      <div className="profile-technique-groups">
-        {groups.length === 0 ? <p className="muted">No matching technique metadata is loaded.</p> : null}
-        {groups.map((group) => (
-          <div className="profile-technique-group" key={group.tactic}>
-            <strong>{formatTactic(group.tactic)}</strong>
-            <ul>
-              {group.techniques.map((technique) => (
-                <li key={technique.technique_id}>
-                  <span title={`${technique.technique_id} — ${technique.name}\nTactic: ${formatTactic(technique.tactic)}`}>
-                    {technique.technique_id} — {technique.name}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function ProfileComparisonResults({
-  comparison,
-  loading,
-  topN,
+function ProfileInspector({
+  profile,
+  customProfile,
+  actorDetail,
+  detailLoading,
+  groups,
+  techniqueIds,
   techniqueLookup
 }: {
-  comparison: ActorComparisonResponse | null;
-  loading: boolean;
-  topN: number;
+  profile: ComparableProfile | null;
+  customProfile: TTPProfile | null;
+  actorDetail: ActorDetail | null;
+  detailLoading: boolean;
+  groups: ReturnType<typeof groupTechniquesByTactic>;
+  techniqueIds: string[];
   techniqueLookup: TechniqueLookup;
 }) {
-  if (loading) {
-    return (
-      <section className="results-panel profile-results" aria-live="polite">
-        <div className="empty-state">
-          <Loader2 className="spin" size={22} aria-hidden="true" />
-          <p>Comparing TTP profile</p>
-        </div>
-      </section>
-    );
-  }
-
-  if (!comparison) {
+  if (!profile) {
     return (
       <section className="results-panel profile-results">
         <div className="empty-state">
-          <Radar size={24} aria-hidden="true" />
-          <p>Select a saved profile and compare it against actors.</p>
+          <FileJson size={24} aria-hidden="true" />
+          <p>Select a profile from the library.</p>
         </div>
       </section>
     );
   }
 
-  const canExport = comparison.results.length > 0;
+  const description = actorDetail?.description ?? customProfile?.description ?? profile.description;
+  const canExport = techniqueIds.length > 0;
 
   return (
     <section className="results-panel profile-results" aria-live="polite">
       <div className="results-header">
         <div>
-          <p className="panel-label">TTP profile</p>
-          <h2>{comparison.input_name}</h2>
+          <p className="panel-label">{profileTypeLabel(profile.type)}</p>
+          <h2>{profile.name}</h2>
+          <p className="scope-summary">{description || "No description provided."}</p>
         </div>
         <div className="results-actions">
-          <span className="metric-label">{metricLabel(comparison.metric)}</span>
+          <span className="metric-label">{techniqueIds.length || profile.technique_count} techniques</span>
           <button
             type="button"
-            title={canExport ? "Export JSON" : "Run a comparison with results before exporting"}
+            title={canExport ? "Export Navigator profile" : "Technique details are still loading"}
             disabled={!canExport}
-            onClick={() => downloadComparisonExport(comparison, "json", "mitre", topN, techniqueLookup)}
-          >
-            <FileJson size={16} aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            title={canExport ? "Export CSV" : "Run a comparison with results before exporting"}
-            disabled={!canExport}
-            onClick={() => downloadComparisonExport(comparison, "csv", "mitre", topN, techniqueLookup)}
-          >
-            <Table size={16} aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            title={canExport ? "Export Navigator layer" : "Run a comparison with results before exporting"}
-            disabled={!canExport}
-            onClick={() => downloadComparisonExport(comparison, "navigator", "mitre", topN, techniqueLookup)}
+            onClick={() => downloadProfileNavigator(profile.name, description, techniqueIds)}
           >
             <Download size={16} aria-hidden="true" />
           </button>
         </div>
       </div>
-      <ol className="result-list">
-        {comparison.results.length === 0 ? (
-          <li className="empty-result">No comparable actors found. Load MITRE data before comparing profiles.</li>
+
+      <div className="profile-inspector library-inspector">
+        <div className="result-meta">
+          <span>Type: {profileTypeLabel(profile.type)}</span>
+          <span>{profile.technique_count} listed techniques</span>
+          {customProfile ? <span>Updated {formatDate(customProfile.updated_at)}</span> : null}
+        </div>
+
+        {detailLoading ? (
+          <div className="empty-state compact-empty">
+            <Loader2 className="spin" size={22} aria-hidden="true" />
+            <p>Loading actor profile details</p>
+          </div>
         ) : null}
-        {comparison.results.map((result, index) => (
-          <li className="result-row incident-result-row" key={result.matched_entity_id}>
-            <div className="rank">{index + 1}</div>
-            <div className="result-main">
-              <div className="result-title-line">
-                <h3>{result.matched_entity_name}</h3>
-                <strong>{formatScore(result.score)}</strong>
-              </div>
-              <div className="result-meta">
-                <span>{result.shared_techniques.length} shared techniques</span>
-                <span>{result.unique_to_input.length} unmatched profile</span>
-                <span>{result.unique_to_matched_entity.length} actor-only techniques</span>
-              </div>
-              <WhyMatched result={result} techniqueLookup={techniqueLookup} />
-              <TacticBreakdownList items={result.tactic_breakdown} techniqueLookup={techniqueLookup} />
-              <SoftwarePreview software={result.shared_software} />
+
+        {actorDetail ? <SoftwareList software={actorDetail.software_used} /> : null}
+
+        <div className="profile-technique-groups">
+          {groups.length === 0 ? <p className="muted">No techniques available.</p> : null}
+          {groups.map((group) => (
+            <div className="profile-technique-group" key={group.tactic}>
+              <strong>{formatTactic(group.tactic)}</strong>
+              <ul>
+                {group.techniques.map((technique) => (
+                  <li key={technique.technique_id}>
+                    <span title={techniqueTitle(technique.technique_id, techniqueLookup)}>
+                      {techniqueLabel(technique.technique_id, techniqueLookup)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
             </div>
-          </li>
-        ))}
-      </ol>
+          ))}
+        </div>
+      </div>
     </section>
   );
 }
 
-function WhyMatched({
-  result,
-  techniqueLookup
-}: {
-  result: ActorComparisonResponse["results"][number];
-  techniqueLookup: TechniqueLookup;
-}) {
-  const rareShared = result.rare_shared_techniques ?? [];
+function SoftwareList({ software }: { software: SoftwareSummary[] }) {
+  if (software.length === 0) {
+    return (
+      <div className="why-match">
+        <strong>Software</strong>
+        <p>No software available for this actor profile.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="why-match">
-      <strong>Why this matched</strong>
-      <p>
-        Technique overlap score {formatScore(result.technique_score)}
-        {result.software_score > 0 ? `, software overlap ${formatScore(result.software_score)}` : ""}.
-      </p>
-      <TechniqueLine
-        label="Shared techniques"
-        techniques={result.shared_techniques}
-        emptyText="No shared techniques"
-        techniqueLookup={techniqueLookup}
-      />
-      {rareShared.length > 0 ? (
-        <TechniqueLine label="Rare shared techniques" techniques={rareShared} emptyText="" techniqueLookup={techniqueLookup} />
-      ) : null}
-    </div>
-  );
-}
-
-function TechniqueLine({
-  label,
-  techniques,
-  emptyText,
-  techniqueLookup
-}: {
-  label: string;
-  techniques: string[];
-  emptyText: string;
-  techniqueLookup: TechniqueLookup;
-}) {
-  const visible = techniques.slice(0, 12);
-  const hiddenCount = techniques.length - visible.length;
-  return (
-    <p className="technique-preview">
-      <strong>{label}</strong>{" "}
-      {visible.length > 0
-        ? visible.map((techniqueId, index) => (
-            <span className="technique-label" key={techniqueId} title={techniqueTitle(techniqueId, techniqueLookup)}>
-              {index > 0 ? ", " : ""}
-              {techniqueLabel(techniqueId, techniqueLookup)}
-            </span>
-          ))
-        : emptyText}
-      {hiddenCount > 0 ? ` +${hiddenCount} more` : ""}
-    </p>
-  );
-}
-
-function SoftwarePreview({ software }: { software: SoftwareSummary[] }) {
-  if (software.length === 0) {
-    return null;
-  }
-
-  const visible = software.slice(0, 6).map((item) => item.name);
-  const hiddenCount = software.length - visible.length;
-
-  return (
-    <p className="software-preview">
-      <strong>Shared software</strong> {visible.join(", ")}
-      {hiddenCount > 0 ? ` +${hiddenCount} more` : ""}
-    </p>
-  );
-}
-
-function TacticBreakdownList({ items, techniqueLookup }: { items: TacticBreakdown[]; techniqueLookup: TechniqueLookup }) {
-  const visibleItems = items.filter((item) => item.union_technique_count > 0).slice(0, 5);
-  if (visibleItems.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="tactic-breakdown" aria-label="Tactic breakdown">
-      {visibleItems.map((item) => (
-        <div className="tactic-row" key={item.tactic}>
-          <div className="tactic-row-header">
-            <strong>{formatTactic(item.tactic)}</strong>
-            <span>{formatScore(item.score_contribution)}</span>
-          </div>
-          <div className="tactic-meter" aria-hidden="true">
-            <span style={{ width: `${Math.round(item.score_contribution * 100)}%` }} />
-          </div>
-          <p>
-            {item.shared_technique_count}/{item.union_technique_count} shared
-            {item.shared_techniques.length > 0 ? ": " : ""}
-            {item.shared_techniques.slice(0, 5).map((techniqueId, index) => (
-              <span className="technique-label" key={techniqueId} title={techniqueTitle(techniqueId, techniqueLookup)}>
-                {index > 0 ? ", " : ""}
-                {techniqueLabel(techniqueId, techniqueLookup)}
-              </span>
-            ))}
-          </p>
-        </div>
-      ))}
+      <strong>Software</strong>
+      <div className="chip-list">
+        {software.slice(0, 18).map((item) => (
+          <span className="technique-chip unknown-chip" key={item.id}>
+            {item.name}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
@@ -738,13 +635,13 @@ function StatusMessage({ tone, message }: { tone: "neutral" | "error"; message: 
   );
 }
 
-function downloadProfileNavigator(profile: CustomTTPSet) {
+function downloadProfileNavigator(name: string, description: string | null | undefined, techniqueIds: string[]) {
   const payload = {
     version: "4.5",
-    name: profile.name,
+    name,
     domain: "enterprise-attack",
-    description: profile.description ?? "TTP profile exported from WhoIsWhoAPT.",
-    techniques: profile.technique_ids.map((techniqueID) => ({
+    description: description ?? "TTP profile exported from WhoIsWhoAPT.",
+    techniques: techniqueIds.map((techniqueID) => ({
       techniqueID,
       enabled: true
     }))
@@ -753,7 +650,7 @@ function downloadProfileNavigator(profile: CustomTTPSet) {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = `${safeFilename(profile.name)}-navigator.json`;
+  anchor.download = `${safeFilename(name)}-navigator.json`;
   document.body.append(anchor);
   anchor.click();
   anchor.remove();
@@ -762,23 +659,6 @@ function downloadProfileNavigator(profile: CustomTTPSet) {
 
 function sortedTechniqueIds(techniqueIds: string[]): string[] {
   return Array.from(new Set(techniqueIds)).sort((left, right) => left.localeCompare(right));
-}
-
-function formatScore(score: number): string {
-  return `${Math.round(score * 100)}%`;
-}
-
-function metricLabel(metric: SimilarityMetric): string {
-  if (metric === "jaccard_weighted") {
-    return "Weighted Jaccard";
-  }
-  if (metric === "tactic_weighted_jaccard") {
-    return "Tactic weighted";
-  }
-  if (metric === "software_weighted_jaccard") {
-    return "Software weighted";
-  }
-  return "Jaccard";
 }
 
 function formatDate(value: string): string {

@@ -259,6 +259,7 @@ class CustomComparisonRequest(BaseModel):
     custom_set_id: str | None = None
     name: str | None = None
     technique_ids: list[str] | None = None
+    target_ids: list[str] | None = None
     metric: SimilarityMetric = "jaccard"
     top_n: int | None = Field(default=None, ge=1, le=100)
     tactics: list[str] | None = None

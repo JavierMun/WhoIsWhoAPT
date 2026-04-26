@@ -29,7 +29,7 @@ export function ComparisonResultTabs({
     <section className="results-panel comparison-results-panel" aria-live="polite">
       <div className="results-header comparison-results-header">
         <div>
-          <p className="panel-label">Input</p>
+          <p className="panel-label">Source profile</p>
           <h2>{comparison.input_name}</h2>
           <p className="scope-summary">Comparing against: {comparisonScopeLabel}</p>
           <p className="scope-summary">Similarity scope: {tacticScopeLabel}</p>

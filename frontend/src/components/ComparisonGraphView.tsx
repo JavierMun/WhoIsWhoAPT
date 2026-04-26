@@ -1,4 +1,4 @@
-import { RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { buildComparisonGraph, clampScore } from "../api/comparisonViewUtils";
@@ -60,16 +60,16 @@ export function ComparisonGraphView({ comparison }: { comparison: ActorCompariso
             <RotateCcw size={16} aria-hidden="true" />
           </button>
           <button type="button" title="Pan left" onClick={() => setPan((value) => ({ ...value, x: value.x - 28 }))}>
-            {"<"}
+            <ArrowLeft size={16} aria-hidden="true" />
           </button>
           <button type="button" title="Pan right" onClick={() => setPan((value) => ({ ...value, x: value.x + 28 }))}>
-            {">"}
+            <ArrowRight size={16} aria-hidden="true" />
           </button>
           <button type="button" title="Pan up" onClick={() => setPan((value) => ({ ...value, y: value.y - 28 }))}>
-            ^
+            <ArrowUp size={16} aria-hidden="true" />
           </button>
           <button type="button" title="Pan down" onClick={() => setPan((value) => ({ ...value, y: value.y + 28 }))}>
-            v
+            <ArrowDown size={16} aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -78,7 +78,7 @@ export function ComparisonGraphView({ comparison }: { comparison: ActorCompariso
         <div className="graph-notice">{graph.hiddenCount} matches hidden below the selected threshold.</div>
       ) : null}
       {graph.edges.length === 0 ? (
-        <div className="graph-notice">No matches meet the selected threshold. Lower the threshold to show edges.</div>
+        <div className="graph-notice">No comparison targets meet the selected threshold. Lower the threshold to show edges.</div>
       ) : null}
 
       <div className="comparison-graph-canvas">

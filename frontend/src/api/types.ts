@@ -34,6 +34,23 @@ export interface ActorListItem {
   technique_count: number;
 }
 
+export interface TechniqueRef {
+  technique_id: string;
+  use_description: string | null;
+  detected_in_campaigns: string[];
+}
+
+export interface ActorDetail {
+  id: string;
+  name: string;
+  aliases: string[];
+  description: string | null;
+  techniques: TechniqueRef[];
+  technique_count: number;
+  software_used: SoftwareSummary[];
+  software_count: number;
+}
+
 export interface ComparisonResult {
   matched_entity_id: string;
   matched_entity_name: string;
@@ -70,7 +87,7 @@ export interface TechniqueListItem {
   parent_id: string | null;
 }
 
-export interface CustomTTPSet {
+export interface TTPProfile {
   id: string;
   name: string;
   description: string | null;

@@ -155,6 +155,8 @@ def compare_custom_techniques(
     technique_tactics = _technique_tactics(session)
     tactic_scope = _normalize_tactic_scope(request.tactics)
     candidates = _actor_candidates(session, active_source)
+    if isinstance(request, CustomComparisonRequest) and request.target_ids is not None:
+        candidates = _target_actor_candidates(candidates, request.target_ids)
     filtered_input_techniques = _filter_techniques_by_tactics(input_techniques, technique_tactics, tactic_scope)
     scoped_input_software = _software_for_tactic_scope(set(), filtered_input_techniques, tactic_scope)
     candidates = [_filter_entity_by_tactics(candidate, technique_tactics, tactic_scope) for candidate in candidates]

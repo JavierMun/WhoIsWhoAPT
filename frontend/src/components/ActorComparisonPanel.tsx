@@ -1,101 +1,82 @@
 import { AlertCircle, BarChart3, Loader2, Search, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-import { compareActor, getActors, getCustomSets, getTechniques } from "../api/client";
+import { compareActor, compareTTPProfile, getActors, getTechniques, getTTPProfiles } from "../api/client";
+import {
+  buildComparableProfiles,
+  filterComparableProfiles,
+  groupComparableProfiles,
+  profileDetail,
+  profileTypeLabel,
+  type ComparableProfile
+} from "../api/profileLibraryUtils";
 import { formatTactic, techniqueLookupFromList } from "../api/ttpProfileUtils";
-import type {
-  ActorComparisonResponse,
-  ActorListItem,
-  CustomTTPSet,
-  SimilarityMetric,
-  TechniqueListItem
-} from "../api/types";
+import type { ActorComparisonResponse, ActorListItem, SimilarityMetric, TechniqueListItem, TTPProfile } from "../api/types";
 import { ComparisonResultTabs } from "./ComparisonResultTabs";
 
 const DEFAULT_TOP_N = 10;
 type ComparisonScope = "all" | "selected";
-type TargetKind = "actor" | "profile";
-type TargetOption = {
-  id: string;
-  kind: TargetKind;
-  label: string;
-  detail: string;
-};
 
 export function ActorComparisonPanel() {
   const [actors, setActors] = useState<ActorListItem[]>([]);
-  const [profiles, setProfiles] = useState<CustomTTPSet[]>([]);
+  const [customProfiles, setCustomProfiles] = useState<TTPProfile[]>([]);
   const [techniques, setTechniques] = useState<TechniqueListItem[]>([]);
-  const [actorQuery, setActorQuery] = useState("");
-  const [selectedActorId, setSelectedActorId] = useState("");
+  const [sourceQuery, setSourceQuery] = useState("");
+  const [selectedSourceKey, setSelectedSourceKey] = useState("");
   const [selectedTactic, setSelectedTactic] = useState("all");
   const [scope, setScope] = useState<ComparisonScope>("all");
   const [targetQuery, setTargetQuery] = useState("");
   const [selectedTargetKeys, setSelectedTargetKeys] = useState<string[]>([]);
   const [metric, setMetric] = useState<SimilarityMetric>("jaccard");
   const [topN, setTopN] = useState(DEFAULT_TOP_N);
-  const [actorsLoading, setActorsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [compareLoading, setCompareLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [comparison, setComparison] = useState<ActorComparisonResponse | null>(null);
 
   useEffect(() => {
-    Promise.all([getActors(), getCustomSets(), getTechniques()])
-      .then(([items, profileItems, techniqueItems]) => {
-        setActors(items);
-        setProfiles(profileItems);
+    Promise.all([getActors(), getTTPProfiles(), getTechniques()])
+      .then(([actorItems, customProfileItems, techniqueItems]) => {
+        setActors(actorItems);
+        setCustomProfiles(customProfileItems);
         setTechniques(techniqueItems);
-        setSelectedActorId(items[0]?.id ?? "");
+        const firstProfile = buildComparableProfiles(actorItems, customProfileItems)[0];
+        setSelectedSourceKey(firstProfile?.key ?? "");
       })
       .catch((apiError: unknown) => {
-        setError(apiError instanceof Error ? apiError.message : "Unable to load comparison data");
+        setError(apiError instanceof Error ? apiError.message : "Unable to load comparable profiles");
       })
       .finally(() => {
-        setActorsLoading(false);
+        setLoading(false);
       });
   }, []);
 
-  const filteredActors = useMemo(() => {
-    const normalizedQuery = actorQuery.trim().toLowerCase();
-    if (!normalizedQuery) {
-      return actors;
+  const comparableProfiles = useMemo(() => buildComparableProfiles(actors, customProfiles), [actors, customProfiles]);
+  const sourceProfiles = useMemo(
+    () => filterComparableProfiles(comparableProfiles, sourceQuery),
+    [comparableProfiles, sourceQuery]
+  );
+  const selectedSource =
+    comparableProfiles.find((profile) => profile.key === selectedSourceKey) ?? comparableProfiles[0] ?? null;
+  const visibleSourceProfiles = useMemo(() => {
+    if (!selectedSource || sourceProfiles.some((profile) => profile.key === selectedSource.key)) {
+      return sourceProfiles;
     }
-
-    return actors.filter((actor) => {
-      const aliases = actor.aliases.join(" ").toLowerCase();
-      return actor.name.toLowerCase().includes(normalizedQuery) || aliases.includes(normalizedQuery);
-    });
-  }, [actorQuery, actors]);
-
-  const effectiveSelectedActorId = filteredActors.some((actor) => actor.id === selectedActorId)
-    ? selectedActorId
-    : (filteredActors[0]?.id ?? "");
-  const selectedActor = actors.find((actor) => actor.id === effectiveSelectedActorId) ?? null;
-  const targetOptions = useMemo(
-    () => buildTargetOptions(actors, profiles, effectiveSelectedActorId),
-    [actors, effectiveSelectedActorId, profiles]
+    return [selectedSource, ...sourceProfiles];
+  }, [selectedSource, sourceProfiles]);
+  const targetProfiles = useMemo(
+    () => comparableProfiles.filter((profile) => profile.key !== selectedSource?.key),
+    [comparableProfiles, selectedSource?.key]
+  );
+  const filteredTargetProfiles = useMemo(
+    () => filterComparableProfiles(targetProfiles, targetQuery),
+    [targetProfiles, targetQuery]
   );
   const selectedTargets = selectedTargetKeys
-    .map((targetKey) => targetOptions.find((option) => targetKeyFor(option) === targetKey))
-    .filter((option): option is TargetOption => Boolean(option));
-  const selectedActorTargetIds = selectedTargets
-    .filter((target) => target.kind === "actor")
-    .map((target) => target.id);
-  const selectedProfileTargets = selectedTargets.filter((target) => target.kind === "profile");
-  const filteredTargets = useMemo(() => {
-    const normalizedQuery = targetQuery.trim().toLowerCase();
-    const selectedKeys = new Set(selectedTargetKeys);
-    return targetOptions
-      .filter((target) => !selectedKeys.has(targetKeyFor(target)))
-      .filter((target) => {
-        if (!normalizedQuery) {
-          return true;
-        }
-        return target.label.toLowerCase().includes(normalizedQuery) || target.detail.toLowerCase().includes(normalizedQuery);
-      });
-  }, [selectedTargetKeys, targetOptions, targetQuery]);
-  const actorTargets = filteredTargets.filter((target) => target.kind === "actor").slice(0, 40);
-  const profileTargets = filteredTargets.filter((target) => target.kind === "profile").slice(0, 20);
+    .map((key) => targetProfiles.find((profile) => profile.key === key))
+    .filter((profile): profile is ComparableProfile => Boolean(profile));
+  const selectedActorTargetIds = selectedTargets.filter((target) => target.type === "actor").map((target) => target.id);
+  const selectedCustomTargetCount = selectedTargets.filter((target) => target.type === "custom").length;
   const techniqueLookup = useMemo(() => techniqueLookupFromList(techniques), [techniques]);
   const availableTactics = useMemo(
     () =>
@@ -107,18 +88,25 @@ export function ActorComparisonPanel() {
   const selectedTactics = selectedTactic === "all" ? undefined : [selectedTactic];
   const tacticScopeLabel = selectedTactic === "all" ? "All tactics" : formatTactic(selectedTactic);
   const comparisonScopeLabel =
-    scope === "all" ? "All actors" : selectedTargets.map((target) => target.label).join(", ") || "No targets selected";
+    scope === "all" ? "All actor profiles" : selectedTargets.map((target) => target.name).join(", ") || "No target profiles selected";
+  const selectedCustomTargetNotice =
+    selectedCustomTargetCount > 0
+      ? "Custom profile targets are visible for future support; current comparison runs against actor profiles only."
+      : null;
+  const compareDisabled =
+    !selectedSource || loading || compareLoading || (scope === "selected" && selectedActorTargetIds.length === 0);
 
   async function handleCompare() {
-    if (!effectiveSelectedActorId) {
+    if (!selectedSource) {
+      setError("Select a source profile before comparing.");
       return;
     }
     if (scope === "selected" && selectedTargets.length === 0) {
-      setError("Select at least one target before comparing.");
+      setError("Select at least one target profile before comparing.");
       return;
     }
     if (scope === "selected" && selectedActorTargetIds.length === 0) {
-      setError("Select at least one actor target. TTP profile targets are shown for future profile comparison support.");
+      setError("Select at least one actor profile target. Custom TTP profile targets are visible for future support.");
       return;
     }
     if (selectedTactic !== "all" && !availableTactics.includes(selectedTactic)) {
@@ -131,32 +119,51 @@ export function ActorComparisonPanel() {
     setComparison(null);
 
     try {
-      setComparison(
-        await compareActor(
-          effectiveSelectedActorId,
-          metric,
-          topN,
-          scope === "selected" ? selectedActorTargetIds : undefined,
-          selectedTactics
-        )
-      );
+      if (selectedSource.type === "actor") {
+        setComparison(
+          await compareActor(
+            selectedSource.id,
+            metric,
+            topN,
+            scope === "selected" ? selectedActorTargetIds : undefined,
+            selectedTactics
+          )
+        );
+      } else {
+        setComparison(
+          await compareTTPProfile({
+            profileId: selectedSource.id,
+            metric,
+            topN,
+            targetIds: scope === "selected" ? selectedActorTargetIds : undefined,
+            tactics: selectedTactics
+          })
+        );
+      }
     } catch (apiError) {
-      setError(apiError instanceof Error ? apiError.message : "Unable to compare actor");
+      setError(apiError instanceof Error ? apiError.message : "Unable to compare profiles");
     } finally {
       setCompareLoading(false);
     }
+  }
+
+  function handleSourceChange(nextSourceKey: string) {
+    setSelectedSourceKey(nextSourceKey);
+    setSelectedTargetKeys((currentKeys) => currentKeys.filter((key) => key !== nextSourceKey));
+    setComparison(null);
+    setError(null);
   }
 
   return (
     <section className="comparison-workspace" aria-labelledby="comparison-title">
       <div className="workspace-header">
         <div>
-          <p className="eyebrow">Actor Comparison</p>
-          <h1 id="comparison-title">Compare ATT&CK profiles</h1>
+          <p className="eyebrow">Compare</p>
+          <h1 id="comparison-title">Compare TTP profiles</h1>
         </div>
         <div className="source-pill">
           <BarChart3 size={16} aria-hidden="true" />
-          <span>MITRE dataset</span>
+          <span>{comparableProfiles.length} comparable profiles</span>
         </div>
       </div>
 
@@ -168,43 +175,39 @@ export function ActorComparisonPanel() {
             void handleCompare();
           }}
         >
-          <label className="field-group" htmlFor="actor-search">
-            <span>Search actors</span>
+          <label className="field-group" htmlFor="source-profile-search">
+            <span>Find source profile</span>
             <div className="search-field">
               <Search size={17} aria-hidden="true" />
               <input
-                id="actor-search"
+                id="source-profile-search"
                 type="search"
-                value={actorQuery}
+                value={sourceQuery}
                 onChange={(event) => {
-                  setActorQuery(event.target.value);
+                  setSourceQuery(event.target.value);
                 }}
-                placeholder="APT, alias, group"
+                placeholder="Profile name, actor alias"
               />
             </div>
           </label>
 
-          <label className="field-group" htmlFor="actor-select">
-            <span>Actor</span>
+          <label className="field-group" htmlFor="source-profile-select">
+            <span>Source profile</span>
             <select
-              id="actor-select"
-              value={effectiveSelectedActorId}
-              disabled={actorsLoading || filteredActors.length === 0}
+              id="source-profile-select"
+              value={selectedSource?.key ?? ""}
+              disabled={loading || comparableProfiles.length === 0}
               onChange={(event) => {
-                setSelectedActorId(event.target.value);
+                handleSourceChange(event.target.value);
               }}
             >
-              {filteredActors.map((actor) => (
-                <option key={actor.id} value={actor.id}>
-                  {actor.name} ({actor.technique_count})
-                </option>
-              ))}
+              <ProfileOptionGroups profiles={visibleSourceProfiles} />
             </select>
           </label>
 
           <div className="selected-actor">
-            <p>{selectedActor?.name ?? "No actor selected"}</p>
-            <span>{selectedActor ? `${selectedActor.technique_count} techniques` : "Load MITRE data first"}</span>
+            <p>{selectedSource?.name ?? "No source profile selected"}</p>
+            <span>{selectedSource ? profileDetail(selectedSource) : "Load profiles first"}</span>
           </div>
 
           <label className="field-group" htmlFor="metric-select">
@@ -243,7 +246,7 @@ export function ActorComparisonPanel() {
             <select
               id="tactic-scope-select"
               value={selectedTactic}
-              disabled={actorsLoading || availableTactics.length === 0}
+              disabled={loading || availableTactics.length === 0}
               onChange={(event) => {
                 setSelectedTactic(event.target.value);
               }}
@@ -258,7 +261,7 @@ export function ActorComparisonPanel() {
           </label>
 
           <fieldset className="scope-selector">
-            <legend>Comparison scope</legend>
+            <legend>Target scope</legend>
             <label>
               <input
                 type="radio"
@@ -269,7 +272,7 @@ export function ActorComparisonPanel() {
                   setScope("all");
                 }}
               />
-              <span>Compare against all actors</span>
+              <span>Compare against all actor profiles</span>
             </label>
             <label>
               <input
@@ -281,77 +284,63 @@ export function ActorComparisonPanel() {
                   setScope("selected");
                 }}
               />
-              <span>Compare against selected targets</span>
+              <span>Compare against selected profiles</span>
             </label>
           </fieldset>
 
-          <div className={`target-selector ${scope === "all" ? "disabled" : ""}`} aria-disabled={scope === "all"}>
-            <label className="field-group" htmlFor="target-search">
-              <span>Targets</span>
-              <div className="search-field">
-                <Search size={17} aria-hidden="true" />
-                <input
-                  id="target-search"
-                  type="search"
-                  value={targetQuery}
-                  disabled={scope === "all"}
-                  onChange={(event) => {
-                    setTargetQuery(event.target.value);
-                  }}
-                  placeholder="Search actors or profiles"
-                />
-              </div>
-            </label>
-
-            <TargetPickerGroup
-              title="Actors"
-              options={actorTargets}
-              disabled={scope === "all"}
-              onSelect={(target) => {
-                setSelectedTargetKeys((currentKeys) => [...currentKeys, targetKeyFor(target)]);
-              }}
-            />
-            <TargetPickerGroup
-              title="TTP Profiles"
-              options={profileTargets}
-              disabled={scope === "all"}
-              onSelect={(target) => {
-                setSelectedTargetKeys((currentKeys) => [...currentKeys, targetKeyFor(target)]);
-              }}
-            />
-
-            <div className="selected-techniques">
-              <div className="mini-header">
-                <strong>{selectedTargets.length} selected targets</strong>
-                {selectedProfileTargets.length > 0 ? <span className="field-hint">Profiles are future-ready</span> : null}
-              </div>
-              <div className="chip-list">
-                {selectedTargets.map((target) => (
-                  <button
-                    className={`technique-chip target-chip ${target.kind === "profile" ? "profile-chip" : ""}`}
-                    key={targetKeyFor(target)}
-                    type="button"
-                    disabled={scope === "all"}
-                    title={target.detail}
-                    onClick={() => {
-                      const targetKey = targetKeyFor(target);
-                      setSelectedTargetKeys((currentKeys) => currentKeys.filter((key) => key !== targetKey));
+          {scope === "selected" ? (
+            <div className="target-selector">
+              <label className="field-group" htmlFor="target-profile-search">
+                <span>Target profiles</span>
+                <div className="search-field">
+                  <Search size={17} aria-hidden="true" />
+                  <input
+                    id="target-profile-search"
+                    type="search"
+                    value={targetQuery}
+                    onChange={(event) => {
+                      setTargetQuery(event.target.value);
                     }}
-                  >
-                    <span>{target.label}</span>
-                    <X size={14} aria-hidden="true" />
-                  </button>
-                ))}
-                {selectedTargets.length === 0 ? <span className="muted">No selected targets</span> : null}
+                    placeholder="Search comparable profiles"
+                  />
+                </div>
+              </label>
+
+              <ProfilePickerGroups
+                profiles={filteredTargetProfiles}
+                selectedKeys={selectedTargetKeys}
+                onSelect={(profile) => {
+                  setSelectedTargetKeys((currentKeys) => [...currentKeys, profile.key]);
+                }}
+              />
+
+              <div className="selected-techniques">
+                <div className="mini-header">
+                  <strong>{selectedTargets.length} target profiles</strong>
+                  {selectedCustomTargetCount > 0 ? <span className="field-hint">Custom targets pending</span> : null}
+                </div>
+                <div className="chip-list">
+                  {selectedTargets.map((target) => (
+                    <button
+                      className={`technique-chip target-chip ${target.type === "custom" ? "profile-chip" : ""}`}
+                      key={target.key}
+                      type="button"
+                      title={profileDetail(target)}
+                      onClick={() => {
+                        setSelectedTargetKeys((currentKeys) => currentKeys.filter((key) => key !== target.key));
+                      }}
+                    >
+                      <span>{target.name}</span>
+                      <X size={14} aria-hidden="true" />
+                    </button>
+                  ))}
+                  {selectedTargets.length === 0 ? <span className="muted">No target profiles selected</span> : null}
+                </div>
               </div>
             </div>
-          </div>
+          ) : null}
 
-          <button
-            className="primary-action"
-            type="submit"
-            disabled={!effectiveSelectedActorId || actorsLoading || compareLoading}
-          >
+          <button className="primary-action" type="submit" disabled={compareDisabled}>
             {compareLoading ? (
               <Loader2 className="spin" size={18} aria-hidden="true" />
             ) : (
@@ -360,7 +349,8 @@ export function ActorComparisonPanel() {
             <span>{compareLoading ? "Comparing" : "Compare"}</span>
           </button>
 
-          {actorsLoading ? <StatusMessage tone="neutral" message="Loading actors" /> : null}
+          {loading ? <StatusMessage tone="neutral" message="Loading comparable profiles" /> : null}
+          {selectedCustomTargetNotice ? <StatusMessage tone="neutral" message={selectedCustomTargetNotice} /> : null}
           {error ? <StatusMessage tone="error" message={error} /> : null}
         </form>
 
@@ -377,38 +367,58 @@ export function ActorComparisonPanel() {
   );
 }
 
-function TargetPickerGroup({
-  title,
-  options,
-  disabled,
+function ProfileOptionGroups({ profiles }: { profiles: ComparableProfile[] }) {
+  return (
+    <>
+      {groupComparableProfiles(profiles).map((group) => (
+        <optgroup key={group.label} label={group.label}>
+          {group.options.map((profile) => (
+            <option key={profile.key} value={profile.key}>
+              {profile.name} ({profile.technique_count})
+            </option>
+          ))}
+        </optgroup>
+      ))}
+    </>
+  );
+}
+
+function ProfilePickerGroups({
+  profiles,
+  selectedKeys,
   onSelect
 }: {
-  title: string;
-  options: TargetOption[];
-  disabled: boolean;
-  onSelect: (target: TargetOption) => void;
+  profiles: ComparableProfile[];
+  selectedKeys: string[];
+  onSelect: (profile: ComparableProfile) => void;
 }) {
+  const selectedKeySet = new Set(selectedKeys);
+  const groups = groupComparableProfiles(profiles.filter((profile) => !selectedKeySet.has(profile.key)));
+
   return (
-    <div className="target-picker-group">
-      <div className="mini-header">
-        <strong>{title}</strong>
-        <span>{options.length}</span>
-      </div>
-      <div className="target-picker-list">
-        {options.length === 0 ? <p className="muted">No matches</p> : null}
-        {options.map((target) => (
-          <button
-            className="technique-option target-option"
-            key={targetKeyFor(target)}
-            type="button"
-            disabled={disabled}
-            onClick={() => onSelect(target)}
-          >
-            <span>{target.label}</span>
-            <small>{target.detail}</small>
-          </button>
-        ))}
-      </div>
+    <div className="profile-picker-list">
+      {groups.map((group) => (
+        <div className="target-picker-group" key={group.label}>
+          <div className="mini-header">
+            <strong>{group.label}</strong>
+            <span>{group.options.length}</span>
+          </div>
+          <div className="target-picker-list">
+            {group.options.length === 0 ? <p className="muted">No matching profiles found</p> : null}
+            {group.options.map((profile) => (
+              <button
+                className="technique-option target-option"
+                key={profile.key}
+                type="button"
+                onClick={() => onSelect(profile)}
+              >
+                <span>{profile.name}</span>
+                <small>{profileTypeLabel(profile.type)} - {profile.technique_count} techniques</small>
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -433,7 +443,7 @@ function ComparisonResults({
       <section className="results-panel" aria-live="polite">
         <div className="empty-state">
           <Loader2 className="spin" size={22} aria-hidden="true" />
-          <p>Ranking actors</p>
+          <p>Ranking comparable profiles</p>
         </div>
       </section>
     );
@@ -444,7 +454,7 @@ function ComparisonResults({
       <section className="results-panel">
         <div className="empty-state">
           <BarChart3 size={24} aria-hidden="true" />
-          <p>Select an actor and run a comparison.</p>
+          <p>Select a source profile to start comparison.</p>
         </div>
       </section>
     );
@@ -457,7 +467,7 @@ function ComparisonResults({
       <section className="results-panel" aria-live="polite">
         <div className="results-header">
           <div>
-            <p className="panel-label">Input</p>
+            <p className="panel-label">Source profile</p>
             <h2>{comparison.input_name}</h2>
             <p className="scope-summary">Comparing against: {comparisonScopeLabel}</p>
             <p className="scope-summary">Similarity scope: {tacticScopeLabel}</p>
@@ -466,7 +476,7 @@ function ComparisonResults({
         </div>
         <div className="empty-state">
           <BarChart3 size={24} aria-hidden="true" />
-          <p>No comparable actors found. Load MITRE data or choose another actor.</p>
+          <p>No matching actor profiles found. Load MITRE data or choose another source profile.</p>
         </div>
       </section>
     );
@@ -507,31 +517,4 @@ function metricLabel(metric: SimilarityMetric): string {
     return "Software weighted";
   }
   return "Jaccard";
-}
-
-function buildTargetOptions(
-  actors: ActorListItem[],
-  profiles: CustomTTPSet[],
-  selectedActorId: string
-): TargetOption[] {
-  const actorOptions = actors
-    .filter((actor) => actor.id !== selectedActorId)
-    .map((actor) => ({
-      id: actor.id,
-      kind: "actor" as const,
-      label: actor.name,
-      detail: `${actor.technique_count} techniques`
-    }));
-  const profileOptions = profiles.map((profile) => ({
-    id: profile.id,
-    kind: "profile" as const,
-    label: profile.name,
-    detail: `${profile.technique_ids.length} techniques`
-  }));
-
-  return [...actorOptions, ...profileOptions];
-}
-
-function targetKeyFor(target: TargetOption): string {
-  return `${target.kind}:${target.id}`;
 }

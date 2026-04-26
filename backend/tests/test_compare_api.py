@@ -98,6 +98,90 @@ def test_compare_actor_with_tactic_weighted_jaccard() -> None:
     assert persistence["score_contribution"] == 3 / 5
 
 
+def test_compare_actor_filters_similarity_to_single_tactic() -> None:
+    """A tactic scope should compare only techniques mapped to that tactic."""
+    client = _client_with_seeded_actors()
+
+    response = client.post(
+        "/api/compare/actor",
+        json={"actor_id": "actor-a", "metric": "jaccard", "top_n": 2, "tactics": ["persistence"]},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["results"][0]["matched_entity_id"] == "actor-b"
+    assert body["results"][0]["score"] == 1.0
+    assert body["results"][0]["shared_techniques"] == ["T1002"]
+    assert body["results"][0]["unique_to_input"] == []
+    assert body["results"][0]["unique_to_matched_entity"] == []
+
+
+def test_compare_actor_filters_similarity_to_multiple_tactics() -> None:
+    """Multiple selected tactics should keep techniques from any selected tactic."""
+    client = _client_with_seeded_actors()
+
+    response = client.post(
+        "/api/compare/actor",
+        json={
+            "actor_id": "actor-a",
+            "target_ids": ["actor-b"],
+            "metric": "jaccard",
+            "tactics": ["execution", "persistence"],
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["results"][0]["matched_entity_id"] == "actor-b"
+    assert body["results"][0]["score"] == 1 / 3
+    assert body["results"][0]["shared_techniques"] == ["T1002"]
+    assert body["results"][0]["unique_to_input"] == ["T1001"]
+    assert body["results"][0]["unique_to_matched_entity"] == ["T1003"]
+
+
+def test_compare_actor_explains_empty_tactic_filtered_results() -> None:
+    """Empty tactic-scoped technique sets should return score zero with an explanation."""
+    client = _client_with_seeded_actors()
+
+    response = client.post(
+        "/api/compare/actor",
+        json={"actor_id": "actor-a", "target_ids": ["actor-b"], "metric": "jaccard", "tactics": ["exfiltration"]},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["results"][0]["score"] == 0
+    assert body["results"][0]["shared_techniques"] == []
+    assert body["results"][0]["explanation"] == (
+        "No source or matched entity techniques remain after applying tactic scope: exfiltration."
+    )
+
+
+def test_compare_actor_empty_tactic_scope_overrides_software_overlap() -> None:
+    """Software evidence should not create a nonzero score when scoped TTP evidence is empty."""
+    client = _client_with_seeded_actors(
+        ApplicationSettings(
+            active_source="mitre",
+            scoring={"technique_score_weight": 0.5, "software_score_weight": 0.5},
+        )
+    )
+
+    response = client.post(
+        "/api/compare/actor",
+        json={
+            "actor_id": "actor-a",
+            "target_ids": ["actor-b"],
+            "metric": "software_weighted_jaccard",
+            "tactics": ["exfiltration"],
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["results"][0]["score"] == 0
+    assert body["results"][0]["software_score_contribution"] == 0
+
+
 def test_compare_custom_inline_vs_all() -> None:
     """Inline custom TTP sets should compare against all actors."""
     client = _client_with_seeded_actors()
@@ -125,6 +209,46 @@ def test_compare_custom_inline_normalizes_technique_ids() -> None:
 
     assert response.status_code == 200
     assert response.json()["results"][0]["matched_entity_id"] == "actor-a"
+
+
+def test_compare_custom_against_selected_actor_targets() -> None:
+    """Custom TTP profile comparisons should support an explicit actor target subset."""
+    client = _client_with_seeded_actors()
+
+    response = client.post(
+        "/api/compare/custom",
+        json={
+            "name": "Selected Targets",
+            "technique_ids": ["T1001", "T1002"],
+            "target_ids": ["actor-c"],
+            "metric": "jaccard",
+            "top_n": 10,
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [result["matched_entity_id"] for result in body["results"]] == ["actor-c"]
+    assert body["results"][0]["score"] == 0
+
+
+def test_compare_custom_rejects_unknown_selected_targets() -> None:
+    """Unknown selected actor targets should produce the same clear error for custom comparisons."""
+    client = _client_with_seeded_actors()
+
+    response = client.post(
+        "/api/compare/custom",
+        json={
+            "name": "Selected Targets",
+            "technique_ids": ["T1001"],
+            "target_ids": ["actor-missing"],
+            "metric": "jaccard",
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"] == "Unknown target actor IDs"
+    assert response.json()["detail"] == {"target_ids": ["actor-missing"]}
 
 
 def test_compare_actor_vs_actor() -> None:

@@ -1,4 +1,4 @@
-import { techniqueLabel, techniqueTitle, type TechniqueLookup } from "../api/ttpProfileUtils";
+import { formatTactic, techniqueLabel, techniqueTitle, type TechniqueLookup } from "../api/ttpProfileUtils";
 import type { ActorComparisonResponse, SoftwareSummary, TacticBreakdown } from "../api/types";
 
 export function ComparisonRankingView({
@@ -20,8 +20,8 @@ export function ComparisonRankingView({
             </div>
             <div className="result-meta">
               <span>{result.shared_techniques.length} shared techniques</span>
-              <span>{result.unique_to_matched_entity.length} unique matched</span>
-              <span>{result.unique_to_input.length} unique input</span>
+              <span>{result.unique_to_matched_entity.length} actor-only techniques</span>
+              <span>{result.unique_to_input.length} input-only techniques</span>
             </div>
             <TechniquePreview techniques={result.shared_techniques} techniqueLookup={techniqueLookup} />
             {result.explanation ? <p className="result-explanation">{result.explanation}</p> : null}
@@ -106,12 +106,4 @@ function TacticBreakdownList({ items, techniqueLookup }: { items: TacticBreakdow
 
 function formatScore(score: number): string {
   return `${Math.round(score * 100)}%`;
-}
-
-function formatTactic(tactic: string): string {
-  return tactic
-    .split(/[-_\s]+/)
-    .filter(Boolean)
-    .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
-    .join(" ");
 }
