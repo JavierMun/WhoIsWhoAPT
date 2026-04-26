@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   savedAnalysisInputTypeLabel,
+  savedAnalysisDateLabel,
+  savedAnalysisMetricLabel,
   savedAnalysisTargetScopeLabel,
   savedAnalysisTacticScopeLabel,
   savedAnalysisToViewModel
@@ -17,6 +19,19 @@ describe("saved analysis utilities", () => {
     expect(savedAnalysisTargetScopeLabel(null)).toBe("All actor profiles");
     expect(savedAnalysisTargetScopeLabel(["actor-a"])).toBe("1 selected actor profile");
     expect(savedAnalysisTargetScopeLabel(["actor-a", "actor-b"])).toBe("2 selected actor profiles");
+  });
+
+  it("formats known metrics and keeps unknown metric names readable", () => {
+    expect(savedAnalysisMetricLabel("jaccard")).toBe("Jaccard");
+    expect(savedAnalysisMetricLabel("jaccard_weighted")).toBe("Weighted Jaccard");
+    expect(savedAnalysisMetricLabel("tactic_weighted_jaccard")).toBe("Tactic weighted");
+    expect(savedAnalysisMetricLabel("software_weighted_jaccard")).toBe("Software weighted");
+    expect(savedAnalysisMetricLabel("future_metric")).toBe("future_metric");
+  });
+
+  it("formats valid dates and falls back to raw invalid timestamps", () => {
+    expect(savedAnalysisDateLabel("not-a-date")).toBe("not-a-date");
+    expect(savedAnalysisDateLabel("2026-04-26T12:00:00Z")).toContain("2026");
   });
 
   it("adapts saved analysis detail for comparison result tabs", () => {

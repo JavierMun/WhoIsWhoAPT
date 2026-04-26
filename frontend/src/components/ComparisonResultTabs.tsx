@@ -38,6 +38,10 @@ export function ComparisonResultTabs({
   const [saveError, setSaveError] = useState<string | null>(null);
 
   async function handleSaveAnalysis() {
+    if (savingAnalysis) {
+      return;
+    }
+
     setSavingAnalysis(true);
     setSaveMessage(null);
     setSaveError(null);

@@ -24,7 +24,10 @@ export function savedAnalysisMetricLabel(metric: string): string {
   if (metric === "software_weighted_jaccard") {
     return "Software weighted";
   }
-  return "Jaccard";
+  if (metric === "jaccard") {
+    return "Jaccard";
+  }
+  return metric;
 }
 
 export function savedAnalysisTacticScopeLabel(tactics: string[] | null | undefined): string {

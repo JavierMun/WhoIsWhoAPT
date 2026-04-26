@@ -84,7 +84,7 @@ def _analysis_response(analysis: entities.Analysis) -> AnalysisResponse:
         tactics=analysis.tactics,
         target_ids=analysis.target_ids,
         top_n=analysis.top_n,
-        created_at=analysis.created_at,
+        created_at=_utc_datetime(analysis.created_at),
     )
 
 
@@ -99,3 +99,10 @@ def _analysis_detail(analysis: entities.Analysis) -> AnalysisDetail:
         **_analysis_response(analysis).model_dump(),
         results=results,
     )
+
+
+def _utc_datetime(value: datetime) -> datetime:
+    """Return stored datetimes as timezone-aware UTC values."""
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)

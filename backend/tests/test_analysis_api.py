@@ -9,6 +9,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.database import Base, get_db_session
 from app.main import create_app
+from app.models import entities
 
 
 def test_save_analysis_returns_summary() -> None:
@@ -25,6 +26,7 @@ def test_save_analysis_returns_summary() -> None:
     assert body["metric"] == "jaccard"
     assert body["top_n"] == 10
     assert body["created_at"]
+    assert body["created_at"].endswith("Z")
 
 
 def test_list_analyses_returns_saved_summaries() -> None:
@@ -69,6 +71,48 @@ def test_delete_analysis_removes_snapshot() -> None:
     assert get_response.status_code == 404
 
 
+def test_get_missing_analysis_returns_not_found() -> None:
+    """Unknown analysis IDs should return a clear 404."""
+    client = _client()
+
+    response = client.get("/api/analysis/not-a-real-id")
+
+    assert response.status_code == 404
+    assert response.json()["error"] == "Analysis not found"
+
+
+def test_delete_missing_analysis_returns_not_found() -> None:
+    """Deleting an unknown analysis should return a clear 404."""
+    client = _client()
+
+    response = client.delete("/api/analysis/not-a-real-id")
+
+    assert response.status_code == 404
+    assert response.json()["error"] == "Analysis not found"
+
+
+def test_get_analysis_with_malformed_results_returns_clear_error() -> None:
+    """Corrupt stored result JSON should not crash the API."""
+    client, session = _client_with_session()
+    analysis = entities.Analysis(
+        input_type="actor",
+        input_id="actor-a",
+        input_name="APT Alpha",
+        metric="jaccard",
+        tactics=["execution"],
+        target_ids=["actor-b"],
+        top_n=10,
+        results_json="{not-json",
+    )
+    session.add(analysis)
+    session.commit()
+
+    response = client.get(f"/api/analysis/{analysis.id}")
+
+    assert response.status_code == 500
+    assert response.json()["error"] == "Saved analysis results are invalid"
+
+
 def _analysis_payload(input_name: str = "APT Alpha") -> dict:
     return {
         "input_type": "actor",
@@ -95,6 +139,11 @@ def _analysis_payload(input_name: str = "APT Alpha") -> dict:
 
 
 def _client() -> TestClient:
+    client, _session = _client_with_session()
+    return client
+
+
+def _client_with_session() -> tuple[TestClient, Session]:
     engine = create_engine(
         "sqlite://",
         connect_args={"check_same_thread": False},
@@ -102,6 +151,7 @@ def _client() -> TestClient:
     )
     Base.metadata.create_all(bind=engine)
     TestingSessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+    seed_session = TestingSessionLocal()
 
     def override_db() -> Generator[Session, None, None]:
         session = TestingSessionLocal()
@@ -112,4 +162,4 @@ def _client() -> TestClient:
 
     app = create_app()
     app.dependency_overrides[get_db_session] = override_db
-    return TestClient(app)
+    return TestClient(app), seed_session

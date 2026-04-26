@@ -553,6 +553,7 @@ function SavedAnalysesPanel({
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deleteMessage, setDeleteMessage] = useState<string | null>(null);
+  const hasSelectedAnalysisDetail = Boolean(selectedAnalysis);
 
   useEffect(() => {
     let ignore = false;
@@ -563,17 +564,16 @@ function SavedAnalysesPanel({
           return;
         }
         setAnalyses(items);
-        if (items.length > 0) {
-          setLoadingDetail(true);
-        }
         setSelectedAnalysisId((currentId) => {
-          if (currentId && items.some((item) => item.id === currentId)) {
-            return currentId;
+          const nextId = currentId && items.some((item) => item.id === currentId) ? currentId : items[0]?.id ?? null;
+          if (nextId && (nextId !== currentId || !hasSelectedAnalysisDetail)) {
+            setLoadingDetail(true);
           }
-          return items[0]?.id ?? null;
+          return nextId;
         });
         if (items.length === 0) {
           setSelectedAnalysis(null);
+          setLoadingDetail(false);
         }
       })
       .catch((apiError: unknown) => {
@@ -590,7 +590,7 @@ function SavedAnalysesPanel({
     return () => {
       ignore = true;
     };
-  }, [refreshKey]);
+  }, [hasSelectedAnalysisDetail, refreshKey]);
 
   useEffect(() => {
     if (!selectedAnalysisId) {
@@ -668,14 +668,17 @@ function SavedAnalysesPanel({
             getAnalyses()
               .then((items) => {
                 setAnalyses(items);
-                if (items.length > 0) {
-                  setLoadingDetail(true);
-                } else {
+                if (items.length === 0) {
                   setSelectedAnalysis(null);
+                  setLoadingDetail(false);
                 }
-                setSelectedAnalysisId((currentId) =>
-                  currentId && items.some((item) => item.id === currentId) ? currentId : items[0]?.id ?? null
-                );
+                setSelectedAnalysisId((currentId) => {
+                  const nextId = currentId && items.some((item) => item.id === currentId) ? currentId : items[0]?.id ?? null;
+                  if (nextId && (nextId !== currentId || !hasSelectedAnalysisDetail)) {
+                    setLoadingDetail(true);
+                  }
+                  return nextId;
+                });
               })
               .catch((apiError: unknown) => {
                 setError(apiError instanceof Error ? apiError.message : "Unable to refresh saved analyses");
