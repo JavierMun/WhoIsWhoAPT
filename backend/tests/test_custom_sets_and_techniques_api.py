@@ -71,6 +71,57 @@ def test_create_custom_set_rejects_unknown_techniques() -> None:
     assert response.json()["error"] == "Unknown technique IDs"
 
 
+def test_update_custom_set_replaces_metadata_and_techniques() -> None:
+    """Saved custom sets should be editable without changing their ID."""
+    client = _client_with_seeded_techniques()
+
+    create_response = client.post(
+        "/api/custom-sets",
+        json={"name": "Draft", "description": "old", "technique_ids": ["T1001"]},
+    )
+    custom_set_id = create_response.json()["id"]
+
+    response = client.put(
+        f"/api/custom-sets/{custom_set_id}",
+        json={"name": "Updated", "description": "new", "technique_ids": [" t1059.001 ", "T1001", "T1001"]},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["id"] == custom_set_id
+    assert body["name"] == "Updated"
+    assert body["description"] == "new"
+    assert body["technique_ids"] == ["T1001", "T1059.001"]
+
+
+def test_update_custom_set_rejects_unknown_techniques() -> None:
+    """Custom set updates should validate technique IDs."""
+    client = _client_with_seeded_techniques()
+
+    create_response = client.post("/api/custom-sets", json={"name": "Draft", "technique_ids": ["T1001"]})
+    response = client.put(
+        f"/api/custom-sets/{create_response.json()['id']}",
+        json={"name": "Bad Update", "technique_ids": ["T9999"]},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"] == "Unknown technique IDs"
+
+
+def test_delete_custom_set_removes_saved_profile() -> None:
+    """Saved custom sets should be removable."""
+    client = _client_with_seeded_techniques()
+
+    create_response = client.post("/api/custom-sets", json={"name": "Delete Me", "technique_ids": ["T1001"]})
+    custom_set_id = create_response.json()["id"]
+
+    delete_response = client.delete(f"/api/custom-sets/{custom_set_id}")
+    get_response = client.get(f"/api/custom-sets/{custom_set_id}")
+
+    assert delete_response.status_code == 204
+    assert get_response.status_code == 404
+
+
 def _client_with_seeded_techniques() -> TestClient:
     """Create a test client with isolated in-memory technique data."""
     engine = create_engine(

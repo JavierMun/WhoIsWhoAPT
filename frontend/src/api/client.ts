@@ -38,6 +38,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error(message);
   }
 
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
   return (await response.json()) as T;
 }
 
@@ -88,6 +92,28 @@ export function createTTPProfile(name: string, techniqueIds: string[], descripti
       description,
       technique_ids: techniqueIds
     })
+  });
+}
+
+export function updateTTPProfile(
+  profileId: string,
+  name: string,
+  techniqueIds: string[],
+  description?: string
+): Promise<TTPProfile> {
+  return request<TTPProfile>(`/api/custom-sets/${encodeURIComponent(profileId)}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      name,
+      description,
+      technique_ids: techniqueIds
+    })
+  });
+}
+
+export async function deleteTTPProfile(profileId: string): Promise<void> {
+  await request<void>(`/api/custom-sets/${encodeURIComponent(profileId)}`, {
+    method: "DELETE"
   });
 }
 

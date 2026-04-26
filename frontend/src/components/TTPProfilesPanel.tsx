@@ -1,7 +1,15 @@
-import { AlertCircle, Download, FileJson, Loader2, Radar, Save, Search, Upload, X } from "lucide-react";
+import { AlertCircle, Download, Edit, FileJson, Loader2, Plus, Radar, Save, Search, Trash2, Upload, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { createTTPProfile, getActorDetail, getActors, getTechniques, getTTPProfiles } from "../api/client";
+import {
+  createTTPProfile,
+  deleteTTPProfile,
+  getActorDetail,
+  getActors,
+  getTechniques,
+  getTTPProfiles,
+  updateTTPProfile
+} from "../api/client";
 import {
   buildComparableProfiles,
   filterComparableProfiles,
@@ -26,6 +34,8 @@ import {
 } from "../api/ttpProfileUtils";
 import type { ActorDetail, ActorListItem, SoftwareSummary, TechniqueListItem, TTPProfile } from "../api/types";
 
+type FormMode = "hidden" | "create" | "edit";
+
 export function TTPProfilesPanel() {
   const [actors, setActors] = useState<ActorListItem[]>([]);
   const [customProfiles, setCustomProfiles] = useState<TTPProfile[]>([]);
@@ -34,6 +44,8 @@ export function TTPProfilesPanel() {
   const requestedActorDetailIds = useRef(new Set<string>());
   const [failedActorDetailIds, setFailedActorDetailIds] = useState<Set<string>>(() => new Set());
   const [selectedProfileKey, setSelectedProfileKey] = useState("");
+  const [formMode, setFormMode] = useState<FormMode>("hidden");
+  const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
   const [libraryQuery, setLibraryQuery] = useState("");
   const [profileName, setProfileName] = useState("Observed TTP Profile");
   const [description, setDescription] = useState("");
@@ -43,6 +55,7 @@ export function TTPProfilesPanel() {
   const [tacticFilter, setTacticFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -85,7 +98,7 @@ export function TTPProfilesPanel() {
   const selectedProfileTechniqueIds = selectedProfile ? profileTechniqueIds(selectedProfile, selectedActorDetail) : [];
   const selectedProfileGroups = groupTechniquesByTactic(selectedProfileTechniqueIds, techniqueLookup);
   const detailLoading = Boolean(
-      selectedProfile?.type === "actor" &&
+    selectedProfile?.type === "actor" &&
       !selectedActorDetail &&
       !failedActorDetailIds.has(selectedProfile.id)
   );
@@ -146,6 +159,41 @@ export function TTPProfilesPanel() {
     }
   }
 
+  function openCreateForm() {
+    setFormMode("create");
+    setEditingProfileId(null);
+    setProfileName("Observed TTP Profile");
+    setDescription("");
+    setTechniqueInput("");
+    setSelectedTechniqueIds([]);
+    setTechniqueQuery("");
+    setTacticFilter("all");
+    setNotice(null);
+    setError(null);
+  }
+
+  function openEditForm(profile: TTPProfile) {
+    setFormMode("edit");
+    setEditingProfileId(profile.id);
+    setProfileName(profile.name);
+    setDescription(profile.description ?? "");
+    setTechniqueInput("");
+    setSelectedTechniqueIds(sortedTechniqueIds(profile.technique_ids));
+    setTechniqueQuery("");
+    setTacticFilter("all");
+    setNotice(null);
+    setError(null);
+  }
+
+  function closeForm() {
+    setFormMode("hidden");
+    setEditingProfileId(null);
+    setTechniqueQuery("");
+    setTacticFilter("all");
+    setNotice(null);
+    setError(null);
+  }
+
   async function handleSave() {
     setError(null);
     setNotice(null);
@@ -161,13 +209,26 @@ export function TTPProfilesPanel() {
 
     setSaving(true);
     try {
-      const savedProfile = await createTTPProfile(
-        profileName.trim() || "TTP Profile",
-        validDraftTechniqueIds,
-        description.trim() || undefined
-      );
-      await refreshCustomProfiles(savedProfile.id);
-      setNotice(`Saved ${savedProfile.name}.`);
+      if (formMode === "edit" && editingProfileId) {
+        const updatedProfile = await updateTTPProfile(
+          editingProfileId,
+          profileName.trim() || "TTP Profile",
+          validDraftTechniqueIds,
+          description.trim() || undefined
+        );
+        await refreshCustomProfiles(updatedProfile.id);
+        setNotice(`Saved changes to ${updatedProfile.name}.`);
+      } else {
+        const savedProfile = await createTTPProfile(
+          profileName.trim() || "TTP Profile",
+          validDraftTechniqueIds,
+          description.trim() || undefined
+        );
+        await refreshCustomProfiles(savedProfile.id);
+        setNotice(`Saved ${savedProfile.name}.`);
+      }
+      setFormMode("hidden");
+      setEditingProfileId(null);
     } catch (apiError) {
       setError(apiError instanceof Error ? apiError.message : "Unable to save TTP profile");
     } finally {
@@ -210,6 +271,31 @@ export function TTPProfilesPanel() {
     }
   }
 
+  async function handleDelete(profile: TTPProfile) {
+    if (!window.confirm(`Delete "${profile.name}"? This cannot be undone.`)) {
+      return;
+    }
+
+    setDeleting(true);
+    setError(null);
+    setNotice(null);
+    try {
+      await deleteTTPProfile(profile.id);
+      const nextProfiles = await getTTPProfiles();
+      setCustomProfiles(nextProfiles);
+      const nextComparableProfiles = buildComparableProfiles(actors, nextProfiles);
+      setSelectedProfileKey(nextComparableProfiles[0]?.key ?? "");
+      if (editingProfileId === profile.id) {
+        closeForm();
+      }
+      setNotice(`Deleted ${profile.name}.`);
+    } catch (apiError) {
+      setError(apiError instanceof Error ? apiError.message : "Unable to delete TTP profile");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   function handleClearForm() {
     setProfileName("Observed TTP Profile");
     setDescription("");
@@ -234,158 +320,17 @@ export function TTPProfilesPanel() {
         </div>
       </div>
 
-      <div className="ttp-profile-layout">
-        <form
-          className="control-panel ttp-profile-form"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void handleSave();
-          }}
-        >
-          <div className="mini-header">
-            <strong>Create Custom TTP Profile</strong>
-            <span>{validDraftTechniqueIds.length} techniques</span>
-          </div>
-
-          <label className="field-group" htmlFor="ttp-profile-name">
-            <span>Name</span>
-            <input
-              id="ttp-profile-name"
-              value={profileName}
-              onChange={(event) => {
-                setProfileName(event.target.value);
-              }}
-            />
-          </label>
-
-          <label className="field-group" htmlFor="ttp-profile-description">
-            <span>Description</span>
-            <textarea
-              id="ttp-profile-description"
-              value={description}
-              onChange={(event) => {
-                setDescription(event.target.value);
-              }}
-              placeholder="Optional analyst notes or source context"
-              rows={3}
-            />
-          </label>
-
-          <label className="field-group" htmlFor="ttp-profile-paste">
-            <span>Paste technique IDs</span>
-            <textarea
-              id="ttp-profile-paste"
-              value={techniqueInput}
-              onChange={(event) => {
-                setTechniqueInput(event.target.value);
-              }}
-              placeholder="T1059, T1105&#10;T1027"
-              rows={5}
-            />
-          </label>
-
-          <label className="field-group" htmlFor="ttp-profile-import">
-            <span>Import Navigator profile</span>
-            <div className="file-input-row">
-              <Upload size={17} aria-hidden="true" />
-              <input
-                id="ttp-profile-import"
-                type="file"
-                accept="application/json,.json"
-                onChange={(event) => {
-                  void handleNavigatorImport(event.target.files?.[0]);
-                  event.target.value = "";
-                }}
-              />
-            </div>
-          </label>
-
-          <div className="split-controls">
-            <label className="field-group" htmlFor="ttp-profile-tactic-filter">
-              <span>Tactic</span>
-              <select
-                id="ttp-profile-tactic-filter"
-                value={tacticFilter}
-                onChange={(event) => {
-                  setTacticFilter(event.target.value);
-                }}
-              >
-                <option value="all">All tactics</option>
-                {selectedTactics.map((tactic) => (
-                  <option key={tactic} value={tactic}>
-                    {formatTactic(tactic)}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="field-group" htmlFor="ttp-profile-search">
-              <span>Search</span>
-              <div className="search-field">
-                <Search size={17} aria-hidden="true" />
-                <input
-                  id="ttp-profile-search"
-                  type="search"
-                  value={techniqueQuery}
-                  onChange={(event) => {
-                    setTechniqueQuery(event.target.value);
-                  }}
-                  placeholder="T1059, PowerShell"
-                />
-              </div>
-            </label>
-          </div>
-
-          <div className="technique-picker" aria-label="Technique search results">
-            {filteredTechniques.map((technique) => (
-              <button
-                className="technique-option"
-                key={technique.technique_id}
-                type="button"
-                onClick={() => {
-                  setSelectedTechniqueIds((currentIds) => sortedTechniqueIds([...currentIds, technique.technique_id]));
-                }}
-              >
-                <span>{technique.technique_id}</span>
-                <small>
-                  {technique.name} - {formatTactic(technique.tactic)}
-                </small>
-              </button>
-            ))}
-            {!loading && filteredTechniques.length === 0 ? <p className="muted">No matching techniques</p> : null}
-          </div>
-
-          <SelectedTechniqueSummary
-            techniqueIds={validDraftTechniqueIds}
-            unknownIds={unknownIds}
-            lookup={techniqueLookup}
-            onRemove={(techniqueId) => {
-              setSelectedTechniqueIds((currentIds) => currentIds.filter((id) => id !== techniqueId));
-              setTechniqueInput(sortedTechniqueIds(parseTechniqueIds(techniqueInput).filter((id) => id !== techniqueId)).join("\n"));
-            }}
-          />
-
-          <div className="action-row">
-            <button className="secondary-action" type="button" onClick={handleClearForm}>
-              <X size={17} aria-hidden="true" />
-              <span>Clear form</span>
-            </button>
-            <button className="primary-action" type="submit" disabled={saving || loading || validDraftTechniqueIds.length === 0}>
-              {saving ? <Loader2 className="spin" size={17} aria-hidden="true" /> : <Save size={17} aria-hidden="true" />}
-              <span>{saving ? "Saving" : "Save profile"}</span>
-            </button>
-          </div>
-
-          {loading ? <StatusMessage tone="neutral" message="Loading TTP profile library" /> : null}
-          {notice ? <StatusMessage tone="neutral" message={notice} /> : null}
-          {error ? <StatusMessage tone="error" message={error} /> : null}
-        </form>
-
+      <div className={`ttp-profile-layout ${formMode === "hidden" ? "library-first-layout" : ""}`}>
         <section className="control-panel saved-profile-panel" aria-label="TTP profile library">
           <div className="mini-header">
             <strong>Profile Library</strong>
             <span>{filteredProfiles.length}/{comparableProfiles.length}</span>
           </div>
+
+          <button className="primary-action" type="button" onClick={openCreateForm}>
+            <Plus size={17} aria-hidden="true" />
+            <span>New Custom Profile</span>
+          </button>
 
           <label className="field-group" htmlFor="profile-library-search">
             <span>Search library</span>
@@ -411,6 +356,9 @@ export function TTPProfilesPanel() {
               setError(null);
             }}
           />
+          {loading ? <StatusMessage tone="neutral" message="Loading TTP profile library" /> : null}
+          {formMode === "hidden" && notice ? <StatusMessage tone="neutral" message={notice} /> : null}
+          {formMode === "hidden" && error ? <StatusMessage tone="error" message={error} /> : null}
         </section>
 
         <ProfileInspector
@@ -418,12 +366,255 @@ export function TTPProfilesPanel() {
           customProfile={selectedCustomProfile}
           actorDetail={selectedActorDetail}
           detailLoading={detailLoading}
+          deleting={deleting}
           groups={selectedProfileGroups}
           techniqueIds={selectedProfileTechniqueIds}
           techniqueLookup={techniqueLookup}
+          onEdit={openEditForm}
+          onDelete={(profile) => void handleDelete(profile)}
         />
+
+        {formMode !== "hidden" ? (
+          <ProfileForm
+            mode={formMode}
+            profileName={profileName}
+            description={description}
+            techniqueInput={techniqueInput}
+            selectedTechniqueIds={validDraftTechniqueIds}
+            unknownIds={unknownIds}
+            techniqueLookup={techniqueLookup}
+            techniqueQuery={techniqueQuery}
+            tacticFilter={tacticFilter}
+            selectedTactics={selectedTactics}
+            filteredTechniques={filteredTechniques}
+            loading={loading}
+            saving={saving}
+            notice={notice}
+            error={error}
+            onNameChange={setProfileName}
+            onDescriptionChange={setDescription}
+            onTechniqueInputChange={setTechniqueInput}
+            onTacticFilterChange={setTacticFilter}
+            onTechniqueQueryChange={setTechniqueQuery}
+            onNavigatorImport={(file) => void handleNavigatorImport(file)}
+            onAddTechnique={(techniqueId) => {
+              setSelectedTechniqueIds((currentIds) => sortedTechniqueIds([...currentIds, techniqueId]));
+            }}
+            onRemoveTechnique={(techniqueId) => {
+              setSelectedTechniqueIds((currentIds) => currentIds.filter((id) => id !== techniqueId));
+              setTechniqueInput(sortedTechniqueIds(parseTechniqueIds(techniqueInput).filter((id) => id !== techniqueId)).join("\n"));
+            }}
+            onClear={handleClearForm}
+            onCancel={closeForm}
+            onSubmit={() => void handleSave()}
+          />
+        ) : null}
       </div>
     </section>
+  );
+}
+
+function ProfileForm({
+  mode,
+  profileName,
+  description,
+  techniqueInput,
+  selectedTechniqueIds,
+  unknownIds,
+  techniqueLookup,
+  techniqueQuery,
+  tacticFilter,
+  selectedTactics,
+  filteredTechniques,
+  loading,
+  saving,
+  notice,
+  error,
+  onNameChange,
+  onDescriptionChange,
+  onTechniqueInputChange,
+  onTacticFilterChange,
+  onTechniqueQueryChange,
+  onNavigatorImport,
+  onAddTechnique,
+  onRemoveTechnique,
+  onClear,
+  onCancel,
+  onSubmit
+}: {
+  mode: Exclude<FormMode, "hidden">;
+  profileName: string;
+  description: string;
+  techniqueInput: string;
+  selectedTechniqueIds: string[];
+  unknownIds: string[];
+  techniqueLookup: TechniqueLookup;
+  techniqueQuery: string;
+  tacticFilter: string;
+  selectedTactics: string[];
+  filteredTechniques: TechniqueListItem[];
+  loading: boolean;
+  saving: boolean;
+  notice: string | null;
+  error: string | null;
+  onNameChange: (value: string) => void;
+  onDescriptionChange: (value: string) => void;
+  onTechniqueInputChange: (value: string) => void;
+  onTacticFilterChange: (value: string) => void;
+  onTechniqueQueryChange: (value: string) => void;
+  onNavigatorImport: (file: File | undefined) => void;
+  onAddTechnique: (techniqueId: string) => void;
+  onRemoveTechnique: (techniqueId: string) => void;
+  onClear: () => void;
+  onCancel: () => void;
+  onSubmit: () => void;
+}) {
+  return (
+    <form
+      className="control-panel ttp-profile-form"
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSubmit();
+      }}
+    >
+      <div className="mini-header">
+        <strong>{mode === "edit" ? "Edit Custom TTP Profile" : "Create Custom TTP Profile"}</strong>
+        <span>{selectedTechniqueIds.length} techniques</span>
+      </div>
+
+      <label className="field-group" htmlFor="ttp-profile-name">
+        <span>Name</span>
+        <input
+          id="ttp-profile-name"
+          value={profileName}
+          onChange={(event) => {
+            onNameChange(event.target.value);
+          }}
+        />
+      </label>
+
+      <label className="field-group" htmlFor="ttp-profile-description">
+        <span>Description</span>
+        <textarea
+          id="ttp-profile-description"
+          value={description}
+          onChange={(event) => {
+            onDescriptionChange(event.target.value);
+          }}
+          placeholder="Optional analyst notes or source context"
+          rows={3}
+        />
+      </label>
+
+      <label className="field-group" htmlFor="ttp-profile-paste">
+        <span>Paste technique IDs</span>
+        <textarea
+          id="ttp-profile-paste"
+          value={techniqueInput}
+          onChange={(event) => {
+            onTechniqueInputChange(event.target.value);
+          }}
+          placeholder="T1059, T1105&#10;T1027"
+          rows={5}
+        />
+      </label>
+
+      <label className="field-group" htmlFor="ttp-profile-import">
+        <span>Import Navigator profile</span>
+        <div className="file-input-row">
+          <Upload size={17} aria-hidden="true" />
+          <input
+            id="ttp-profile-import"
+            type="file"
+            accept="application/json,.json"
+            onChange={(event) => {
+              onNavigatorImport(event.target.files?.[0]);
+              event.target.value = "";
+            }}
+          />
+        </div>
+      </label>
+
+      <div className="split-controls">
+        <label className="field-group" htmlFor="ttp-profile-tactic-filter">
+          <span>Tactic</span>
+          <select
+            id="ttp-profile-tactic-filter"
+            value={tacticFilter}
+            onChange={(event) => {
+              onTacticFilterChange(event.target.value);
+            }}
+          >
+            <option value="all">All tactics</option>
+            {selectedTactics.map((tactic) => (
+              <option key={tactic} value={tactic}>
+                {formatTactic(tactic)}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="field-group" htmlFor="ttp-profile-search">
+          <span>Search</span>
+          <div className="search-field">
+            <Search size={17} aria-hidden="true" />
+            <input
+              id="ttp-profile-search"
+              type="search"
+              value={techniqueQuery}
+              onChange={(event) => {
+                onTechniqueQueryChange(event.target.value);
+              }}
+              placeholder="T1059, PowerShell"
+            />
+          </div>
+        </label>
+      </div>
+
+      <div className="technique-picker" aria-label="Technique search results">
+        {filteredTechniques.map((technique) => (
+          <button
+            className="technique-option"
+            key={technique.technique_id}
+            type="button"
+            onClick={() => onAddTechnique(technique.technique_id)}
+          >
+            <span>{technique.technique_id}</span>
+            <small>
+              {technique.name} - {formatTactic(technique.tactic)}
+            </small>
+          </button>
+        ))}
+        {!loading && filteredTechniques.length === 0 ? <p className="muted">No matching techniques</p> : null}
+      </div>
+
+      <SelectedTechniqueSummary
+        techniqueIds={selectedTechniqueIds}
+        unknownIds={unknownIds}
+        lookup={techniqueLookup}
+        onRemove={onRemoveTechnique}
+      />
+
+      <div className="action-row">
+        <button className="secondary-action" type="button" onClick={onCancel}>
+          <X size={17} aria-hidden="true" />
+          <span>Cancel</span>
+        </button>
+        {mode === "create" ? (
+          <button className="secondary-action" type="button" onClick={onClear}>
+            <X size={17} aria-hidden="true" />
+            <span>Clear form</span>
+          </button>
+        ) : null}
+        <button className="primary-action" type="submit" disabled={saving || loading || selectedTechniqueIds.length === 0}>
+          {saving ? <Loader2 className="spin" size={17} aria-hidden="true" /> : <Save size={17} aria-hidden="true" />}
+          <span>{saving ? "Saving" : mode === "edit" ? "Save changes" : "Save profile"}</span>
+        </button>
+      </div>
+
+      {notice ? <StatusMessage tone="neutral" message={notice} /> : null}
+      {error ? <StatusMessage tone="error" message={error} /> : null}
+    </form>
   );
 }
 
@@ -478,6 +669,7 @@ function SelectedTechniqueSummary({
   onRemove: (techniqueId: string) => void;
 }) {
   const selectedTechniques = techniqueIds.map((techniqueId) => lookup.get(techniqueId)).filter(Boolean) as TechniqueListItem[];
+  const selectedGroups = groupTechniquesByTactic(techniqueIds, lookup);
 
   return (
     <div className="selected-techniques">
@@ -485,19 +677,27 @@ function SelectedTechniqueSummary({
         <strong>{techniqueIds.length} known selected</strong>
         {unknownIds.length > 0 ? <span className="error-text">{unknownIds.length} unknown</span> : null}
       </div>
-      <div className="chip-list">
-        {selectedTechniques.map((technique) => (
-          <button
-            className="technique-chip"
-            key={technique.technique_id}
-            type="button"
-            title={techniqueTitle(technique.technique_id, lookup)}
-            onClick={() => onRemove(technique.technique_id)}
-          >
-            <span>{techniqueLabel(technique.technique_id, lookup)}</span>
-            <X size={14} aria-hidden="true" />
-          </button>
+      <div className="selected-technique-groups">
+        {selectedGroups.map((group) => (
+          <div className="selected-technique-group" key={group.tactic}>
+            <strong>{formatTactic(group.tactic)}</strong>
+            <div className="chip-list">
+              {group.techniques.map((technique) => (
+                <button
+                  className="technique-chip"
+                  key={technique.technique_id}
+                  type="button"
+                  title={techniqueTitle(technique.technique_id, lookup)}
+                  onClick={() => onRemove(technique.technique_id)}
+                >
+                  <span>{techniqueLabel(technique.technique_id, lookup)}</span>
+                  <X size={14} aria-hidden="true" />
+                </button>
+              ))}
+            </div>
+          </div>
         ))}
+        {selectedTechniques.length === 0 && unknownIds.length === 0 ? <p className="muted">No techniques selected.</p> : null}
         {unknownIds.map((techniqueId) => (
           <span className="technique-chip unknown-chip" key={techniqueId}>
             {techniqueId}
@@ -513,24 +713,30 @@ function ProfileInspector({
   customProfile,
   actorDetail,
   detailLoading,
+  deleting,
   groups,
   techniqueIds,
-  techniqueLookup
+  techniqueLookup,
+  onEdit,
+  onDelete
 }: {
   profile: ComparableProfile | null;
   customProfile: TTPProfile | null;
   actorDetail: ActorDetail | null;
   detailLoading: boolean;
+  deleting: boolean;
   groups: ReturnType<typeof groupTechniquesByTactic>;
   techniqueIds: string[];
   techniqueLookup: TechniqueLookup;
+  onEdit: (profile: TTPProfile) => void;
+  onDelete: (profile: TTPProfile) => void;
 }) {
   if (!profile) {
     return (
       <section className="results-panel profile-results">
         <div className="empty-state">
           <FileJson size={24} aria-hidden="true" />
-          <p>Select a profile from the library.</p>
+          <p>Select a profile to inspect its techniques and metadata.</p>
         </div>
       </section>
     );
@@ -549,6 +755,16 @@ function ProfileInspector({
         </div>
         <div className="results-actions">
           <span className="metric-label">{techniqueIds.length || profile.technique_count} techniques</span>
+          {customProfile ? (
+            <>
+              <button type="button" title="Edit Custom TTP Profile" onClick={() => onEdit(customProfile)}>
+                <Edit size={16} aria-hidden="true" />
+              </button>
+              <button type="button" title="Delete Custom TTP Profile" disabled={deleting} onClick={() => onDelete(customProfile)}>
+                {deleting ? <Loader2 className="spin" size={16} aria-hidden="true" /> : <Trash2 size={16} aria-hidden="true" />}
+              </button>
+            </>
+          ) : null}
           <button
             type="button"
             title={canExport ? "Export Navigator profile" : "Technique details are still loading"}

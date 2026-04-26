@@ -167,6 +167,10 @@ h1 {
   align-items: start;
 }
 
+.ttp-profile-layout.library-first-layout {
+  grid-template-columns: minmax(300px, 400px) minmax(0, 1fr);
+}
+
 .matrix-layout {
   display: grid;
   grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
@@ -808,6 +812,21 @@ h1 {
 .selected-techniques {
   display: grid;
   gap: 10px;
+}
+
+.selected-technique-groups {
+  display: grid;
+  gap: 10px;
+}
+
+.selected-technique-group {
+  display: grid;
+  gap: 7px;
+}
+
+.selected-technique-group > strong {
+  color: #123f35;
+  font-size: 0.82rem;
 }
 
 .mini-header {

@@ -51,6 +51,43 @@ def get_custom_set(
     return custom_set
 
 
+@router.put("/{custom_set_id}", response_model=CustomTTPSet)
+def update_custom_set(
+    custom_set_id: str,
+    request: CustomTTPSetCreate,
+    session: Annotated[Session, Depends(get_db_session)],
+) -> entities.CustomTTPSet:
+    """Update a saved custom TTP set in place."""
+    custom_set = session.get(entities.CustomTTPSet, custom_set_id)
+    if custom_set is None:
+        raise AppError("Custom TTP set not found", status_code=404)
+
+    technique_ids = _normalize_technique_ids(request.technique_ids)
+    _validate_technique_ids(session, technique_ids)
+    custom_set.name = request.name
+    custom_set.description = request.description
+    custom_set.technique_ids = technique_ids
+    session.add(custom_set)
+    session.commit()
+    session.refresh(custom_set)
+    return custom_set
+
+
+@router.delete("/{custom_set_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_custom_set(
+    custom_set_id: str,
+    session: Annotated[Session, Depends(get_db_session)],
+) -> None:
+    """Delete a saved custom TTP set."""
+    custom_set = session.get(entities.CustomTTPSet, custom_set_id)
+    if custom_set is None:
+        raise AppError("Custom TTP set not found", status_code=404)
+
+    session.delete(custom_set)
+    session.commit()
+    return None
+
+
 def _validate_technique_ids(session: Session, technique_ids: list[str]) -> None:
     """Ensure every custom-set technique ID exists in the local technique table."""
     if not technique_ids:
