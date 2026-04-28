@@ -32,11 +32,12 @@ import {
   type TechniqueLookup,
   unknownTechniqueIds
 } from "../api/ttpProfileUtils";
-import type { ActorDetail, ActorListItem, SoftwareSummary, TechniqueListItem, TTPProfile } from "../api/types";
+import type { ActorDetail, ActorListItem, PrimarySourceName, SoftwareSummary, TechniqueListItem, TTPProfile } from "../api/types";
+import { OpenCTIReportImporter } from "./OpenCTIReportImporter";
 
 type FormMode = "hidden" | "create" | "edit";
 
-export function TTPProfilesPanel() {
+export function TTPProfilesPanel({ activeSource = "mitre" }: { activeSource?: PrimarySourceName }) {
   const [actors, setActors] = useState<ActorListItem[]>([]);
   const [customProfiles, setCustomProfiles] = useState<TTPProfile[]>([]);
   const [techniques, setTechniques] = useState<TechniqueListItem[]>([]);
@@ -169,6 +170,24 @@ export function TTPProfilesPanel() {
     setTechniqueQuery("");
     setTacticFilter("all");
     setNotice(null);
+    setError(null);
+  }
+
+  function handleReportImport(reportName: string, importedIds: string[]) {
+    const validIds = importedIds.filter((id) => validTechniqueIds.has(id));
+    setFormMode("create");
+    setEditingProfileId(null);
+    setProfileName(reportName);
+    setDescription("");
+    setTechniqueInput("");
+    setSelectedTechniqueIds(sortedTechniqueIds(validIds));
+    setTechniqueQuery("");
+    setTacticFilter("all");
+    setNotice(
+      validIds.length < importedIds.length
+        ? `${importedIds.length - validIds.length} technique(s) from the report were not found in the current dataset and were skipped.`
+        : null
+    );
     setError(null);
   }
 
@@ -331,6 +350,10 @@ export function TTPProfilesPanel() {
             <Plus size={17} aria-hidden="true" />
             <span>New Custom Profile</span>
           </button>
+
+          {activeSource === "opencti" ? (
+            <OpenCTIReportImporter onImport={handleReportImport} />
+          ) : null}
 
           <label className="field-group" htmlFor="profile-library-search">
             <span>Search library</span>

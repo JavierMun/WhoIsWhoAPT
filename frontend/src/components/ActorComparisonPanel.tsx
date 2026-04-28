@@ -33,6 +33,7 @@ import type {
   ActorListItem,
   AnalysisDetail,
   AnalysisResponse,
+  PrimarySourceName,
   SimilarityMetric,
   TechniqueListItem,
   TTPProfile
@@ -42,7 +43,7 @@ import { ComparisonResultTabs } from "./ComparisonResultTabs";
 const DEFAULT_TOP_N = 10;
 type ComparisonScope = "all" | "selected";
 
-export function ActorComparisonPanel() {
+export function ActorComparisonPanel({ activeSource = "mitre" }: { activeSource?: PrimarySourceName }) {
   const [actors, setActors] = useState<ActorListItem[]>([]);
   const [customProfiles, setCustomProfiles] = useState<TTPProfile[]>([]);
   const [techniques, setTechniques] = useState<TechniqueListItem[]>([]);
@@ -189,7 +190,9 @@ export function ActorComparisonPanel() {
         </div>
         <div className="source-pill">
           <BarChart3 size={16} aria-hidden="true" />
-          <span>{comparableProfiles.length} comparable profiles</span>
+          <span>
+            {activeSource === "mitre" ? "MITRE ATT&CK" : "OpenCTI"} · {comparableProfiles.length} profiles
+          </span>
         </div>
       </div>
 

@@ -5,10 +5,15 @@ import type {
   AnalysisCreateRequest,
   AnalysisDetail,
   AnalysisResponse,
+  ApplicationSettings,
   ClusterResponse,
+  ConnectionTestResult,
   HealthResponse,
   MatrixResponse,
+  OpenCTIReport,
+  ReportTechniquesResponse,
   SimilarityMetric,
+  SourceLoadStatus,
   TechniqueListItem,
   TTPProfile
 } from "./types";
@@ -183,4 +188,40 @@ export async function deleteAnalysis(analysisId: string): Promise<void> {
   await request<void>(`/api/analysis/${encodeURIComponent(analysisId)}`, {
     method: "DELETE"
   });
+}
+
+export function getSettings(): Promise<ApplicationSettings> {
+  return request<ApplicationSettings>("/api/settings");
+}
+
+export function updateSettings(settings: ApplicationSettings): Promise<ApplicationSettings> {
+  return request<ApplicationSettings>("/api/settings", {
+    method: "PUT",
+    body: JSON.stringify(settings)
+  });
+}
+
+export function testSourceConnection(url: string, apiToken: string): Promise<ConnectionTestResult> {
+  return request<ConnectionTestResult>("/api/source/test-connection", {
+    method: "POST",
+    body: JSON.stringify({ url, api_token: apiToken })
+  });
+}
+
+export function loadSource(): Promise<SourceLoadStatus> {
+  return request<SourceLoadStatus>("/api/source/load", { method: "POST" });
+}
+
+export function getSourceStatus(): Promise<SourceLoadStatus> {
+  return request<SourceLoadStatus>("/api/source/status");
+}
+
+export function searchReports(q: string): Promise<OpenCTIReport[]> {
+  return request<OpenCTIReport[]>(`/api/source/reports?q=${encodeURIComponent(q)}`);
+}
+
+export function getReportTechniques(reportId: string): Promise<ReportTechniquesResponse> {
+  return request<ReportTechniquesResponse>(
+    `/api/source/reports/${encodeURIComponent(reportId)}/techniques`
+  );
 }

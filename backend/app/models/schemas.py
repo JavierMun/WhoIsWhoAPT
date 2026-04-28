@@ -378,3 +378,34 @@ class AnalysisDetail(AnalysisResponse):
     """Saved analysis including full stored comparison results."""
 
     results: dict[str, Any]
+
+
+class OpenCTIReport(BaseModel):
+    """OpenCTI report summary returned by report search."""
+
+    id: str
+    name: str
+    published: str | None = None
+    description: str | None = None
+
+
+class ReportTechniquesResponse(BaseModel):
+    """ATT&CK technique IDs extracted from an OpenCTI report."""
+
+    report_id: str
+    report_name: str
+    technique_ids: list[str] = Field(default_factory=list)
+
+
+class ConnectionTestRequest(BaseModel):
+    """Payload for testing an OpenCTI connection before saving credentials."""
+
+    url: str
+    api_token: str
+
+
+class ConnectionTestResult(BaseModel):
+    """Result of a source connection test."""
+
+    ok: bool
+    detail: str | None = None

@@ -7,23 +7,31 @@ from sqlalchemy.orm import Session
 
 from app.errors import AppError
 from app.models import entities
-from app.models.schemas import Actor, Campaign, Software, SourceLoadStatus, Technique
+from app.models.schemas import Actor, ApplicationSettings, Campaign, Software, SourceLoadStatus, Technique
 from app.settings_store import SettingsStore
 from app.sources.base import BaseSource
 from app.sources.mitre import MitreSource
 
 
-def get_source_adapter(source: str) -> BaseSource:
+def get_source_adapter(source: str, settings: ApplicationSettings | None = None) -> BaseSource:
     """Return the source adapter for a supported primary source."""
     if source == "mitre":
         return MitreSource()
+    if source == "opencti":
+        from app.sources.opencti import OpenCTIAdapter  # lazy import — pycti not always installed
+
+        cfg = (settings or ApplicationSettings()).opencti
+        if not cfg.url or not cfg.api_token:
+            raise AppError("OpenCTI URL and API token are required", status_code=400)
+        return OpenCTIAdapter(str(cfg.url), cfg.api_token)
     raise AppError(f"Source '{source}' is not implemented", status_code=400)
 
 
 def load_active_source(session: Session, settings_store: SettingsStore) -> SourceLoadStatus:
     """Load the active primary source and replace its normalized dataset."""
-    source_name = settings_store.load().active_source
-    adapter = get_source_adapter(source_name)
+    settings = settings_store.load()
+    source_name = settings.active_source
+    adapter = get_source_adapter(source_name, settings)
 
     _upsert_status(session, source_name, status="running", error=None)
     session.commit()

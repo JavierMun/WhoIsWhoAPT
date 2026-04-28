@@ -160,3 +160,53 @@ export interface AnalysisResponse {
 export interface AnalysisDetail extends AnalysisResponse {
   results: ActorComparisonResponse;
 }
+
+export type PrimarySourceName = "mitre" | "opencti";
+
+export interface MitreSettings {
+  auto_update: boolean;
+  update_frequency_hours: number;
+}
+
+export interface OpenCTISettings {
+  url: string | null;
+  api_token: string | null;
+  auto_update: boolean;
+  update_frequency_hours: number;
+}
+
+export interface ApplicationSettings {
+  active_source: PrimarySourceName;
+  mitre: MitreSettings;
+  opencti: OpenCTISettings;
+}
+
+export interface SourceLoadStatus {
+  source: PrimarySourceName;
+  status: string;
+  version: string | null;
+  last_loaded_at: string | null;
+  error: string | null;
+  actor_count: number;
+  campaign_count: number;
+  software_count: number;
+  technique_count: number;
+}
+
+export interface ConnectionTestResult {
+  ok: boolean;
+  detail: string | null;
+}
+
+export interface OpenCTIReport {
+  id: string;
+  name: string;
+  published: string | null;
+  description: string | null;
+}
+
+export interface ReportTechniquesResponse {
+  report_id: string;
+  report_name: string;
+  technique_ids: string[];
+}
