@@ -50,16 +50,20 @@ def _parse_date(value: str | None) -> date | None:
 
 
 def _tactic_from_item(item: dict[str, Any]) -> str:
-    """Extract tactic(s) from kill_chain_phases / killChainPhases, comma-joined."""
+    """Extract tactic(s) from kill_chain_phases / killChainPhases.
+
+    Returns lowercase, sorted, deduplicated tactics joined by ", " — matching
+    the format produced by MitreSource so tactic filtering works across sources.
+    """
     phases = item.get("killChainPhases") or item.get("kill_chain_phases") or []
-    tactics = [
-        p["phase_name"]
+    tactics = sorted({
+        p["phase_name"].strip().lower()
         for p in phases
         if isinstance(p, dict)
         and p.get("kill_chain_name") == "mitre-attack"
         and p.get("phase_name")
-    ]
-    return ",".join(tactics) if tactics else "unknown"
+    })
+    return ", ".join(tactics) if tactics else "unknown"
 
 
 def _aliases(item: dict[str, Any]) -> list[str]:

@@ -1,6 +1,6 @@
 # DEV STATE
 
-## Last updated: 2026-04-28
+## Last updated: 2026-04-28 (stabilization session)
 
 ### Completed this session
 
@@ -15,6 +15,13 @@
 - Added `pycti>=6.0.0` to `requirements.txt`
 - Added settings types + client functions to frontend
 - Rewrote `SettingsPanel.tsx` — source selector, OpenCTI config form, test-connection flow, save, status panel
+
+**Session 3 — Multi-source stabilization**
+- Fixed `_tactic_from_item()` in `opencti.py`: now lowercase, sorted, deduplicated, `", "` separator — matches MitreSource format exactly
+- Fixed defensive lowercase in `mitre.py` `fetch_techniques()`: `{t.strip().lower() for t in tactics}` (no behavioural change, just guards against upstream mixed case)
+- Added `backend/tests/test_opencti_source.py` — 23 tests covering helpers (`_tactic_from_item`, `_internal_id`, `_aliases`, `_build_ap_mitre_map`, `_build_technique_refs`) and adapter methods (`fetch_techniques`, `test_connection`, `get_source_version`) using `sys.modules` pycti mock
+- Added `backend/tests/test_multi_source_ingestion.py` — 18 tests covering factory behavior, DB source isolation (MITRE rows survive OpenCTI ingestion and vice-versa), CustomTTPSet survival, technique table replacement, and `_technique_has_tactic()` regression across both tactic formats
+- Full test suite: 112/112 passing
 
 **Session 2 — Report ingestion + source awareness**
 - Added `search_reports()` and `fetch_report_technique_ids()` to `OpenCTIAdapter`
@@ -53,6 +60,7 @@
 - Add auto-update scheduler for OpenCTI (APScheduler) — Iteration 4 deferred item
 - Add `target_sectors` and `target_countries` ingestion via OpenCTI location/sector relationships
 - Consider adding CVE linkage via OpenCTI vulnerability relationships
+- Add `pytest httpx` to `requirements.txt` (or a `requirements-dev.txt`) so tests can be run without manual pip installs
 
 ---
 

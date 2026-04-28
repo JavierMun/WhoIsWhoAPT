@@ -160,7 +160,7 @@ class MitreSource(BaseSource):
                 Technique(
                     technique_id=technique_id,
                     name=str(item.get("name", "")),
-                    tactic=", ".join(sorted(set(tactics))),
+                    tactic=", ".join(sorted({t.strip().lower() for t in tactics if t.strip()})),
                     is_subtechnique=is_subtechnique,
                     parent_id=technique_id.split(".", maxsplit=1)[0] if is_subtechnique else None,
                 )
