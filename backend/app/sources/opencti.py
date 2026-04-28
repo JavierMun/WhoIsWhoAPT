@@ -54,13 +54,17 @@ def _tactic_from_item(item: dict[str, Any]) -> str:
 
     Returns lowercase, sorted, deduplicated tactics joined by ", " — matching
     the format produced by MitreSource so tactic filtering works across sources.
+
+    Matches both "mitre-attack" and "mitre-attack-v<N>" kill chain names so
+    versioned chains (pycti 6.x enriches objects with both) don't produce
+    duplicate entries after dedup.
     """
     phases = item.get("killChainPhases") or item.get("kill_chain_phases") or []
     tactics = sorted({
         p["phase_name"].strip().lower()
         for p in phases
         if isinstance(p, dict)
-        and p.get("kill_chain_name") == "mitre-attack"
+        and (p.get("kill_chain_name") or "").startswith("mitre-attack")
         and p.get("phase_name")
     })
     return ", ".join(tactics) if tactics else "unknown"
@@ -107,12 +111,29 @@ def _attributed_to_rels(client: OpenCTIApiClient) -> list[dict[str, Any]]:
         return []
 
 
+def _targets_rels(client: OpenCTIApiClient) -> list[dict[str, Any]]:
+    """Fetch all 'targets' relationships from Intrusion-Set to any entity.
+
+    Returns a flat list; callers filter by `to.entity_type` to distinguish
+    countries (Country), sectors (Sector), and vulnerabilities (Vulnerability).
+    """
+    try:
+        result = client.stix_core_relationship.list(
+            relationship_type="targets",
+            fromTypes=["Intrusion-Set"],
+            getAll=True,
+        )
+        return result or []
+    except Exception:
+        return []
+
+
 def _build_ap_mitre_map(ap_list: list[dict[str, Any]]) -> dict[str, str]:
     """Map OpenCTI attack-pattern ID → ATT&CK technique ID (T-numbers only)."""
     return {
         item["id"]: item["x_mitre_id"]
         for item in ap_list
-        if item.get("x_mitre_id", "").startswith("T")
+        if (item.get("x_mitre_id") or "").startswith("T")
     }
 
 
@@ -177,7 +198,9 @@ class OpenCTIAdapter(BaseSource):
     def test_connection(self) -> None:
         """Verify OpenCTI is reachable and the API token is valid."""
         try:
-            self._get_client().get_opencti_version()
+            result = self._get_client().health_check()
+            if not result:
+                raise AppError("OpenCTI health check returned unhealthy", status_code=400)
         except AppError:
             raise
         except Exception as exc:
@@ -185,7 +208,8 @@ class OpenCTIAdapter(BaseSource):
 
     def get_source_version(self) -> str:
         try:
-            return str(self._get_client().get_opencti_version())
+            result = self._get_client().query("{about{version}}")
+            return str(result["data"]["about"]["version"])
         except Exception:
             return "unknown"
 
@@ -203,7 +227,7 @@ class OpenCTIAdapter(BaseSource):
 
         techniques: list[Technique] = []
         for item in raw:
-            mitre_id: str = item.get("x_mitre_id") or ""
+            mitre_id: str = (item.get("x_mitre_id") or "")
             if not mitre_id.startswith("T"):
                 continue
             is_sub = "." in mitre_id
@@ -238,6 +262,7 @@ class OpenCTIAdapter(BaseSource):
         actor_ap_rels = _uses_rels(client, ["Intrusion-Set"], ["Attack-Pattern"])
         actor_sw_rels = _uses_rels(client, ["Intrusion-Set"], ["Malware", "Tool"])
         attr_rels = _attributed_to_rels(client)
+        target_rels = _targets_rels(client)
 
         # Build lookup: actor opencti-id → software internal ids
         actor_software: dict[str, list[str]] = {}
@@ -254,6 +279,30 @@ class OpenCTIAdapter(BaseSource):
             campaign_id = (rel.get("from") or {}).get("id", "")
             if actor_id and campaign_id:
                 campaigns_by_actor.setdefault(actor_id, []).append(_internal_id(campaign_id))
+
+        # Build lookups from targets relationships: sectors, countries, CVEs
+        actor_sectors: dict[str, list[str]] = {}
+        actor_countries: dict[str, list[str]] = {}
+        actor_cves: dict[str, list[str]] = {}
+        for rel in target_rels:
+            from_id = (rel.get("from") or {}).get("id", "")
+            to_obj = rel.get("to") or {}
+            to_type = to_obj.get("entity_type", "")
+            to_name: str = to_obj.get("name", "")
+            if not from_id or not to_name:
+                continue
+            if to_type == "Sector":
+                actor_sectors.setdefault(from_id, [])
+                if to_name not in actor_sectors[from_id]:
+                    actor_sectors[from_id].append(to_name)
+            elif to_type == "Country":
+                actor_countries.setdefault(from_id, [])
+                if to_name not in actor_countries[from_id]:
+                    actor_countries[from_id].append(to_name)
+            elif to_type == "Vulnerability":
+                actor_cves.setdefault(from_id, [])
+                if to_name not in actor_cves[from_id]:
+                    actor_cves[from_id].append(to_name)
 
         try:
             raw: list[dict[str, Any]] = client.intrusion_set.list(getAll=True) or []
@@ -281,9 +330,9 @@ class OpenCTIAdapter(BaseSource):
                     techniques=_build_technique_refs(actor_ap_rels, ap_mitre_map, opencti_id),
                     campaigns=campaigns_by_actor.get(opencti_id, []),
                     software_used=actor_software.get(opencti_id, []),
-                    cves_exploited=[],
-                    target_sectors=[],
-                    target_countries=[],
+                    cves_exploited=actor_cves.get(opencti_id, []),
+                    target_sectors=actor_sectors.get(opencti_id, []),
+                    target_countries=actor_countries.get(opencti_id, []),
                     motivation=item.get("primary_motivation"),
                 )
             )

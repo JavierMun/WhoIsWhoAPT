@@ -1,8 +1,25 @@
 # DEV STATE
 
-## Last updated: 2026-04-28 (stabilization session)
+## Last updated: 2026-04-29
 
 ### Completed this session
+
+**Session 4 — End-to-end hardening + live OpenCTI validation**
+- Pinned `pycti==6.8.14` in `requirements.txt` (pycti 7.x requires fastapi>=0.129 which is incompatible; 6.x works with OpenCTI 7.x server via GraphQL)
+- Added `libmagic1` to Dockerfile (required by python-magic, a pycti dependency)
+- Added `apscheduler==3.10.4` to `requirements.txt`
+- Added `backend/requirements-dev.txt` with pytest + httpx for local test runs
+- Fixed `test_connection()`: replaced non-existent `get_opencti_version()` with `health_check()`
+- Fixed `get_source_version()`: uses `client.query("{about{version}}")["data"]["about"]["version"]`
+- Fixed `_tactic_from_item()`: kill_chain_name filter changed to `startswith("mitre-attack")` to handle `mitre-attack-v19` versioned chains from pycti 6.x (dedup handles the duplicate)
+- Fixed `_build_ap_mitre_map()`: `(item.get("x_mitre_id") or "").startswith("T")` to safely handle None values
+- Added `_targets_rels()` helper — fetches all `targets` relationships from Intrusion-Set to any entity
+- Updated `fetch_actors()` to populate `target_sectors`, `target_countries`, `cves_exploited` from `targets` relationships (entity_type-dispatched: Sector/Country/Vulnerability)
+- Replaced deprecated `@app.on_event("startup")` with FastAPI `lifespan` context manager
+- Added APScheduler `BackgroundScheduler` — starts on app startup, reschedules based on active source's `update_frequency_hours`, reads settings on each tick to respect `auto_update` flag
+- Updated tests: `test_connection` and `get_source_version` mocks updated to match new API (`health_check`, `query`); added test for versioned chain dedup
+- Full test suite: 114/114 passing
+- **Live validation**: loaded 233 actors, 60 campaigns, 1277 software, 967 techniques from OpenCTI 7.260423.0
 
 **Session 1 — Adapter + Settings UI**
 - Added `test_connection()` non-abstract method to `BaseSource`
@@ -50,24 +67,22 @@
 - Load data button enabled when saved credentials are present in persisted settings
 - Lazy import of `OpenCTIAdapter` in `get_source_adapter()` — app starts normally if pycti is missing and MITRE is active
 - OpenCTI `fetch_techniques()` requires MITRE ATT&CK dataset imported in the OpenCTI instance (standard for most deployments)
-- `target_sectors` and `target_countries` on actors left empty — require additional relationship queries; deferred to a later iteration
+- `target_sectors`, `target_countries`, `cves_exploited` on actors now populated via `targets` relationships — stored in DB but not yet surfaced in `ActorDetail` API response
 - Report importer uses two-strategy technique extraction: primary (embedded objects in report.read()) → fallback (containedBy filter on attack_pattern.list())
 - `activeSource` is fetched once on App mount from `GET /api/settings` and passed down as a prop — no global context needed at this scale
 
 ### Next steps
-- Rebuild Docker image to install `pycti>=6.0.0` and test end-to-end with a real OpenCTI instance
-- Verify pycti field names (`killChainPhases`, relationship query kwargs, `search` param on report.list) against installed pycti version
-- Add auto-update scheduler for OpenCTI (APScheduler) — Iteration 4 deferred item
-- Add `target_sectors` and `target_countries` ingestion via OpenCTI location/sector relationships
-- Consider adding CVE linkage via OpenCTI vulnerability relationships
-- Add `pytest httpx` to `requirements.txt` (or a `requirements-dev.txt`) so tests can be run without manual pip installs
+- Expose `target_sectors`, `target_countries`, `cves_exploited` in `ActorDetail` API response and Compare UI (currently stored in DB but not returned)
+- Wire `_reschedule()` call when settings are saved via `PUT /api/settings` so interval changes take effect without restart
+- Consider upgrading fastapi to >=0.129.x to unlock pycti 7.x compatibility with the OpenCTI 7.x server
+- Add Campaign enrichment for `target_sectors`/`target_countries` (only actors populated currently)
 
 ---
 
 ## Current Status
 
 Project: WhoIsWhoAPT v2
-Stage: Iteration 4 (OpenCTI integration — backend adapter + settings UI complete)
+Stage: Iteration 4 complete — OpenCTI integration validated end-to-end against live instance
 
 The system is now a functional CTI analysis tool with:
 

@@ -104,6 +104,17 @@ def test_tactic_from_item_ignores_non_mitre_chains() -> None:
     assert _tactic_from_item(item) == "collection"
 
 
+def test_tactic_from_item_versioned_chain_deduped() -> None:
+    """pycti 6.x returns both 'mitre-attack' and 'mitre-attack-v19' for same phase."""
+    item = {
+        "killChainPhases": [
+            {"kill_chain_name": "mitre-attack", "phase_name": "resource-development"},
+            {"kill_chain_name": "mitre-attack-v19", "phase_name": "resource-development"},
+        ]
+    }
+    assert _tactic_from_item(item) == "resource-development"
+
+
 def test_tactic_from_item_fallback_key() -> None:
     item = {"kill_chain_phases": [{"kill_chain_name": "mitre-attack", "phase_name": "defense-evasion"}]}
     assert _tactic_from_item(item) == "defense-evasion"
@@ -266,21 +277,32 @@ def test_fetch_techniques_multi_tactic_sorted() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_test_connection_calls_get_opencti_version() -> None:
+def test_test_connection_calls_health_check() -> None:
     adapter = OpenCTIAdapter("https://octi.example", "fake-token")
     mock_client = MagicMock()
-    mock_client.get_opencti_version.return_value = "6.0.0"
+    mock_client.health_check.return_value = True
     adapter._client = mock_client
     adapter.test_connection()  # should not raise
-    mock_client.get_opencti_version.assert_called_once()
+    mock_client.health_check.assert_called_once()
 
 
-def test_test_connection_raises_apperror_on_failure() -> None:
+def test_test_connection_raises_apperror_when_unhealthy() -> None:
     from app.errors import AppError
 
     adapter = OpenCTIAdapter("https://octi.example", "fake-token")
     mock_client = MagicMock()
-    mock_client.get_opencti_version.side_effect = RuntimeError("refused")
+    mock_client.health_check.return_value = False
+    adapter._client = mock_client
+    with pytest.raises(AppError):
+        adapter.test_connection()
+
+
+def test_test_connection_raises_apperror_on_exception() -> None:
+    from app.errors import AppError
+
+    adapter = OpenCTIAdapter("https://octi.example", "fake-token")
+    mock_client = MagicMock()
+    mock_client.health_check.side_effect = RuntimeError("refused")
     adapter._client = mock_client
     with pytest.raises(AppError):
         adapter.test_connection()
@@ -294,14 +316,14 @@ def test_test_connection_raises_apperror_on_failure() -> None:
 def test_get_source_version_returns_string() -> None:
     adapter = OpenCTIAdapter("https://octi.example", "fake-token")
     mock_client = MagicMock()
-    mock_client.get_opencti_version.return_value = "6.0.1"
+    mock_client.query.return_value = {"data": {"about": {"version": "7.260423.0"}}}
     adapter._client = mock_client
-    assert adapter.get_source_version() == "6.0.1"
+    assert adapter.get_source_version() == "7.260423.0"
 
 
 def test_get_source_version_returns_unknown_on_error() -> None:
     adapter = OpenCTIAdapter("https://octi.example", "fake-token")
     mock_client = MagicMock()
-    mock_client.get_opencti_version.side_effect = Exception("network error")
+    mock_client.query.side_effect = Exception("network error")
     adapter._client = mock_client
     assert adapter.get_source_version() == "unknown"
