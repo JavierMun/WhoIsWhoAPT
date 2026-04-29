@@ -196,6 +196,15 @@ class TacticBreakdown(BaseModel):
     score_contribution: float = Field(ge=0, le=1)
 
 
+class ActorEnrichment(BaseModel):
+    """Contextual enrichment for a matched actor in comparison results."""
+
+    target_sectors: list[str] = Field(default_factory=list)
+    target_countries: list[str] = Field(default_factory=list)
+    cves_exploited: list[str] = Field(default_factory=list)
+    motivation: str | None = None
+
+
 class ComparisonResult(BaseModel):
     """Ranked comparison score with basic overlap explanation."""
 
@@ -216,6 +225,7 @@ class ComparisonResult(BaseModel):
     tactic_breakdown: list[TacticBreakdown] = Field(default_factory=list)
     rare_shared_techniques: list[str] = Field(default_factory=list)
     explanation: str | None = None
+    enrichment: ActorEnrichment | None = None
 
 
 class ComparisonResponse(BaseModel):

@@ -20,6 +20,7 @@ from app.errors import AppError
 from app.models import entities
 from app.models.schemas import (
     ActorComparisonRequest,
+    ActorEnrichment,
     ComparisonResponse,
     ComparisonResult,
     CustomComparisonRequest,
@@ -69,12 +70,13 @@ def compare_actor(
             software_score_weight=settings.scoring.software_score_weight,
         )
         explanation = _tactic_scope_explanation(filtered_input_techniques, target_entity.techniques, tactic_scope)
+        enr = _enrichment_lookup(session, [result.matched_entity_id])
         return ComparisonResponse(
             input_id=actor.id,
             input_name=actor.name,
             input_type="actor",
             metric=request.metric,
-            results=[_result_schema(result, software_lookup, explanation=explanation)],
+            results=[_result_schema(result, software_lookup, explanation=explanation, enrichment=enr.get(result.matched_entity_id))],
         )
 
     candidates = _actor_candidates(session, active_source)
@@ -97,6 +99,7 @@ def compare_actor(
         technique_score_weight=settings.scoring.technique_score_weight,
         software_score_weight=settings.scoring.software_score_weight,
     )
+    enr = _enrichment_lookup(session, [r.matched_entity_id for r in results])
     return ComparisonResponse(
         input_id=actor.id,
         input_name=actor.name,
@@ -111,6 +114,7 @@ def compare_actor(
                     candidate_techniques_by_id.get(result.matched_entity_id, set()),
                     tactic_scope,
                 ),
+                enrichment=enr.get(result.matched_entity_id),
             )
             for result in results
         ],
@@ -173,6 +177,7 @@ def compare_custom_techniques(
         software_score_weight=settings.scoring.software_score_weight,
     )
     software_lookup = _software_lookup(session)
+    enr = _enrichment_lookup(session, [r.matched_entity_id for r in results])
     return ComparisonResponse(
         input_id=input_id,
         input_name=input_name,
@@ -187,6 +192,7 @@ def compare_custom_techniques(
                     candidate_techniques_by_id.get(result.matched_entity_id, set()),
                     tactic_scope,
                 ),
+                enrichment=enr.get(result.matched_entity_id),
             )
             for result in results
         ],
@@ -379,10 +385,29 @@ def _rarity_weights_for_direct_comparison(
     return rarity_weights([candidate.techniques for candidate in candidates])
 
 
+def _enrichment_lookup(session: Session, actor_ids: list[str]) -> dict[str, ActorEnrichment]:
+    """Batch-fetch enrichment data for a list of actor IDs in one query."""
+    if not actor_ids:
+        return {}
+    rows = session.scalars(
+        select(entities.Actor).where(entities.Actor.id.in_(actor_ids))
+    ).all()
+    return {
+        row.id: ActorEnrichment(
+            target_sectors=row.target_sectors or [],
+            target_countries=row.target_countries or [],
+            cves_exploited=row.cves_exploited or [],
+            motivation=row.motivation,
+        )
+        for row in rows
+    }
+
+
 def _result_schema(
     result: AnalyticsComparisonResult,
     software_lookup: dict[str, SoftwareSummary],
     explanation: str | None = None,
+    enrichment: ActorEnrichment | None = None,
 ) -> ComparisonResult:
     """Convert an analytics result dataclass into the API response schema."""
     return ComparisonResult(
@@ -414,6 +439,7 @@ def _result_schema(
         ],
         rare_shared_techniques=result.rare_shared_techniques,
         explanation=explanation,
+        enrichment=enrichment,
     )
 
 

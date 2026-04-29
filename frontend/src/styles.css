@@ -1113,6 +1113,30 @@ h1 {
   font-weight: 650;
 }
 
+.result-enrichment {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 8px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid #edf0f2;
+}
+
+.enrichment-item {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.enrichment-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #52606a;
+  margin-right: 2px;
+}
+
 .ttp-profile-form,
 .saved-profile-panel {
   align-content: start;

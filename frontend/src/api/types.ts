@@ -55,6 +55,13 @@ export interface ActorDetail {
   motivation: string | null;
 }
 
+export interface ActorEnrichment {
+  target_sectors: string[];
+  target_countries: string[];
+  cves_exploited: string[];
+  motivation: string | null;
+}
+
 export interface ComparisonResult {
   matched_entity_id: string;
   matched_entity_name: string;
@@ -73,6 +80,7 @@ export interface ComparisonResult {
   tactic_breakdown: TacticBreakdown[];
   rare_shared_techniques: string[];
   explanation: string | null;
+  enrichment: ActorEnrichment | null;
 }
 
 export interface ActorComparisonResponse {

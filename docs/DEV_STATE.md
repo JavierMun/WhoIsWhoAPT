@@ -4,6 +4,16 @@
 
 ### Completed this session
 
+**Session 6 — Enrichment in Compare results**
+- Added `ActorEnrichment` schema (`target_sectors`, `target_countries`, `cves_exploited`, `motivation`)
+- Added `enrichment: ActorEnrichment | None` field to `ComparisonResult` schema
+- Added `_enrichment_lookup(session, actor_ids)` — single batch query for all matched actors in a comparison
+- Wired enrichment into all three compare code paths (actor-vs-actor, actor-vs-all, custom/incident)
+- Frontend: `ActorEnrichment` type added; `EnrichmentRow` component in `ComparisonRankingView` — shows motivation, sectors, countries, CVEs chips per result row
+- CSS: `.result-enrichment` / `.enrichment-item` / `.enrichment-label` styles
+- Validated live: MuddyWater comparison → MUSTANG PANDA 3 sectors · 13 countries, Kimsuky 2 sectors
+- Full test suite: 114/114 passing
+
 **Session 5 — Enrichment fields + scheduler wiring**
 - Extracted scheduler logic to `app/scheduler.py` (avoids circular import between `main.py` and settings route)
 - `PUT /api/settings` now calls `scheduler.reschedule(hours)` — interval changes take effect immediately without restart
@@ -83,8 +93,8 @@
 
 ### Next steps
 - Consider upgrading fastapi to >=0.129.x to unlock pycti 7.x (currently on 6.8.14 due to fastapi version conflict)
-- Surface enrichment fields (sectors/countries/CVEs) in the Compare results panel for matched actors, not just in TTP Profiles inspector
-- Add enrichment to Explore / Visual Analysis (filter actors by sector or country in heatmap/graph)
+- Add enrichment filter to Compare — pre-filter candidates by sector or country before scoring
+- Add enrichment to Explore / Visual Analysis — filter actors by sector or country in heatmap/graph
 
 ---
 

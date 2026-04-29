@@ -1,5 +1,5 @@
 import { formatTactic, techniqueLabel, techniqueTitle, type TechniqueLookup } from "../api/ttpProfileUtils";
-import type { ActorComparisonResponse, SoftwareSummary, TacticBreakdown } from "../api/types";
+import type { ActorComparisonResponse, ActorEnrichment, SoftwareSummary, TacticBreakdown } from "../api/types";
 
 export function ComparisonRankingView({
   comparison,
@@ -27,6 +27,7 @@ export function ComparisonRankingView({
             {result.explanation ? <p className="result-explanation">{result.explanation}</p> : null}
             <SoftwarePreview software={result.shared_software} />
             <TacticBreakdownList items={result.tactic_breakdown} techniqueLookup={techniqueLookup} />
+            {result.enrichment ? <EnrichmentRow enrichment={result.enrichment} /> : null}
           </div>
         </li>
       ))}
@@ -100,6 +101,58 @@ function TacticBreakdownList({ items, techniqueLookup }: { items: TacticBreakdow
           </p>
         </div>
       ))}
+    </div>
+  );
+}
+
+function EnrichmentRow({ enrichment }: { enrichment: ActorEnrichment }) {
+  const hasSectors = enrichment.target_sectors.length > 0;
+  const hasCountries = enrichment.target_countries.length > 0;
+  const hasCves = enrichment.cves_exploited.length > 0;
+  const hasMotivation = !!enrichment.motivation;
+  if (!hasSectors && !hasCountries && !hasCves && !hasMotivation) return null;
+
+  return (
+    <div className="result-enrichment">
+      {hasMotivation ? (
+        <span className="enrichment-item">
+          <span className="enrichment-label">Motivation</span>
+          <span className="technique-chip">{enrichment.motivation}</span>
+        </span>
+      ) : null}
+      {hasSectors ? (
+        <span className="enrichment-item">
+          <span className="enrichment-label">Sectors</span>
+          {enrichment.target_sectors.slice(0, 5).map((s) => (
+            <span className="technique-chip" key={s}>{s}</span>
+          ))}
+          {enrichment.target_sectors.length > 5 ? (
+            <span className="technique-chip unknown-chip">+{enrichment.target_sectors.length - 5}</span>
+          ) : null}
+        </span>
+      ) : null}
+      {hasCountries ? (
+        <span className="enrichment-item">
+          <span className="enrichment-label">Countries</span>
+          {enrichment.target_countries.slice(0, 5).map((c) => (
+            <span className="technique-chip" key={c}>{c}</span>
+          ))}
+          {enrichment.target_countries.length > 5 ? (
+            <span className="technique-chip unknown-chip">+{enrichment.target_countries.length - 5}</span>
+          ) : null}
+        </span>
+      ) : null}
+      {hasCves ? (
+        <span className="enrichment-item">
+          <span className="enrichment-label">CVEs</span>
+          {enrichment.cves_exploited.slice(0, 4).map((cve) => (
+            <span className="technique-chip unknown-chip" key={cve} style={{ fontFamily: "monospace", fontSize: "0.75rem" }}>{cve}</span>
+          ))}
+          {enrichment.cves_exploited.length > 4 ? (
+            <span className="technique-chip unknown-chip">+{enrichment.cves_exploited.length - 4}</span>
+          ) : null}
+        </span>
+      ) : null}
     </div>
   );
 }
