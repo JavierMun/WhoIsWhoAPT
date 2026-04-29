@@ -814,6 +814,14 @@ function ProfileInspector({
         ) : null}
 
         {actorDetail ? <SoftwareList software={actorDetail.software_used} /> : null}
+        {actorDetail ? (
+          <EnrichmentTags
+            sectors={actorDetail.target_sectors}
+            countries={actorDetail.target_countries}
+            cves={actorDetail.cves_exploited}
+            motivation={actorDetail.motivation}
+          />
+        ) : null}
 
         <div className="profile-technique-groups">
           {groups.length === 0 ? <p className="muted">No techniques available.</p> : null}
@@ -834,6 +842,67 @@ function ProfileInspector({
         </div>
       </div>
     </section>
+  );
+}
+
+function EnrichmentTags({
+  sectors,
+  countries,
+  cves,
+  motivation,
+}: {
+  sectors: string[];
+  countries: string[];
+  cves: string[];
+  motivation: string | null;
+}) {
+  const hasData = sectors.length > 0 || countries.length > 0 || cves.length > 0 || motivation;
+  if (!hasData) return null;
+
+  return (
+    <div className="why-match" style={{ display: "grid", gap: 8 }}>
+      {motivation ? (
+        <div>
+          <strong style={{ fontSize: "0.8rem", textTransform: "uppercase", color: "#52606a" }}>Motivation</strong>
+          <div className="chip-list" style={{ marginTop: 4 }}>
+            <span className="technique-chip">{motivation}</span>
+          </div>
+        </div>
+      ) : null}
+      {sectors.length > 0 ? (
+        <div>
+          <strong style={{ fontSize: "0.8rem", textTransform: "uppercase", color: "#52606a" }}>Target sectors</strong>
+          <div className="chip-list" style={{ marginTop: 4 }}>
+            {sectors.slice(0, 12).map((s) => (
+              <span className="technique-chip" key={s}>{s}</span>
+            ))}
+            {sectors.length > 12 ? <span className="technique-chip unknown-chip">+{sectors.length - 12} more</span> : null}
+          </div>
+        </div>
+      ) : null}
+      {countries.length > 0 ? (
+        <div>
+          <strong style={{ fontSize: "0.8rem", textTransform: "uppercase", color: "#52606a" }}>Target countries</strong>
+          <div className="chip-list" style={{ marginTop: 4 }}>
+            {countries.slice(0, 12).map((c) => (
+              <span className="technique-chip" key={c}>{c}</span>
+            ))}
+            {countries.length > 12 ? <span className="technique-chip unknown-chip">+{countries.length - 12} more</span> : null}
+          </div>
+        </div>
+      ) : null}
+      {cves.length > 0 ? (
+        <div>
+          <strong style={{ fontSize: "0.8rem", textTransform: "uppercase", color: "#52606a" }}>CVEs exploited</strong>
+          <div className="chip-list" style={{ marginTop: 4 }}>
+            {cves.slice(0, 10).map((cve) => (
+              <span className="technique-chip unknown-chip" key={cve} style={{ fontFamily: "monospace", fontSize: "0.78rem" }}>{cve}</span>
+            ))}
+            {cves.length > 10 ? <span className="technique-chip unknown-chip">+{cves.length - 10} more</span> : null}
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }
 

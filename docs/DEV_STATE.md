@@ -1,8 +1,18 @@
 # DEV STATE
 
-## Last updated: 2026-04-29
+## Last updated: 2026-04-29 (session 5)
 
 ### Completed this session
+
+**Session 5 — Enrichment fields + scheduler wiring**
+- Extracted scheduler logic to `app/scheduler.py` (avoids circular import between `main.py` and settings route)
+- `PUT /api/settings` now calls `scheduler.reschedule(hours)` — interval changes take effect immediately without restart
+- Added `target_sectors`, `target_countries`, `cves_exploited`, `motivation` to `ActorDetail` API schema and route
+- Added `target_sectors`, `target_countries` columns to `Campaign` entity + schema
+- Updated `fetch_campaigns()` in `OpenCTIAdapter` to populate sectors/countries/CVEs from `targets` relationships
+- Frontend: `ActorDetail` type updated with new fields; `EnrichmentTags` component added to `ProfileInspector` — shows motivation, target sectors, target countries, CVEs as chips
+- Validated live: MuddyWater → 9 sectors, 11 countries, 13 CVEs from OpenCTI
+- Full test suite: 114/114 passing
 
 **Session 4 — End-to-end hardening + live OpenCTI validation**
 - Pinned `pycti==6.8.14` in `requirements.txt` (pycti 7.x requires fastapi>=0.129 which is incompatible; 6.x works with OpenCTI 7.x server via GraphQL)
@@ -72,10 +82,9 @@
 - `activeSource` is fetched once on App mount from `GET /api/settings` and passed down as a prop — no global context needed at this scale
 
 ### Next steps
-- Expose `target_sectors`, `target_countries`, `cves_exploited` in `ActorDetail` API response and Compare UI (currently stored in DB but not returned)
-- Wire `_reschedule()` call when settings are saved via `PUT /api/settings` so interval changes take effect without restart
-- Consider upgrading fastapi to >=0.129.x to unlock pycti 7.x compatibility with the OpenCTI 7.x server
-- Add Campaign enrichment for `target_sectors`/`target_countries` (only actors populated currently)
+- Consider upgrading fastapi to >=0.129.x to unlock pycti 7.x (currently on 6.8.14 due to fastapi version conflict)
+- Surface enrichment fields (sectors/countries/CVEs) in the Compare results panel for matched actors, not just in TTP Profiles inspector
+- Add enrichment to Explore / Visual Analysis (filter actors by sector or country in heatmap/graph)
 
 ---
 

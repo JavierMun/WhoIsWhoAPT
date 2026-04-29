@@ -49,6 +49,10 @@ export interface ActorDetail {
   technique_count: number;
   software_used: SoftwareSummary[];
   software_count: number;
+  target_sectors: string[];
+  target_countries: string[];
+  cves_exploited: string[];
+  motivation: string | null;
 }
 
 export interface ComparisonResult {

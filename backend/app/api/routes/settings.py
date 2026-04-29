@@ -4,6 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
 
+from app import scheduler
 from app.dependencies import get_settings_store
 from app.models.schemas import ApplicationSettings
 from app.settings_store import SettingsStore
@@ -23,4 +24,11 @@ def update_settings(
     store: Annotated[SettingsStore, Depends(get_settings_store)],
 ) -> ApplicationSettings:
     """Persist application settings and return the saved value."""
-    return store.save(settings)
+    saved = store.save(settings)
+    hours = (
+        saved.opencti.update_frequency_hours
+        if saved.active_source == "opencti"
+        else saved.mitre.update_frequency_hours
+    )
+    scheduler.reschedule(hours)
+    return saved

@@ -69,6 +69,10 @@ class ActorDetail(BaseModel):
     technique_count: int
     software_used: list[SoftwareSummary] = Field(default_factory=list)
     software_count: int = 0
+    target_sectors: list[str] = Field(default_factory=list)
+    target_countries: list[str] = Field(default_factory=list)
+    cves_exploited: list[str] = Field(default_factory=list)
+    motivation: str | None = None
 
 
 class Campaign(BaseEntity):
@@ -78,6 +82,8 @@ class Campaign(BaseEntity):
     techniques: list[TechniqueRef] = Field(default_factory=list)
     software_used: list[str] = Field(default_factory=list)
     cves_exploited: list[str] = Field(default_factory=list)
+    target_sectors: list[str] = Field(default_factory=list)
+    target_countries: list[str] = Field(default_factory=list)
     start_date: date | None = None
     end_date: date | None = None
 

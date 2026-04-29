@@ -354,6 +354,17 @@ class OpenCTIAdapter(BaseSource):
         campaign_ap_rels = _uses_rels(client, ["Campaign"], ["Attack-Pattern"])
         attr_rels = _attributed_to_rels(client)
 
+        # Targets relationships for campaigns
+        campaign_target_rels: list[dict[str, Any]] = []
+        try:
+            campaign_target_rels = client.stix_core_relationship.list(
+                relationship_type="targets",
+                fromTypes=["Campaign"],
+                getAll=True,
+            ) or []
+        except Exception:
+            pass
+
         # campaign opencti-id → actor internal ids
         campaign_actors: dict[str, list[str]] = {}
         for rel in attr_rels:
@@ -361,6 +372,30 @@ class OpenCTIAdapter(BaseSource):
             actor_id = (rel.get("to") or {}).get("id", "")
             if campaign_id and actor_id:
                 campaign_actors.setdefault(campaign_id, []).append(_internal_id(actor_id))
+
+        # campaign opencti-id → sectors/countries/CVEs
+        camp_sectors: dict[str, list[str]] = {}
+        camp_countries: dict[str, list[str]] = {}
+        camp_cves: dict[str, list[str]] = {}
+        for rel in campaign_target_rels:
+            from_id = (rel.get("from") or {}).get("id", "")
+            to_obj = rel.get("to") or {}
+            to_type = to_obj.get("entity_type", "")
+            to_name: str = to_obj.get("name", "")
+            if not from_id or not to_name:
+                continue
+            if to_type == "Sector":
+                camp_sectors.setdefault(from_id, [])
+                if to_name not in camp_sectors[from_id]:
+                    camp_sectors[from_id].append(to_name)
+            elif to_type == "Country":
+                camp_countries.setdefault(from_id, [])
+                if to_name not in camp_countries[from_id]:
+                    camp_countries[from_id].append(to_name)
+            elif to_type == "Vulnerability":
+                camp_cves.setdefault(from_id, [])
+                if to_name not in camp_cves[from_id]:
+                    camp_cves[from_id].append(to_name)
 
         try:
             raw: list[dict[str, Any]] = client.campaign.list(getAll=True) or []
@@ -388,7 +423,9 @@ class OpenCTIAdapter(BaseSource):
                     actor_ids=campaign_actors.get(opencti_id, []),
                     techniques=_build_technique_refs(campaign_ap_rels, ap_mitre_map, opencti_id),
                     software_used=[],
-                    cves_exploited=[],
+                    cves_exploited=camp_cves.get(opencti_id, []),
+                    target_sectors=camp_sectors.get(opencti_id, []),
+                    target_countries=camp_countries.get(opencti_id, []),
                     start_date=_parse_date(item.get("first_seen")),
                     end_date=_parse_date(item.get("last_seen")),
                 )

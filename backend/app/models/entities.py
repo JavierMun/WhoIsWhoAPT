@@ -51,6 +51,8 @@ class Campaign(EntityMixin, Base):
     techniques: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
     software_used: Mapped[list[str]] = mapped_column(JSON, default=list)
     cves_exploited: Mapped[list[str]] = mapped_column(JSON, default=list)
+    target_sectors: Mapped[list[str]] = mapped_column(JSON, default=list)
+    target_countries: Mapped[list[str]] = mapped_column(JSON, default=list)
     start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
 

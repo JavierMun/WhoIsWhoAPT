@@ -58,6 +58,10 @@ def actor_detail(
         technique_count=len(techniques),
         software_used=software_used,
         software_count=len(software_used),
+        target_sectors=actor.target_sectors or [],
+        target_countries=actor.target_countries or [],
+        cves_exploited=actor.cves_exploited or [],
+        motivation=actor.motivation,
     )
 
 
