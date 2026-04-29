@@ -4,6 +4,14 @@
 
 ### Completed this session
 
+**Session 7 — Enrichment filter in Compare**
+- Added `filter_sectors` and `filter_countries` optional fields to `ActorComparisonRequest`, `CustomComparisonRequest`, `IncidentAnalysisRequest`
+- Added `_filter_candidates_by_enrichment()` in compare route — pre-filters actor candidates by sector/country (OR within each list, AND between lists) before scoring; no-op when no filter
+- Added `EnrichmentOptions` schema and `GET /api/source/enrichment-options` endpoint — returns sorted distinct sectors/countries from active source actors
+- Frontend: `getEnrichmentOptions()` client function; `EnrichmentFilterPanel` component in `ActorComparisonPanel` — two multi-select boxes (sectors/countries), only shown for OpenCTI source, clear button when active filter
+- Validated live: MuddyWater + Energy filter → 3 actors from 233 (APT28, Hydra Saiga, CL-UNK-1068), all confirmed with Energy in their sectors
+- Full test suite: 114/114 passing
+
 **Session 6 — Enrichment in Compare results**
 - Added `ActorEnrichment` schema (`target_sectors`, `target_countries`, `cves_exploited`, `motivation`)
 - Added `enrichment: ActorEnrichment | None` field to `ComparisonResult` schema
@@ -93,8 +101,8 @@
 
 ### Next steps
 - Consider upgrading fastapi to >=0.129.x to unlock pycti 7.x (currently on 6.8.14 due to fastapi version conflict)
-- Add enrichment filter to Compare — pre-filter candidates by sector or country before scoring
 - Add enrichment to Explore / Visual Analysis — filter actors by sector or country in heatmap/graph
+- Show active enrichment filter in the saved analysis metadata (currently `filter_sectors`/`filter_countries` are sent in the compare request but not persisted in the `Analysis` record)
 
 ---
 

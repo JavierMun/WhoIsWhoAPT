@@ -8,6 +8,7 @@ import type {
   ApplicationSettings,
   ClusterResponse,
   ConnectionTestResult,
+  EnrichmentOptions,
   HealthResponse,
   MatrixResponse,
   OpenCTIReport,
@@ -70,7 +71,9 @@ export function compareActor(
   metric: SimilarityMetric,
   topN: number,
   targetIds?: string[],
-  tactics?: string[]
+  tactics?: string[],
+  filterSectors?: string[],
+  filterCountries?: string[]
 ): Promise<ActorComparisonResponse> {
   return request<ActorComparisonResponse>("/api/compare/actor", {
     method: "POST",
@@ -79,9 +82,15 @@ export function compareActor(
       metric,
       top_n: topN,
       ...(targetIds ? { target_ids: targetIds } : {}),
-      ...(tactics && tactics.length > 0 ? { tactics } : {})
+      ...(tactics && tactics.length > 0 ? { tactics } : {}),
+      ...(filterSectors && filterSectors.length > 0 ? { filter_sectors: filterSectors } : {}),
+      ...(filterCountries && filterCountries.length > 0 ? { filter_countries: filterCountries } : {})
     })
   });
+}
+
+export function getEnrichmentOptions(): Promise<EnrichmentOptions> {
+  return request<EnrichmentOptions>("/api/source/enrichment-options");
 }
 
 export function getTechniques(): Promise<TechniqueListItem[]> {
@@ -127,9 +136,13 @@ export async function deleteTTPProfile(profileId: string): Promise<void> {
 
 export function compareTTPProfile(
   params:
-    | { profileId: string; metric: SimilarityMetric; topN: number; tactics?: string[]; targetIds?: string[] }
-    | { name: string; techniqueIds: string[]; metric: SimilarityMetric; topN: number; tactics?: string[]; targetIds?: string[] }
+    | { profileId: string; metric: SimilarityMetric; topN: number; tactics?: string[]; targetIds?: string[]; filterSectors?: string[]; filterCountries?: string[] }
+    | { name: string; techniqueIds: string[]; metric: SimilarityMetric; topN: number; tactics?: string[]; targetIds?: string[]; filterSectors?: string[]; filterCountries?: string[] }
 ): Promise<ActorComparisonResponse> {
+  const enrichmentFilter = {
+    ...(params.filterSectors && params.filterSectors.length > 0 ? { filter_sectors: params.filterSectors } : {}),
+    ...(params.filterCountries && params.filterCountries.length > 0 ? { filter_countries: params.filterCountries } : {})
+  };
   const body =
     "profileId" in params
       ? {
@@ -137,7 +150,8 @@ export function compareTTPProfile(
           metric: params.metric,
           top_n: params.topN,
           ...(params.targetIds ? { target_ids: params.targetIds } : {}),
-          ...(params.tactics && params.tactics.length > 0 ? { tactics: params.tactics } : {})
+          ...(params.tactics && params.tactics.length > 0 ? { tactics: params.tactics } : {}),
+          ...enrichmentFilter
         }
       : {
           name: params.name,
@@ -145,7 +159,8 @@ export function compareTTPProfile(
           metric: params.metric,
           top_n: params.topN,
           ...(params.targetIds ? { target_ids: params.targetIds } : {}),
-          ...(params.tactics && params.tactics.length > 0 ? { tactics: params.tactics } : {})
+          ...(params.tactics && params.tactics.length > 0 ? { tactics: params.tactics } : {}),
+          ...enrichmentFilter
         };
 
   return request<ActorComparisonResponse>("/api/compare/custom", {

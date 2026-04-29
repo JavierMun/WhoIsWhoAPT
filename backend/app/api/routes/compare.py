@@ -82,6 +82,9 @@ def compare_actor(
     candidates = _actor_candidates(session, active_source)
     if request.target_ids is not None:
         candidates = _target_actor_candidates(candidates, request.target_ids)
+    candidates = _filter_candidates_by_enrichment(
+        candidates, session, active_source, request.filter_sectors, request.filter_countries
+    )
     filtered_input_techniques = _filter_techniques_by_tactics(input_techniques, technique_tactics, tactic_scope)
     scoped_input_software = _software_for_tactic_scope(input_software, filtered_input_techniques, tactic_scope)
     candidates = [_filter_entity_by_tactics(candidate, technique_tactics, tactic_scope) for candidate in candidates]
@@ -161,6 +164,9 @@ def compare_custom_techniques(
     candidates = _actor_candidates(session, active_source)
     if isinstance(request, CustomComparisonRequest) and request.target_ids is not None:
         candidates = _target_actor_candidates(candidates, request.target_ids)
+    candidates = _filter_candidates_by_enrichment(
+        candidates, session, active_source, request.filter_sectors, request.filter_countries
+    )
     filtered_input_techniques = _filter_techniques_by_tactics(input_techniques, technique_tactics, tactic_scope)
     scoped_input_software = _software_for_tactic_scope(set(), filtered_input_techniques, tactic_scope)
     candidates = [_filter_entity_by_tactics(candidate, technique_tactics, tactic_scope) for candidate in candidates]
@@ -383,6 +389,44 @@ def _rarity_weights_for_direct_comparison(
     from app.analytics.similarity import rarity_weights
 
     return rarity_weights([candidate.techniques for candidate in candidates])
+
+
+def _filter_candidates_by_enrichment(
+    candidates: list[EntityTechniqueSet],
+    session: Session,
+    source: str,
+    filter_sectors: list[str] | None,
+    filter_countries: list[str] | None,
+) -> list[EntityTechniqueSet]:
+    """Restrict candidates to actors whose enrichment matches the requested filters.
+
+    Sectors and countries are ANDed together (both must match if both provided),
+    but values within each list are ORed (any sector match suffices).
+    Returns candidates unchanged when no filter is requested.
+    """
+    if not filter_sectors and not filter_countries:
+        return candidates
+
+    sector_set = {s.strip().lower() for s in filter_sectors} if filter_sectors else None
+    country_set = {c.strip().lower() for c in filter_countries} if filter_countries else None
+
+    rows = session.execute(
+        select(entities.Actor.id, entities.Actor.target_sectors, entities.Actor.target_countries).where(
+            entities.Actor.source == source
+        )
+    ).all()
+
+    matched_ids: set[str] = set()
+    for actor_id, sectors, countries in rows:
+        actor_sectors = {s.lower() for s in (sectors or [])}
+        actor_countries = {c.lower() for c in (countries or [])}
+        if sector_set and not (actor_sectors & sector_set):
+            continue
+        if country_set and not (actor_countries & country_set):
+            continue
+        matched_ids.add(actor_id)
+
+    return [c for c in candidates if c.id in matched_ids]
 
 
 def _enrichment_lookup(session: Session, actor_ids: list[str]) -> dict[str, ActorEnrichment]:

@@ -8,6 +8,7 @@ import {
   getActors,
   getAnalyses,
   getAnalysisDetail,
+  getEnrichmentOptions,
   getTechniques,
   getTTPProfiles
 } from "../api/client";
@@ -33,6 +34,7 @@ import type {
   ActorListItem,
   AnalysisDetail,
   AnalysisResponse,
+  EnrichmentOptions,
   PrimarySourceName,
   SimilarityMetric,
   TechniqueListItem,
@@ -60,6 +62,9 @@ export function ActorComparisonPanel({ activeSource = "mitre" }: { activeSource?
   const [error, setError] = useState<string | null>(null);
   const [comparison, setComparison] = useState<ActorComparisonResponse | null>(null);
   const [savedAnalysesRefreshKey, setSavedAnalysesRefreshKey] = useState(0);
+  const [enrichmentOptions, setEnrichmentOptions] = useState<EnrichmentOptions>({ sectors: [], countries: [] });
+  const [selectedSectors, setSelectedSectors] = useState<string[]>([]);
+  const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
 
   useEffect(() => {
     Promise.all([getActors(), getTTPProfiles(), getTechniques()])
@@ -77,6 +82,18 @@ export function ActorComparisonPanel({ activeSource = "mitre" }: { activeSource?
         setLoading(false);
       });
   }, []);
+
+  useEffect(() => {
+    if (activeSource === "opencti") {
+      getEnrichmentOptions()
+        .then(setEnrichmentOptions)
+        .catch(() => {});
+    } else {
+      setEnrichmentOptions({ sectors: [], countries: [] });
+      setSelectedSectors([]);
+      setSelectedCountries([]);
+    }
+  }, [activeSource]);
 
   const comparableProfiles = useMemo(() => buildComparableProfiles(actors, customProfiles), [actors, customProfiles]);
   const sourceProfiles = useMemo(
@@ -153,7 +170,9 @@ export function ActorComparisonPanel({ activeSource = "mitre" }: { activeSource?
             metric,
             topN,
             scope === "selected" ? selectedActorTargetIds : undefined,
-            selectedTactics
+            selectedTactics,
+            selectedSectors.length > 0 ? selectedSectors : undefined,
+            selectedCountries.length > 0 ? selectedCountries : undefined
           )
         );
       } else {
@@ -163,7 +182,9 @@ export function ActorComparisonPanel({ activeSource = "mitre" }: { activeSource?
             metric,
             topN,
             targetIds: scope === "selected" ? selectedActorTargetIds : undefined,
-            tactics: selectedTactics
+            tactics: selectedTactics,
+            filterSectors: selectedSectors.length > 0 ? selectedSectors : undefined,
+            filterCountries: selectedCountries.length > 0 ? selectedCountries : undefined
           })
         );
       }
@@ -288,6 +309,16 @@ export function ActorComparisonPanel({ activeSource = "mitre" }: { activeSource?
               ))}
             </select>
           </label>
+
+          {(enrichmentOptions.sectors.length > 0 || enrichmentOptions.countries.length > 0) ? (
+            <EnrichmentFilterPanel
+              options={enrichmentOptions}
+              selectedSectors={selectedSectors}
+              selectedCountries={selectedCountries}
+              onSectorsChange={setSelectedSectors}
+              onCountriesChange={setSelectedCountries}
+            />
+          ) : null}
 
           <fieldset className="scope-selector">
             <legend>Target scope</legend>
@@ -828,4 +859,90 @@ function metricLabel(metric: SimilarityMetric): string {
     return "Software weighted";
   }
   return "Jaccard";
+}
+
+function EnrichmentFilterPanel({
+  options,
+  selectedSectors,
+  selectedCountries,
+  onSectorsChange,
+  onCountriesChange,
+}: {
+  options: EnrichmentOptions;
+  selectedSectors: string[];
+  selectedCountries: string[];
+  onSectorsChange: (v: string[]) => void;
+  onCountriesChange: (v: string[]) => void;
+}) {
+  const hasFilter = selectedSectors.length > 0 || selectedCountries.length > 0;
+
+  function handleMultiSelect(
+    event: React.ChangeEvent<HTMLSelectElement>,
+    onChange: (v: string[]) => void
+  ) {
+    const selected = Array.from(event.target.selectedOptions, (opt) => opt.value);
+    onChange(selected);
+  }
+
+  return (
+    <fieldset className="scope-selector" style={{ borderColor: hasFilter ? "#9bc5b9" : undefined }}>
+      <legend style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        Enrichment filter
+        {hasFilter ? (
+          <button
+            type="button"
+            style={{ fontSize: "0.75rem", color: "#52606a", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+            onClick={() => { onSectorsChange([]); onCountriesChange([]); }}
+          >
+            Clear
+          </button>
+        ) : null}
+      </legend>
+      <p style={{ margin: "0 0 8px", fontSize: "0.82rem", color: "#52606a" }}>
+        Restrict candidates to actors targeting specific sectors or countries.
+        Hold Ctrl / ⌘ to select multiple.
+      </p>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        {options.sectors.length > 0 ? (
+          <label className="field-group" style={{ margin: 0 }}>
+            <span>Sectors</span>
+            <select
+              multiple
+              size={5}
+              value={selectedSectors}
+              onChange={(e) => handleMultiSelect(e, onSectorsChange)}
+              style={{ height: "auto", fontFamily: "inherit", fontSize: "0.85rem" }}
+            >
+              {options.sectors.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+        {options.countries.length > 0 ? (
+          <label className="field-group" style={{ margin: 0 }}>
+            <span>Countries</span>
+            <select
+              multiple
+              size={5}
+              value={selectedCountries}
+              onChange={(e) => handleMultiSelect(e, onCountriesChange)}
+              style={{ height: "auto", fontFamily: "inherit", fontSize: "0.85rem" }}
+            >
+              {options.countries.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+      </div>
+      {hasFilter ? (
+        <p style={{ margin: "6px 0 0", fontSize: "0.8rem", color: "#2d6a4f" }}>
+          {selectedSectors.length > 0 ? `Sectors: ${selectedSectors.join(", ")}` : ""}
+          {selectedSectors.length > 0 && selectedCountries.length > 0 ? " · " : ""}
+          {selectedCountries.length > 0 ? `Countries: ${selectedCountries.join(", ")}` : ""}
+        </p>
+      ) : null}
+    </fieldset>
+  );
 }

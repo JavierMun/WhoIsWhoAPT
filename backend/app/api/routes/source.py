@@ -2,18 +2,19 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.database import get_db_session
 from app.dependencies import get_settings_store
-from fastapi import Query
-
 from app.errors import AppError
 from app.ingestion import load_active_source, read_source_status
+from app.models import entities
 from app.models.schemas import (
     ConnectionTestRequest,
     ConnectionTestResult,
+    EnrichmentOptions,
     OpenCTIReport,
     ReportTechniquesResponse,
     SourceLoadStatus,
@@ -101,3 +102,32 @@ def test_connection(body: ConnectionTestRequest) -> ConnectionTestResult:
         return ConnectionTestResult(ok=False, detail=exc.message)
     except Exception as exc:
         return ConnectionTestResult(ok=False, detail=str(exc))
+
+
+@router.get("/enrichment-options", response_model=EnrichmentOptions)
+def enrichment_options(
+    session: Annotated[Session, Depends(get_db_session)],
+    settings_store: Annotated[SettingsStore, Depends(get_settings_store)],
+) -> EnrichmentOptions:
+    """Return sorted distinct sector and country values for the active source.
+
+    Used by the Compare UI to populate the enrichment filter dropdowns.
+    Only actors with at least one value are considered.
+    """
+    active_source = settings_store.load().active_source
+    rows = session.execute(
+        select(entities.Actor.target_sectors, entities.Actor.target_countries).where(
+            entities.Actor.source == active_source
+        )
+    ).all()
+
+    sectors: set[str] = set()
+    countries: set[str] = set()
+    for actor_sectors, actor_countries in rows:
+        sectors.update(s for s in (actor_sectors or []) if s)
+        countries.update(c for c in (actor_countries or []) if c)
+
+    return EnrichmentOptions(
+        sectors=sorted(sectors, key=str.lower),
+        countries=sorted(countries, key=str.lower),
+    )

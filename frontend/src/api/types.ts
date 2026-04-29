@@ -193,6 +193,11 @@ export interface ApplicationSettings {
   opencti: OpenCTISettings;
 }
 
+export interface EnrichmentOptions {
+  sectors: string[];
+  countries: string[];
+}
+
 export interface SourceLoadStatus {
   source: PrimarySourceName;
   status: string;
