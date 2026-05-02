@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(docker info *)"
+      "Bash(docker info *)",
+      "Bash(python -c ' *)",
+      "Bash(pip download *)"
     ]
   }
 }

@@ -4,6 +4,13 @@
 
 ### Completed this session
 
+**Session 10 — fastapi 0.129.2 + pycti 7.x upgrade**
+- Updated `requirements.txt`: `fastapi>=0.129.2,<0.130.0` (unpinned minor), `uvicorn[standard]>=0.34.2`, `pycti==7.260430.0`
+- Zero code changes required — all 114 tests pass without modification
+- pycti 7.x connects to OpenCTI 7.260423.0 via the same GraphQL API; field names unchanged
+- Data improvement vs pycti 6.x: 240 actors (+7), 1292 software (+15), 968 techniques, 60 campaigns
+- Build validated end-to-end: health ✓, OpenCTI test-connection ✓, source load ✓
+
 **Session 9 — Enrichment filter in Explore (Heatmap + Graph)**
 - Backend: `ActorEnrichmentIndexItem` schema + `GET /api/source/actor-enrichment-index` — returns `{id, target_sectors, target_countries}` for all actors in active source that have enrichment data
 - Extracted `EnrichmentFilterPanel` from `ActorComparisonPanel.tsx` to `EnrichmentFilterPanel.tsx` — shared component, accepts optional `hint` prop
@@ -120,7 +127,8 @@
 - `activeSource` is fetched once on App mount from `GET /api/settings` and passed down as a prop — no global context needed at this scale
 
 ### Next steps
-- Consider upgrading fastapi to >=0.129.x to unlock pycti 7.x (currently on 6.8.14 due to fastapi version conflict)
+- No outstanding technical debt. OpenCTI integration is complete and aligned with the live server version.
+- Future: surface enrichment data (sectors/countries/CVEs) in the Compare panel filter count / scope label so it's visible in the results header
 
 ---
 
