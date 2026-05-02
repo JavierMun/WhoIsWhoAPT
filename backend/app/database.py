@@ -2,7 +2,7 @@
 
 from collections.abc import Generator
 
-from sqlalchemy import Engine, create_engine
+from sqlalchemy import Engine, create_engine, inspect, text
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from app.config import get_config
@@ -26,7 +26,6 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 def init_db() -> None:
     """Create database tables and apply any pending column migrations."""
     from app.models import entities  # noqa: F401
-    from sqlalchemy import inspect, text
 
     Base.metadata.create_all(bind=engine)
     _apply_column_migrations()
@@ -47,9 +46,7 @@ def _apply_column_migrations() -> None:
 
 
 def _add_column_if_missing(inspector: object, table: str, column: str, col_type: str) -> None:
-    from sqlalchemy import inspect as sa_inspect, text
-
-    existing = {c["name"] for c in sa_inspect(engine).get_columns(table)}
+    existing = {c["name"] for c in inspect(engine).get_columns(table)}
     if column not in existing:
         with engine.connect() as conn:
             conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}"))

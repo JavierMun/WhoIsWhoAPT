@@ -59,6 +59,7 @@ function result(id: string, score: number): ComparisonResult {
     unique_to_matched_entity_software: [],
     tactic_breakdown: [],
     rare_shared_techniques: [],
-    explanation: null
+    explanation: null,
+    enrichment: null
   };
 }

@@ -55,6 +55,8 @@ function analysisDetail(): AnalysisDetail {
     metric: "jaccard",
     tactics: ["execution"],
     target_ids: ["actor-b"],
+    filter_sectors: null,
+    filter_countries: null,
     top_n: 5,
     created_at: "2026-04-26T12:00:00Z",
     results: {

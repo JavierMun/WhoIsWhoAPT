@@ -823,11 +823,18 @@ h1 {
 }
 
 .result-meta {
+  display: flex;
   flex-wrap: wrap;
-  gap: 8px 14px;
+  align-items: center;
+  gap: 4px 6px;
   margin-top: 8px;
   color: #52606a;
-  font-size: 0.88rem;
+  font-size: 0.85rem;
+}
+
+.result-meta-sep {
+  color: #c0ccd2;
+  font-size: 0.75rem;
 }
 
 .technique-preview {
@@ -873,9 +880,22 @@ h1 {
   font-size: 0.84rem;
 }
 
-.tactic-row-header span {
+.tactic-score {
   color: #0d704f;
-  font-weight: 800;
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+
+.tactic-detail {
+  margin: 0;
+  color: #52606a;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.tactic-count {
+  font-weight: 600;
+  margin-right: 2px;
 }
 
 .tactic-meter {
@@ -1136,6 +1156,171 @@ h1 {
   color: #52606a;
   margin-right: 2px;
 }
+
+/* ── Technique Breakdown Panel ─────────────────────────────────────────── */
+
+.breakdown-panel {
+  margin-top: 12px;
+  border-top: 1px solid #edf0f2;
+  padding-top: 10px;
+}
+
+.breakdown-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #52606a;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.breakdown-toggle:hover {
+  color: #136f63;
+}
+
+.breakdown-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.breakdown-col {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #e4eaed;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #fbfcfc;
+}
+
+.breakdown-col--input { border-top: 3px solid #9ec5b5; }
+.breakdown-col--shared { border-top: 3px solid #136f63; }
+.breakdown-col--target { border-top: 3px solid #8fa9b5; }
+
+.breakdown-col-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  background: #f2f6f7;
+  border-bottom: 1px solid #e4eaed;
+}
+
+.breakdown-col-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #33424c;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 80%;
+}
+
+.breakdown-col-count {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #0d704f;
+  background: #e3f2ed;
+  border-radius: 99px;
+  padding: 1px 7px;
+  flex-shrink: 0;
+}
+
+.breakdown-technique-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.breakdown-technique-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  background: #fff;
+  border: 1px solid #edf0f2;
+}
+
+.breakdown-technique-item:hover {
+  background: #f0f7f4;
+  border-color: #c6ddd6;
+}
+
+.breakdown-technique-id {
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #0d704f;
+  letter-spacing: 0.02em;
+}
+
+.breakdown-technique-name {
+  font-size: 0.78rem;
+  color: #33424c;
+  line-height: 1.3;
+}
+
+.breakdown-empty {
+  padding: 12px 6px;
+  text-align: center;
+  color: #8fa9b5;
+  font-size: 0.82rem;
+}
+
+/* ── Actor Context Panel ─────────────────────────────────────────────── */
+
+.actor-context-body {
+  margin-top: 10px;
+  display: grid;
+  gap: 10px;
+}
+
+.actor-context-note {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #52606a;
+  font-style: italic;
+  padding: 6px 8px;
+  background: #f5f8f7;
+  border-left: 3px solid #9bc5b5;
+  border-radius: 0 4px 4px 0;
+}
+
+.actor-context-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.actor-context-section {
+  display: grid;
+  gap: 6px;
+}
+
+.actor-context-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #33424c;
+}
+
+/* ─────────────────────────────────────────────────────────────────────── */
 
 .ttp-profile-form,
 .saved-profile-panel {

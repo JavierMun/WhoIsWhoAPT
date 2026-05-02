@@ -28,7 +28,7 @@ import {
   savedAnalysisTargetScopeLabel,
   savedAnalysisToViewModel
 } from "../api/savedAnalysisUtils";
-import { formatTactic, techniqueLookupFromList } from "../api/ttpProfileUtils";
+import { formatTactic, splitTactics, techniqueLookupFromList } from "../api/ttpProfileUtils";
 import type {
   ActorComparisonResponse,
   ActorListItem,
@@ -125,9 +125,9 @@ export function ActorComparisonPanel({ activeSource = "mitre" }: { activeSource?
   const techniqueLookup = useMemo(() => techniqueLookupFromList(techniques), [techniques]);
   const availableTactics = useMemo(
     () =>
-      Array.from(new Set(techniques.map((technique) => technique.tactic).filter(Boolean))).sort((left, right) =>
-        formatTactic(left).localeCompare(formatTactic(right))
-      ),
+      Array.from(
+        new Set(techniques.flatMap((technique) => splitTactics(technique.tactic)).filter(Boolean))
+      ).sort((left, right) => formatTactic(left).localeCompare(formatTactic(right))),
     [techniques]
   );
   const selectedTactics = selectedTactic === "all" ? undefined : [selectedTactic];
@@ -154,7 +154,7 @@ export function ActorComparisonPanel({ activeSource = "mitre" }: { activeSource?
       setError("Select at least one actor profile target. Custom TTP profile targets are visible for future support.");
       return;
     }
-    if (selectedTactic !== "all" && !availableTactics.includes(selectedTactic)) {
+    if (selectedTactic !== "all" && !availableTactics.includes(selectedTactic.toLowerCase())) {
       setError("Select a valid tactic scope before comparing.");
       return;
     }

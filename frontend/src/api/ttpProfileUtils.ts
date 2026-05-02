@@ -76,14 +76,36 @@ export function techniqueLookupFromList(techniques: TechniqueListItem[]): Techni
   return new Map(techniques.map((technique) => [technique.technique_id, technique]));
 }
 
-export function techniqueLabel(techniqueId: string, techniqueLookup: TechniqueLookup): string {
+/**
+ * Returns the display name for a technique, handling two edge cases:
+ * 1. Sub-techniques: prefixes with parent name → "Obfuscated Files or Information: Embedded Payloads"
+ * 2. Bad data: if name equals the technique ID (e.g. OpenCTI import issue), returns empty string
+ *    so callers can decide whether to show the name part.
+ */
+export function techniqueName(techniqueId: string, techniqueLookup: TechniqueLookup): string {
   const technique = techniqueLookup.get(techniqueId);
-  return technique ? `${technique.technique_id} — ${technique.name}` : techniqueId;
+  if (!technique) return "";
+  // Guard: if name is just the ID, the data is missing — don't repeat it
+  if (technique.name === techniqueId || !technique.name) return "";
+  if (technique.is_subtechnique && technique.parent_id) {
+    const parent = techniqueLookup.get(technique.parent_id);
+    if (parent && parent.name && parent.name !== technique.parent_id) {
+      return `${parent.name}: ${technique.name}`;
+    }
+  }
+  return technique.name;
+}
+
+export function techniqueLabel(techniqueId: string, techniqueLookup: TechniqueLookup): string {
+  const name = techniqueName(techniqueId, techniqueLookup);
+  return name ? `${techniqueId} — ${name}` : techniqueId;
 }
 
 export function techniqueTitle(techniqueId: string, techniqueLookup: TechniqueLookup): string {
   const technique = techniqueLookup.get(techniqueId);
-  return technique ? `${techniqueLabel(techniqueId, techniqueLookup)}\nTactic: ${formatTactic(technique.tactic)}` : techniqueId;
+  if (!technique) return techniqueId;
+  const label = techniqueLabel(techniqueId, techniqueLookup);
+  return `${label}\nTactic: ${formatTactic(technique.tactic.split(",")[0].trim())}`;
 }
 
 export function unknownTechniqueIds(techniqueIds: string[], validTechniqueIds: Set<string>): string[] {
@@ -96,6 +118,17 @@ export function formatTactic(tactic: string): string {
     .filter(Boolean)
     .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
     .join(" ");
+}
+
+/**
+ * Split a comma-separated tactic string into individual normalized tactics.
+ * Handles both "execution" and "execution, persistence" formats.
+ */
+export function splitTactics(tactic: string): string[] {
+  return tactic
+    .split(",")
+    .map((t) => t.trim().toLowerCase())
+    .filter(Boolean);
 }
 
 function sortedTechniqueIds(techniqueIds: string[]): string[] {

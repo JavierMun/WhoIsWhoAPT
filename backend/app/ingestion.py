@@ -37,7 +37,14 @@ def load_active_source(session: Session, settings_store: SettingsStore) -> Sourc
     session.commit()
 
     try:
-        techniques = adapter.fetch_techniques()
+        # Techniques always come from MITRE ATT&CK regardless of active source.
+        # Non-MITRE sources (e.g. OpenCTI) reference techniques by x_mitre_id but
+        # their attack-pattern names may be incomplete or incorrect in the instance.
+        if source_name == "mitre":
+            techniques = adapter.fetch_techniques()
+        else:
+            techniques = MitreSource().fetch_techniques()
+
         actors = adapter.fetch_actors()
         campaigns = adapter.fetch_campaigns()
         software = adapter.fetch_software()
