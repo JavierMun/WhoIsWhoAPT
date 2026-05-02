@@ -1,9 +1,10 @@
 import { AlertCircle, Grid3X3, Loader2, RefreshCw, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-import { computeMatrix, getMatrixResult } from "../api/client";
+import { computeMatrix, getActorEnrichmentIndex, getEnrichmentOptions, getMatrixResult } from "../api/client";
 import { clampScore, comparisonHeatColor } from "../api/comparisonViewUtils";
-import type { MatrixResponse, SimilarityMetric } from "../api/types";
+import type { ActorEnrichmentIndexItem, EnrichmentOptions, MatrixResponse, SimilarityMetric } from "../api/types";
+import { EnrichmentFilterPanel } from "./EnrichmentFilterPanel";
 
 const DEFAULT_VISIBLE_ACTORS = 30;
 const MAX_VISIBLE_ACTORS = 80;
@@ -16,6 +17,34 @@ export function ActorMatrixHeatmapPanel() {
   const [loading, setLoading] = useState(false);
   const [loadingMode, setLoadingMode] = useState<"compute" | "retrieve">("compute");
   const [error, setError] = useState<string | null>(null);
+  const [enrichmentOptions, setEnrichmentOptions] = useState<EnrichmentOptions>({ sectors: [], countries: [] });
+  const [enrichmentIndex, setEnrichmentIndex] = useState<ActorEnrichmentIndexItem[]>([]);
+  const [selectedSectors, setSelectedSectors] = useState<string[]>([]);
+  const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
+
+  useEffect(() => {
+    getEnrichmentOptions().then(setEnrichmentOptions).catch(() => {});
+    getActorEnrichmentIndex().then(setEnrichmentIndex).catch(() => {});
+  }, []);
+
+  const allowedActorIds = useMemo((): Set<string> | null => {
+    if (selectedSectors.length === 0 && selectedCountries.length === 0) return null;
+    const sectorSet = selectedSectors.length > 0 ? new Set(selectedSectors.map(s => s.toLowerCase())) : null;
+    const countrySet = selectedCountries.length > 0 ? new Set(selectedCountries.map(c => c.toLowerCase())) : null;
+    const matched = new Set<string>();
+    for (const item of enrichmentIndex) {
+      if (sectorSet) {
+        const actorSectors = new Set(item.target_sectors.map(s => s.toLowerCase()));
+        if (![...sectorSet].some(s => actorSectors.has(s))) continue;
+      }
+      if (countrySet) {
+        const actorCountries = new Set(item.target_countries.map(c => c.toLowerCase()));
+        if (![...countrySet].some(c => actorCountries.has(c))) continue;
+      }
+      matched.add(item.id);
+    }
+    return matched;
+  }, [enrichmentIndex, selectedSectors, selectedCountries]);
 
   async function handleCompute() {
     setLoading(true);
@@ -135,11 +164,22 @@ export function ActorMatrixHeatmapPanel() {
             <span>{loading && loadingMode === "retrieve" ? "Retrieving" : "Retrieve latest"}</span>
           </button>
 
+          {(enrichmentOptions.sectors.length > 0 || enrichmentOptions.countries.length > 0) ? (
+            <EnrichmentFilterPanel
+              options={enrichmentOptions}
+              selectedSectors={selectedSectors}
+              selectedCountries={selectedCountries}
+              onSectorsChange={setSelectedSectors}
+              onCountriesChange={setSelectedCountries}
+              hint="Filter actors shown in the matrix. Hold Ctrl / ⌘ to select multiple."
+            />
+          ) : null}
+
           <HeatmapLegend />
           {error ? <StatusMessage tone="error" message={error} /> : null}
         </form>
 
-        <HeatmapPanel matrix={matrix} actorQuery={actorQuery} visibleLimit={visibleLimit} loading={loading} />
+        <HeatmapPanel matrix={matrix} actorQuery={actorQuery} visibleLimit={visibleLimit} loading={loading} allowedActorIds={allowedActorIds} />
       </div>
     </section>
   );
@@ -149,14 +189,16 @@ function HeatmapPanel({
   matrix,
   actorQuery,
   visibleLimit,
-  loading
+  loading,
+  allowedActorIds
 }: {
   matrix: MatrixResponse | null;
   actorQuery: string;
   visibleLimit: number;
   loading: boolean;
+  allowedActorIds: Set<string> | null;
 }) {
-  const visibleIndexes = useVisibleActorIndexes(matrix, actorQuery, visibleLimit);
+  const visibleIndexes = useVisibleActorIndexes(matrix, actorQuery, visibleLimit, allowedActorIds);
 
   if (loading) {
     return (
@@ -309,7 +351,12 @@ function StatusMessage({ tone, message }: { tone: "error"; message: string }) {
   );
 }
 
-function useVisibleActorIndexes(matrix: MatrixResponse | null, actorQuery: string, visibleLimit: number): number[] {
+function useVisibleActorIndexes(
+  matrix: MatrixResponse | null,
+  actorQuery: string,
+  visibleLimit: number,
+  allowedActorIds: Set<string> | null
+): number[] {
   return useMemo(() => {
     if (!matrix) {
       return [];
@@ -326,13 +373,14 @@ function useVisibleActorIndexes(matrix: MatrixResponse | null, actorQuery: strin
             : 0;
         return { actor, index, averageSimilarity };
       })
-      .filter(({ actor }) => !normalizedQuery || actor.name.toLowerCase().includes(normalizedQuery));
+      .filter(({ actor }) => !normalizedQuery || actor.name.toLowerCase().includes(normalizedQuery))
+      .filter(({ actor }) => !allowedActorIds || allowedActorIds.has(actor.id));
 
     return actorScores
       .sort((left, right) => right.averageSimilarity - left.averageSimilarity || left.actor.name.localeCompare(right.actor.name))
       .slice(0, visibleLimit)
       .map((item) => item.index);
-  }, [actorQuery, matrix, visibleLimit]);
+  }, [actorQuery, allowedActorIds, matrix, visibleLimit]);
 }
 
 function formatScore(score: number): string {

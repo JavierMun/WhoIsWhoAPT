@@ -305,6 +305,14 @@ class EnrichmentOptions(BaseModel):
     countries: list[str] = Field(default_factory=list)
 
 
+class ActorEnrichmentIndexItem(BaseModel):
+    """Minimal enrichment data for one actor — used by Explore panels for client-side filtering."""
+
+    id: str
+    target_sectors: list[str] = Field(default_factory=list)
+    target_countries: list[str] = Field(default_factory=list)
+
+
 class ExportMetadata(BaseModel):
     """Metadata attached to exported comparison results."""
 
@@ -385,6 +393,8 @@ class AnalysisCreateRequest(BaseModel):
     metric: str = Field(min_length=1, max_length=64)
     tactics: list[str] | None = None
     target_ids: list[str] | None = None
+    filter_sectors: list[str] | None = None
+    filter_countries: list[str] | None = None
     top_n: int = Field(ge=1, le=100)
     results: dict[str, Any]
 
@@ -399,6 +409,8 @@ class AnalysisResponse(BaseModel):
     metric: str
     tactics: list[str] | None = None
     target_ids: list[str] | None = None
+    filter_sectors: list[str] | None = None
+    filter_countries: list[str] | None = None
     top_n: int
     created_at: datetime
 

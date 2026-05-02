@@ -153,6 +153,8 @@ export interface AnalysisCreateRequest {
   metric: string;
   tactics?: string[];
   target_ids?: string[];
+  filter_sectors?: string[];
+  filter_countries?: string[];
   top_n: number;
   results: ActorComparisonResponse;
 }
@@ -165,6 +167,8 @@ export interface AnalysisResponse {
   metric: string;
   tactics: string[] | null;
   target_ids: string[] | null;
+  filter_sectors: string[] | null;
+  filter_countries: string[] | null;
   top_n: number;
   created_at: string;
 }
@@ -196,6 +200,12 @@ export interface ApplicationSettings {
 export interface EnrichmentOptions {
   sectors: string[];
   countries: string[];
+}
+
+export interface ActorEnrichmentIndexItem {
+  id: string;
+  target_sectors: string[];
+  target_countries: string[];
 }
 
 export interface SourceLoadStatus {

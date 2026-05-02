@@ -18,6 +18,8 @@ export function ComparisonResultTabs({
   tacticScopeLabel,
   tactics,
   targetIds,
+  filterSectors,
+  filterCountries,
   canSave = true,
   onAnalysisSaved,
   techniqueLookup
@@ -28,6 +30,8 @@ export function ComparisonResultTabs({
   tacticScopeLabel: string;
   tactics?: string[];
   targetIds?: string[];
+  filterSectors?: string[];
+  filterCountries?: string[];
   canSave?: boolean;
   onAnalysisSaved?: () => void;
   techniqueLookup: TechniqueLookup;
@@ -54,6 +58,8 @@ export function ComparisonResultTabs({
         metric: comparison.metric,
         tactics,
         target_ids: targetIds,
+        filter_sectors: filterSectors && filterSectors.length > 0 ? filterSectors : undefined,
+        filter_countries: filterCountries && filterCountries.length > 0 ? filterCountries : undefined,
         top_n: topN,
         results: comparison
       });

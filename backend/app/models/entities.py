@@ -136,6 +136,8 @@ class Analysis(Base):
     metric: Mapped[str] = mapped_column(String(64), index=True)
     tactics: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
     target_ids: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    filter_sectors: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    filter_countries: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
     top_n: Mapped[int] = mapped_column(Integer)
     results_json: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

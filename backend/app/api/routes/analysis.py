@@ -29,6 +29,8 @@ def save_analysis(
         metric=request.metric,
         tactics=request.tactics,
         target_ids=request.target_ids,
+        filter_sectors=request.filter_sectors or None,
+        filter_countries=request.filter_countries or None,
         top_n=request.top_n,
         results_json=json.dumps(request.results, separators=(",", ":"), ensure_ascii=False),
         created_at=datetime.now(timezone.utc),
@@ -83,6 +85,8 @@ def _analysis_response(analysis: entities.Analysis) -> AnalysisResponse:
         metric=analysis.metric,
         tactics=analysis.tactics,
         target_ids=analysis.target_ids,
+        filter_sectors=analysis.filter_sectors,
+        filter_countries=analysis.filter_countries,
         top_n=analysis.top_n,
         created_at=_utc_datetime(analysis.created_at),
     )

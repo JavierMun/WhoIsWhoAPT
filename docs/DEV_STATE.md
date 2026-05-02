@@ -4,6 +4,26 @@
 
 ### Completed this session
 
+**Session 9 — Enrichment filter in Explore (Heatmap + Graph)**
+- Backend: `ActorEnrichmentIndexItem` schema + `GET /api/source/actor-enrichment-index` — returns `{id, target_sectors, target_countries}` for all actors in active source that have enrichment data
+- Extracted `EnrichmentFilterPanel` from `ActorComparisonPanel.tsx` to `EnrichmentFilterPanel.tsx` — shared component, accepts optional `hint` prop
+- `graphUtils.ts` `buildGraphData()`: new optional `allowedActorIds: Set<string> | null` param — filters `actorScores` before slicing to `nodeLimit`
+- `ActorMatrixHeatmapPanel`: enrichment options + index fetched on mount; `allowedActorIds` derived via `useMemo`; filter applied in `useVisibleActorIndexes`; `EnrichmentFilterPanel` shown when data available
+- `ActorNetworkGraphPanel`: same pattern; `allowedActorIds` passed through `NetworkPanel` → `useGraphData` → `buildGraphData`
+- Both panels: filter is client-side on already-computed matrix data — no matrix recomputation needed
+- All validated end-to-end: 36 actors with enrichment data indexed, filter applied client-side on matrix, no matrix recomputation needed
+
+**Session 8 — Persist enrichment filters in saved analyses**
+- Added `filter_sectors` and `filter_countries` JSON nullable columns to `Analysis` entity
+- Added fields to `AnalysisCreateRequest` and `AnalysisResponse` schemas
+- `save_analysis` route persists both fields; `_analysis_response` returns them
+- Frontend: `AnalysisCreateRequest` and `AnalysisResponse` types updated; `ComparisonResultTabs` and `ComparisonResults` components accept `filterSectors`/`filterCountries` and pass them to `saveAnalysis`
+- `SavedAnalysisViewModel` extended with `enrichmentFilterLabel`, `filterSectors`, `filterCountries`
+- `savedAnalysisEnrichmentFilterLabel()` helper added to `savedAnalysisUtils.ts`
+- Saved analysis inspector shows enrichment filter in green when present ("Filter: Sectors: ... · Countries: ...")
+- `_apply_column_migrations()` added to `init_db()` — idempotent `ALTER TABLE` for `analyses.filter_sectors/countries` and `campaigns.target_sectors/countries`; safe to run on both fresh and existing DBs
+- Validated live: `filter_sectors: ["Energy"]` persists and is returned in saved analysis detail; 114/114 tests passing
+
 **Session 7 — Enrichment filter in Compare**
 - Added `filter_sectors` and `filter_countries` optional fields to `ActorComparisonRequest`, `CustomComparisonRequest`, `IncidentAnalysisRequest`
 - Added `_filter_candidates_by_enrichment()` in compare route — pre-filters actor candidates by sector/country (OR within each list, AND between lists) before scoring; no-op when no filter
@@ -101,8 +121,6 @@
 
 ### Next steps
 - Consider upgrading fastapi to >=0.129.x to unlock pycti 7.x (currently on 6.8.14 due to fastapi version conflict)
-- Add enrichment to Explore / Visual Analysis — filter actors by sector or country in heatmap/graph
-- Show active enrichment filter in the saved analysis metadata (currently `filter_sectors`/`filter_countries` are sent in the compare request but not persisted in the `Analysis` record)
 
 ---
 

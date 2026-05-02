@@ -24,10 +24,36 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 
 def init_db() -> None:
-    """Create database tables for the foundation schema."""
+    """Create database tables and apply any pending column migrations."""
     from app.models import entities  # noqa: F401
+    from sqlalchemy import inspect, text
 
     Base.metadata.create_all(bind=engine)
+    _apply_column_migrations()
+
+
+def _apply_column_migrations() -> None:
+    """Add columns introduced after initial schema creation.
+
+    Each migration is idempotent — it checks existing columns before
+    issuing ALTER TABLE so re-running on an up-to-date DB is a no-op.
+    """
+    inspector = inspect(engine)
+
+    _add_column_if_missing(inspector, "analyses", "filter_sectors", "JSON")
+    _add_column_if_missing(inspector, "analyses", "filter_countries", "JSON")
+    _add_column_if_missing(inspector, "campaigns", "target_sectors", "JSON")
+    _add_column_if_missing(inspector, "campaigns", "target_countries", "JSON")
+
+
+def _add_column_if_missing(inspector: object, table: str, column: str, col_type: str) -> None:
+    from sqlalchemy import inspect as sa_inspect, text
+
+    existing = {c["name"] for c in sa_inspect(engine).get_columns(table)}
+    if column not in existing:
+        with engine.connect() as conn:
+            conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}"))
+            conn.commit()
 
 
 def get_db_session() -> Generator[Session, None, None]:

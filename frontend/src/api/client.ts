@@ -1,6 +1,7 @@
 import type {
   ActorComparisonResponse,
   ActorDetail,
+  ActorEnrichmentIndexItem,
   ActorListItem,
   AnalysisCreateRequest,
   AnalysisDetail,
@@ -91,6 +92,10 @@ export function compareActor(
 
 export function getEnrichmentOptions(): Promise<EnrichmentOptions> {
   return request<EnrichmentOptions>("/api/source/enrichment-options");
+}
+
+export function getActorEnrichmentIndex(): Promise<ActorEnrichmentIndexItem[]> {
+  return request<ActorEnrichmentIndexItem[]>("/api/source/actor-enrichment-index");
 }
 
 export function getTechniques(): Promise<TechniqueListItem[]> {

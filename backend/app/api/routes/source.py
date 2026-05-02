@@ -12,6 +12,7 @@ from app.errors import AppError
 from app.ingestion import load_active_source, read_source_status
 from app.models import entities
 from app.models.schemas import (
+    ActorEnrichmentIndexItem,
     ConnectionTestRequest,
     ConnectionTestResult,
     EnrichmentOptions,
@@ -131,3 +132,31 @@ def enrichment_options(
         sectors=sorted(sectors, key=str.lower),
         countries=sorted(countries, key=str.lower),
     )
+
+
+@router.get("/actor-enrichment-index", response_model=list[ActorEnrichmentIndexItem])
+def actor_enrichment_index(
+    session: Annotated[Session, Depends(get_db_session)],
+    settings_store: Annotated[SettingsStore, Depends(get_settings_store)],
+) -> list[ActorEnrichmentIndexItem]:
+    """Return minimal enrichment data (id, sectors, countries) for all actors in the active source.
+
+    Used by Explore panels for client-side filtering without recomputing the matrix.
+    Only actors that have at least one sector or country value are included.
+    """
+    active_source = settings_store.load().active_source
+    rows = session.execute(
+        select(entities.Actor.id, entities.Actor.target_sectors, entities.Actor.target_countries).where(
+            entities.Actor.source == active_source
+        )
+    ).all()
+
+    return [
+        ActorEnrichmentIndexItem(
+            id=actor_id,
+            target_sectors=sectors or [],
+            target_countries=countries or [],
+        )
+        for actor_id, sectors, countries in rows
+        if (sectors and len(sectors) > 0) or (countries and len(countries) > 0)
+    ]
