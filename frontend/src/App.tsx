@@ -28,7 +28,12 @@ function App() {
   }, []);
 
   return (
-    <Layout activeModule={activeModule} onModuleChange={setActiveModule}>
+    <Layout
+      activeModule={activeModule}
+      onModuleChange={setActiveModule}
+      health={health}
+      activeSource={activeSource}
+    >
       {activeModule === "compare" ? <ActorComparisonPanel activeSource={activeSource} /> : null}
       {activeModule === "ttp-profiles" ? <TTPProfilesPanel activeSource={activeSource} /> : null}
       {activeModule === "visual-analysis" ? (
@@ -38,31 +43,7 @@ function App() {
         </div>
       ) : null}
       {activeModule === "settings" ? <SettingsPanel health={health} error={error} /> : null}
-      <BackendStrip health={health} error={error} activeSource={activeSource} />
     </Layout>
-  );
-}
-
-function BackendStrip({
-  health,
-  error,
-  activeSource
-}: {
-  health: HealthResponse | null;
-  error: string | null;
-  activeSource: PrimarySourceName;
-}) {
-  const sourceLabel = activeSource === "mitre" ? "MITRE ATT&CK" : "OpenCTI";
-  return (
-    <footer className="backend-strip">
-      <span className={health ? "status-dot ok" : "status-dot pending"} aria-hidden="true" />
-      <span>Backend {health ? health.status : "checking"}</span>
-      <span>{health?.environment ?? "unknown"}</span>
-      <span style={{ marginLeft: "auto", opacity: 0.7, fontSize: "0.8rem" }}>
-        Source: {sourceLabel}
-      </span>
-      {error ? <span className="error-text">{error}</span> : null}
-    </footer>
   );
 }
 
