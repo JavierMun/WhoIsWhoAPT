@@ -1,4 +1,4 @@
-import { Database, RefreshCw, Settings, Wifi, WifiOff } from "lucide-react";
+import { CheckCircle, Database, Loader2, RefreshCw, Settings, Wifi, WifiOff, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import {
@@ -22,36 +22,43 @@ import type {
 
 function formatDateTime(iso: string | null): string {
   if (!iso) return "Never";
-  return new Date(iso).toLocaleString();
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(iso));
 }
 
 function sourceName(source: PrimarySourceName): string {
-  return source === "mitre" ? "MITRE ATT&CK" : "OpenCTI";
+  return source === "mitre" ? "MITRE ATT\&CK" : "OpenCTI";
 }
 
-function statusColor(status: string): string {
-  if (status === "completed") return "ok";
-  if (status === "failed") return "error";
-  return "pending";
+function statusBadgeClass(status: string): string {
+  if (status === "completed") return "status ok";
+  if (status === "failed") return "status error";
+  if (status === "running") return "status pending";
+  return "status pending";
 }
 
 // ---------------------------------------------------------------------------
-// Sub-components
+// Source Status Panel
 // ---------------------------------------------------------------------------
 
 function SourceStatusPanel({
   status,
   ingesting,
+  canLoad,
   ingestError,
   onLoad
 }: {
   status: SourceLoadStatus | null;
   ingesting: boolean;
+  canLoad: boolean;
   ingestError: string | null;
   onLoad: () => void;
 }) {
+  const hasData = status?.status === "completed";
+
   return (
     <div className="control-panel">
+      <p className="panel-label" style={{ margin: "0 0 12px" }}>Dataset status</p>
+
       <div className="field-group">
         <span>Active source</span>
         <p style={{ margin: 0, fontWeight: 700 }}>
@@ -60,33 +67,16 @@ function SourceStatusPanel({
       </div>
 
       <div className="field-group">
-        <span>Ingestion status</span>
-        <p style={{ margin: 0 }}>
-          <span className={`status ${status ? statusColor(status.status) : "pending"}`}>
-            {status?.status ?? "unknown"}
+        <span>Status</span>
+        <p style={{ margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          <span className={status ? statusBadgeClass(status.status) : "status pending"}>
+            {status?.status ?? "never loaded"}
           </span>
           {status?.version ? (
-            <span style={{ marginLeft: 8, color: "#52606a", fontSize: "0.88rem" }}>
-              v{status.version}
-            </span>
+            <span style={{ color: "#52606a", fontSize: "0.85rem" }}>v{status.version}</span>
           ) : null}
         </p>
       </div>
-
-      {status && status.status === "completed" ? (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-          {[
-            ["Actors", status.actor_count],
-            ["Techniques", status.technique_count],
-            ["Software", status.software_count]
-          ].map(([label, count]) => (
-            <div key={label as string} style={{ textAlign: "center" }}>
-              <p style={{ margin: 0, fontWeight: 700, fontSize: "1.25rem" }}>{count}</p>
-              <p style={{ margin: 0, color: "#52606a", fontSize: "0.82rem" }}>{label}</p>
-            </div>
-          ))}
-        </div>
-      ) : null}
 
       <div className="field-group">
         <span>Last loaded</span>
@@ -95,33 +85,70 @@ function SourceStatusPanel({
         </p>
       </div>
 
+      {hasData ? (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          {[
+            ["Actors", status!.actor_count],
+            ["Campaigns", status!.campaign_count],
+            ["Software", status!.software_count],
+            ["Techniques", status!.technique_count]
+          ].map(([label, count]) => (
+            <div
+              key={label as string}
+              style={{
+                textAlign: "center",
+                padding: "10px 8px",
+                background: "#f7f9fa",
+                border: "1px solid #e4eaed",
+                borderRadius: 6
+              }}
+            >
+              <p style={{ margin: 0, fontWeight: 700, fontSize: "1.2rem", color: "#0d704f" }}>{count}</p>
+              <p style={{ margin: 0, color: "#52606a", fontSize: "0.78rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
       {status?.error ? (
         <div className="status-message error">
-          <WifiOff size={16} aria-hidden="true" />
+          <XCircle size={16} aria-hidden="true" />
           <span>{status.error}</span>
         </div>
       ) : null}
 
       {ingestError ? (
         <div className="status-message error">
-          <WifiOff size={16} aria-hidden="true" />
+          <XCircle size={16} aria-hidden="true" />
           <span>{ingestError}</span>
         </div>
       ) : null}
 
-      <button className="primary-action" onClick={onLoad} disabled={ingesting} style={{ width: "100%" }}>
-        {ingesting ? (
-          <>
-            <RefreshCw size={16} aria-hidden="true" style={{ animation: "spin 1s linear infinite" }} />
-            Loading data…
-          </>
-        ) : (
-          <>
-            <RefreshCw size={16} aria-hidden="true" />
-            {status?.status === "completed" ? "Reload data" : "Load data"}
-          </>
-        )}
-      </button>
+      {canLoad ? (
+        <button
+          className="primary-action"
+          onClick={onLoad}
+          disabled={ingesting}
+          type="button"
+          style={{ width: "100%" }}
+        >
+          {ingesting ? (
+            <>
+              <Loader2 size={16} aria-hidden="true" style={{ animation: "spin 1s linear infinite" }} />
+              Loading data…
+            </>
+          ) : (
+            <>
+              <RefreshCw size={16} aria-hidden="true" />
+              {hasData ? "Reload data" : "Load data"}
+            </>
+          )}
+        </button>
+      ) : (
+        <p style={{ margin: 0, fontSize: "0.85rem", color: "#70808a", textAlign: "center" }}>
+          Save a valid configuration to enable data loading.
+        </p>
+      )}
     </div>
   );
 }
@@ -141,7 +168,7 @@ export function SettingsPanel({
   const [sourceStatus, setSourceStatus] = useState<SourceLoadStatus | null>(null);
   const [loadingSettings, setLoadingSettings] = useState(true);
 
-  // Form state — mirrors opencti config fields
+  // Form state
   const [activeSource, setActiveSource] = useState<PrimarySourceName>("mitre");
   const [octiUrl, setOctiUrl] = useState("");
   const [octiToken, setOctiToken] = useState("");
@@ -151,11 +178,11 @@ export function SettingsPanel({
   const [connectionVerified, setConnectionVerified] = useState(false);
   const [testing, setTesting] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [ingesting, setIngesting] = useState(false);
   const [ingestError, setIngestError] = useState<string | null>(null);
 
-  // Load settings + status on mount
   useEffect(() => {
     Promise.all([getSettings(), getSourceStatus()])
       .then(([s, st]) => {
@@ -169,16 +196,25 @@ export function SettingsPanel({
       .finally(() => setLoadingSettings(false));
   }, []);
 
-  // Reset verified state when form fields change
   function handleUrlChange(v: string) {
     setOctiUrl(v);
     setConnectionVerified(false);
     setTestResult(null);
   }
+
   function handleTokenChange(v: string) {
     setOctiToken(v);
     setConnectionVerified(false);
     setTestResult(null);
+  }
+
+  function handleSourceChange(source: PrimarySourceName) {
+    setActiveSource(source);
+    // Reset test state when switching sources
+    setTestResult(null);
+    setConnectionVerified(false);
+    setSaveSuccess(false);
+    setSaveError(null);
   }
 
   async function handleTest() {
@@ -186,7 +222,7 @@ export function SettingsPanel({
     setTestResult(null);
     setConnectionVerified(false);
     try {
-      const result = await testSourceConnection(octiUrl, octiToken);
+      const result = await testSourceConnection(octiUrl.trim(), octiToken.trim());
       setTestResult(result);
       setConnectionVerified(result.ok);
     } catch (err) {
@@ -200,18 +236,20 @@ export function SettingsPanel({
     if (!settings) return;
     setSaving(true);
     setSaveError(null);
+    setSaveSuccess(false);
     try {
       const updated = await updateSettings({
         ...settings,
         active_source: activeSource,
         opencti: {
           ...settings.opencti,
-          url: octiUrl || null,
-          api_token: octiToken || null
+          url: activeSource === "opencti" ? (octiUrl.trim() || null) : settings.opencti.url,
+          api_token: activeSource === "opencti" ? (octiToken.trim() || null) : settings.opencti.api_token
         }
       });
       setSettings(updated);
-      // Refresh status for the new active source
+      setSaveSuccess(true);
+      // Refresh status for new active source
       const st = await getSourceStatus().catch(() => null);
       if (st) setSourceStatus(st);
     } catch (err) {
@@ -234,16 +272,17 @@ export function SettingsPanel({
     }
   }
 
-  // Save button rules:
-  // - MITRE: enabled whenever active_source changed to mitre (no credentials needed)
-  // - OpenCTI: enabled only when test passed in this session and both fields non-empty
   const octiFormComplete = octiUrl.trim().length > 0 && octiToken.trim().length > 0;
+
+  // Save is enabled when:
+  // - MITRE: always (no credentials required)
+  // - OpenCTI: only after a successful connection test with both fields filled
   const saveEnabled =
     !saving &&
     (activeSource === "mitre" ||
       (activeSource === "opencti" && connectionVerified && octiFormComplete));
 
-  // Load button: enabled when saved config has credentials (or MITRE always)
+  // Load data is only available when the SAVED config has credentials (or is MITRE)
   const canLoad =
     !ingesting &&
     settings !== null &&
@@ -261,7 +300,8 @@ export function SettingsPanel({
             <h1 id="settings-title">Data source</h1>
           </div>
         </div>
-        <div className="status-message neutral">
+        <div className="status-message neutral" style={{ margin: "24px 0" }}>
+          <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} aria-hidden="true" />
           <span>Loading settings…</span>
         </div>
       </section>
@@ -270,7 +310,6 @@ export function SettingsPanel({
 
   return (
     <section className="comparison-workspace" aria-labelledby="settings-title">
-      {/* Header */}
       <div className="workspace-header">
         <div>
           <p className="eyebrow">Settings</p>
@@ -278,35 +317,48 @@ export function SettingsPanel({
         </div>
         <div className="source-pill">
           <Settings size={16} aria-hidden="true" />
-          <span>Local backend</span>
+          <span>Configuration</span>
         </div>
       </div>
 
       <div className="comparison-layout">
-        {/* Left — configuration */}
+        {/* ── Left: configuration ─────────────────────────────────── */}
         <div className="control-panel">
-          {/* Source selector */}
-          <div className="field-group">
-            <span>Active source</span>
-            <div className="action-row">
-              <button
-                className={activeSource === "mitre" ? "primary-action" : "secondary-action"}
-                onClick={() => setActiveSource("mitre")}
-                type="button"
-              >
-                MITRE ATT&CK
-              </button>
-              <button
-                className={activeSource === "opencti" ? "primary-action" : "secondary-action"}
-                onClick={() => setActiveSource("opencti")}
-                type="button"
-              >
-                OpenCTI
-              </button>
-            </div>
-          </div>
 
-          {/* OpenCTI config form */}
+          {/* Source selector */}
+          <fieldset className="scope-selector" style={{ marginBottom: 0 }}>
+            <legend>Active source</legend>
+            <label>
+              <input
+                type="radio"
+                name="active-source"
+                value="mitre"
+                checked={activeSource === "mitre"}
+                onChange={() => handleSourceChange("mitre")}
+              />
+              <span>MITRE ATT&CK</span>
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="active-source"
+                value="opencti"
+                checked={activeSource === "opencti"}
+                onChange={() => handleSourceChange("opencti")}
+              />
+              <span>OpenCTI</span>
+            </label>
+          </fieldset>
+
+          {/* MITRE info */}
+          {activeSource === "mitre" ? (
+            <div className="status-message neutral">
+              <Database size={16} aria-hidden="true" />
+              <span>MITRE ATT&CK — no credentials required. Data is bundled with the application.</span>
+            </div>
+          ) : null}
+
+          {/* OpenCTI config */}
           {activeSource === "opencti" ? (
             <>
               <div className="field-group">
@@ -314,7 +366,7 @@ export function SettingsPanel({
                 <input
                   id="octi-url"
                   type="url"
-                  placeholder="https://opencti.example.com"
+                  placeholder="http://localhost:8080"
                   value={octiUrl}
                   onChange={(e) => handleUrlChange(e.target.value)}
                   autoComplete="off"
@@ -326,7 +378,7 @@ export function SettingsPanel({
                 <input
                   id="octi-token"
                   type="password"
-                  placeholder="••••••••••••"
+                  placeholder="••••••••••••••••"
                   value={octiToken}
                   onChange={(e) => handleTokenChange(e.target.value)}
                   autoComplete="new-password"
@@ -335,14 +387,14 @@ export function SettingsPanel({
 
               <button
                 className="secondary-action"
-                onClick={handleTest}
+                onClick={() => void handleTest()}
                 disabled={testing || !octiFormComplete}
                 type="button"
                 style={{ width: "100%" }}
               >
                 {testing ? (
                   <>
-                    <RefreshCw size={16} aria-hidden="true" style={{ animation: "spin 1s linear infinite" }} />
+                    <Loader2 size={16} aria-hidden="true" style={{ animation: "spin 1s linear infinite" }} />
                     Testing…
                   </>
                 ) : (
@@ -354,76 +406,97 @@ export function SettingsPanel({
               </button>
 
               {testResult !== null ? (
-                <div className={`status-message ${testResult.ok ? "neutral" : "error"}`}>
+                <div className={`status-message ${testResult.ok ? "success" : "error"}`}>
                   {testResult.ok ? (
-                    <Wifi size={16} aria-hidden="true" />
+                    <CheckCircle size={16} aria-hidden="true" />
                   ) : (
                     <WifiOff size={16} aria-hidden="true" />
                   )}
                   <span>
                     {testResult.ok
-                      ? "Connection successful"
-                      : testResult.detail ?? "Connection failed"}
+                      ? "Connection successful — you can now save the configuration."
+                      : (testResult.detail ?? "Connection failed. Check the URL and API token.")}
                   </span>
                 </div>
               ) : null}
+
+              {!connectionVerified && octiFormComplete && testResult === null ? (
+                <p style={{ margin: 0, color: "#70808a", fontSize: "0.82rem" }}>
+                  Test the connection before saving.
+                </p>
+              ) : null}
             </>
-          ) : (
-            <div className="status-message neutral">
-              <Database size={16} aria-hidden="true" />
-              <span>MITRE ATT&CK — no credentials required</span>
+          ) : null}
+
+          {/* Save feedback */}
+          {saveSuccess ? (
+            <div className="status-message success">
+              <CheckCircle size={16} aria-hidden="true" />
+              <span>Configuration saved.</span>
             </div>
-          )}
+          ) : null}
 
           {saveError ? (
             <div className="status-message error">
-              <WifiOff size={16} aria-hidden="true" />
+              <XCircle size={16} aria-hidden="true" />
               <span>{saveError}</span>
             </div>
           ) : null}
 
+          {/* Save button */}
           <button
             className="primary-action"
-            onClick={handleSave}
+            onClick={() => void handleSave()}
             disabled={!saveEnabled}
             type="button"
             style={{ width: "100%" }}
           >
-            {saving ? "Saving…" : "Save configuration"}
+            {saving ? (
+              <>
+                <Loader2 size={16} aria-hidden="true" style={{ animation: "spin 1s linear infinite" }} />
+                Saving…
+              </>
+            ) : (
+              "Save configuration"
+            )}
           </button>
-
-          {activeSource === "opencti" && !connectionVerified && octiFormComplete ? (
-            <p style={{ margin: 0, color: "#52606a", fontSize: "0.85rem", textAlign: "center" }}>
-              Test the connection first to enable saving
-            </p>
-          ) : null}
         </div>
 
-        {/* Right — status + load */}
+        {/* ── Right: status + load ─────────────────────────────────── */}
         <SourceStatusPanel
           status={sourceStatus}
-          ingesting={ingesting || !canLoad}
+          ingesting={ingesting}
+          canLoad={canLoad}
           ingestError={ingestError}
-          onLoad={handleLoadSource}
+          onLoad={() => void handleLoadSource()}
         />
       </div>
 
       {/* Backend health strip */}
-      <div className="results-panel" style={{ padding: "16px 20px", minHeight: "auto" }}>
-        <div className="results-header">
+      <div className="results-panel" style={{ padding: "14px 20px", minHeight: "auto", marginTop: 0 }}>
+        <div className="results-header" style={{ marginBottom: 0 }}>
           <div>
-            <p className="panel-label">Backend</p>
-            <h2 style={{ fontSize: "1rem", margin: 0 }}>
-              {health ? health.status : "Checking connection"}
-            </h2>
+            <p className="panel-label">Backend service</p>
+            <p style={{ margin: 0, fontWeight: 600, fontSize: "0.95rem" }}>
+              {health ? `Status: ${health.status}` : "Connecting…"}
+            </p>
           </div>
-          <span className={health ? "metric-label status ok" : "metric-label status pending"}
-            style={{ padding: "0 12px" }}>
+          <span
+            className={health ? "metric-label" : "metric-label"}
+            style={{
+              padding: "4px 12px",
+              borderRadius: 99,
+              background: health ? "#e3f2ed" : "#f5f5f5",
+              color: health ? "#0d704f" : "#70808a",
+              fontWeight: 700,
+              fontSize: "0.82rem"
+            }}
+          >
             {health?.environment ?? "unknown"}
           </span>
         </div>
         {error ? (
-          <p style={{ margin: "8px 0 0", color: "#b42318", fontSize: "0.88rem" }}>{error}</p>
+          <p style={{ margin: "8px 0 0", color: "#b42318", fontSize: "0.85rem" }}>{error}</p>
         ) : null}
       </div>
     </section>

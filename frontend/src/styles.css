@@ -402,6 +402,11 @@ h1 {
   color: #b42318;
 }
 
+.status-message.success {
+  background: #e3f2ed;
+  color: #0d704f;
+}
+
 .results-panel {
   min-height: 520px;
   overflow: hidden;
