@@ -3,7 +3,11 @@
     "allow": [
       "Bash(docker info *)",
       "Bash(python -c ' *)",
-      "Bash(pip download *)"
+      "Bash(pip download *)",
+      "Bash(curl -s \"http://localhost:8000/api/techniques\")",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git reset *)"
     ]
   }
 }

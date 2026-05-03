@@ -52,10 +52,6 @@ export function ActorMatrixHeatmapPanel() {
           <p className="eyebrow">Similarity Matrix</p>
           <h1 id="matrix-title">Actor heatmap</h1>
         </div>
-        <div className="source-pill">
-          <Grid3X3 size={16} aria-hidden="true" />
-          <span>{matrix ? `${matrix.metadata.actor_count} actors` : "Matrix"}</span>
-        </div>
       </div>
 
       <div className="matrix-layout">

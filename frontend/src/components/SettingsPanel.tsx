@@ -1,4 +1,4 @@
-import { CheckCircle, Database, Loader2, RefreshCw, Settings, Wifi, WifiOff, XCircle } from "lucide-react";
+import { CheckCircle, Database, Loader2, RefreshCw, Wifi, WifiOff, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import {
@@ -314,10 +314,6 @@ export function SettingsPanel({
         <div>
           <p className="eyebrow">Settings</p>
           <h1 id="settings-title">Data source</h1>
-        </div>
-        <div className="source-pill">
-          <Settings size={16} aria-hidden="true" />
-          <span>Configuration</span>
         </div>
       </div>
 

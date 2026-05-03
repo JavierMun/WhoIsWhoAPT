@@ -60,10 +60,6 @@ export function ActorNetworkGraphPanel() {
           <p className="eyebrow">Cluster Network</p>
           <h1 id="network-title">Actor relationship graph</h1>
         </div>
-        <div className="source-pill">
-          <Network size={16} aria-hidden="true" />
-          <span>{clusters ? `${clusters.cluster_count} clusters` : "Network"}</span>
-        </div>
       </div>
 
       <div className="network-layout">
