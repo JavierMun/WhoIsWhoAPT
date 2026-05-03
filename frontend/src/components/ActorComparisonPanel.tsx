@@ -8,7 +8,6 @@ import {
   getActors,
   getAnalyses,
   getAnalysisDetail,
-  getEnrichmentOptions,
   getTechniques,
   getTTPProfiles
 } from "../api/client";
@@ -34,14 +33,12 @@ import type {
   ActorListItem,
   AnalysisDetail,
   AnalysisResponse,
-  EnrichmentOptions,
   PrimarySourceName,
   SimilarityMetric,
   TechniqueListItem,
   TTPProfile
 } from "../api/types";
 import { ComparisonResultTabs } from "./ComparisonResultTabs";
-import { EnrichmentFilterPanel } from "./EnrichmentFilterPanel";
 
 const DEFAULT_TOP_N = 10;
 type ComparisonScope = "all" | "selected";
@@ -63,9 +60,6 @@ export function ActorComparisonPanel({ activeSource = "mitre" }: { activeSource?
   const [error, setError] = useState<string | null>(null);
   const [comparison, setComparison] = useState<ActorComparisonResponse | null>(null);
   const [savedAnalysesRefreshKey, setSavedAnalysesRefreshKey] = useState(0);
-  const [enrichmentOptions, setEnrichmentOptions] = useState<EnrichmentOptions>({ sectors: [], countries: [] });
-  const [selectedSectors, setSelectedSectors] = useState<string[]>([]);
-  const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
 
   useEffect(() => {
     Promise.all([getActors(), getTTPProfiles(), getTechniques()])
@@ -83,18 +77,6 @@ export function ActorComparisonPanel({ activeSource = "mitre" }: { activeSource?
         setLoading(false);
       });
   }, []);
-
-  useEffect(() => {
-    if (activeSource === "opencti") {
-      getEnrichmentOptions()
-        .then(setEnrichmentOptions)
-        .catch(() => {});
-    } else {
-      setEnrichmentOptions({ sectors: [], countries: [] });
-      setSelectedSectors([]);
-      setSelectedCountries([]);
-    }
-  }, [activeSource]);
 
   const comparableProfiles = useMemo(() => buildComparableProfiles(actors, customProfiles), [actors, customProfiles]);
   const sourceProfiles = useMemo(
@@ -171,9 +153,7 @@ export function ActorComparisonPanel({ activeSource = "mitre" }: { activeSource?
             metric,
             topN,
             scope === "selected" ? selectedActorTargetIds : undefined,
-            selectedTactics,
-            selectedSectors.length > 0 ? selectedSectors : undefined,
-            selectedCountries.length > 0 ? selectedCountries : undefined
+            selectedTactics
           )
         );
       } else {
@@ -183,9 +163,7 @@ export function ActorComparisonPanel({ activeSource = "mitre" }: { activeSource?
             metric,
             topN,
             targetIds: scope === "selected" ? selectedActorTargetIds : undefined,
-            tactics: selectedTactics,
-            filterSectors: selectedSectors.length > 0 ? selectedSectors : undefined,
-            filterCountries: selectedCountries.length > 0 ? selectedCountries : undefined
+            tactics: selectedTactics
           })
         );
       }
@@ -311,16 +289,6 @@ export function ActorComparisonPanel({ activeSource = "mitre" }: { activeSource?
             </select>
           </label>
 
-          {(enrichmentOptions.sectors.length > 0 || enrichmentOptions.countries.length > 0) ? (
-            <EnrichmentFilterPanel
-              options={enrichmentOptions}
-              selectedSectors={selectedSectors}
-              selectedCountries={selectedCountries}
-              onSectorsChange={setSelectedSectors}
-              onCountriesChange={setSelectedCountries}
-            />
-          ) : null}
-
           <fieldset className="scope-selector">
             <legend>Target scope</legend>
             <label>
@@ -423,8 +391,6 @@ export function ActorComparisonPanel({ activeSource = "mitre" }: { activeSource?
           tacticScopeLabel={tacticScopeLabel}
           tactics={selectedTactics}
           targetIds={scope === "selected" ? selectedActorTargetIds : undefined}
-          filterSectors={selectedSectors.length > 0 ? selectedSectors : undefined}
-          filterCountries={selectedCountries.length > 0 ? selectedCountries : undefined}
           onAnalysisSaved={() => {
             setSavedAnalysesRefreshKey((currentKey) => currentKey + 1);
           }}
@@ -504,8 +470,6 @@ function ComparisonResults({
   tacticScopeLabel,
   tactics,
   targetIds,
-  filterSectors,
-  filterCountries,
   onAnalysisSaved,
   techniqueLookup
 }: {
@@ -516,8 +480,6 @@ function ComparisonResults({
   tacticScopeLabel: string;
   tactics?: string[];
   targetIds?: string[];
-  filterSectors?: string[];
-  filterCountries?: string[];
   onAnalysisSaved: () => void;
   techniqueLookup: ReturnType<typeof techniqueLookupFromList>;
 }) {
@@ -573,8 +535,6 @@ function ComparisonResults({
       tacticScopeLabel={tacticScopeLabel}
       tactics={tactics}
       targetIds={targetIds}
-      filterSectors={filterSectors}
-      filterCountries={filterCountries}
       onAnalysisSaved={onAnalysisSaved}
       techniqueLookup={techniqueLookup}
     />
@@ -813,11 +773,6 @@ function SavedAnalysesPanel({
                     {selectedViewModel.tacticScopeLabel} - {savedAnalysisTargetScopeLabel(selectedAnalysis.target_ids)} - Top{" "}
                     {selectedAnalysis.top_n}
                   </p>
-                  {selectedViewModel.enrichmentFilterLabel ? (
-                    <p style={{ fontSize: "0.82rem", color: "#2d6a4f" }}>
-                      Filter: {selectedViewModel.enrichmentFilterLabel}
-                    </p>
-                  ) : null}
                   <p>{savedAnalysisDateLabel(selectedAnalysis.created_at)}</p>
                 </div>
                 <button

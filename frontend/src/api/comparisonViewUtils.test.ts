@@ -61,5 +61,6 @@ function result(id: string, score: number): ComparisonResult {
     rare_shared_techniques: [],
     explanation: null,
     enrichment: null
+
   };
 }

@@ -1283,6 +1283,118 @@ h1 {
   font-size: 0.82rem;
 }
 
+/* ── Source Profile Panel ────────────────────────────────────────────── */
+
+.source-profile-panel {
+  margin-top: 6px;
+}
+
+.source-profile-body {
+  margin-top: 8px;
+  display: grid;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #f7f9fa;
+  border: 1px solid #e4eaed;
+  border-radius: 6px;
+}
+
+.source-profile-description {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #33424c;
+  line-height: 1.5;
+  border-left: 3px solid #9bc5b5;
+  padding-left: 10px;
+}
+
+.source-profile-section {
+  display: grid;
+  gap: 4px;
+}
+
+.source-profile-tactics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 4px;
+}
+
+.source-tactic-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 99px;
+  background: #e8f2ef;
+  border: 1px solid #c0dbd4;
+  font-size: 0.78rem;
+  color: #1a5c4a;
+}
+
+.source-tactic-count {
+  background: #136f63;
+  color: #fff;
+  border-radius: 99px;
+  padding: 0 5px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  min-width: 18px;
+  text-align: center;
+}
+
+.source-profile-muted {
+  font-size: 0.8rem;
+  color: #70808a;
+  font-style: italic;
+}
+
+/* ── Shared Context Row ──────────────────────────────────────────────── */
+
+.shared-context-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 7px 10px;
+  background: #f0f7f4;
+  border: 1px solid #c0dbd4;
+  border-radius: 6px;
+}
+
+.shared-context-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #136f63;
+  margin-right: 4px;
+  flex-shrink: 0;
+}
+
+.shared-context-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.shared-context-type {
+  font-size: 0.73rem;
+  font-weight: 600;
+  color: #52606a;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-right: 2px;
+}
+
+.shared-context-chip {
+  background: #d4ede7 !important;
+  border-color: #9bc5b5 !important;
+  color: #0d4f40 !important;
+}
+
 /* ── Actor Context Panel ─────────────────────────────────────────────── */
 
 .actor-context-body {

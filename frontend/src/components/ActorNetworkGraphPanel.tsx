@@ -8,10 +8,9 @@ import {
 import { AlertCircle, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, FileJson, Loader2, Network, RefreshCw, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-import { computeMatrix, getActorEnrichmentIndex, getClusters, getEnrichmentOptions, getMatrixResult } from "../api/client";
+import { computeMatrix, getClusters, getMatrixResult } from "../api/client";
 import { buildGraphData, type GraphData, type GraphLink, type GraphNode } from "../api/graphUtils";
-import type { ActorEnrichmentIndexItem, ClusterResponse, EnrichmentOptions, MatrixResponse, SimilarityMetric } from "../api/types";
-import { EnrichmentFilterPanel } from "./EnrichmentFilterPanel";
+import type { ClusterResponse, MatrixResponse, SimilarityMetric } from "../api/types";
 
 const DEFAULT_THRESHOLD = 0.15;
 const DEFAULT_NODE_LIMIT = 60;
@@ -28,34 +27,6 @@ export function ActorNetworkGraphPanel() {
   const [clusters, setClusters] = useState<ClusterResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [enrichmentOptions, setEnrichmentOptions] = useState<EnrichmentOptions>({ sectors: [], countries: [] });
-  const [enrichmentIndex, setEnrichmentIndex] = useState<ActorEnrichmentIndexItem[]>([]);
-  const [selectedSectors, setSelectedSectors] = useState<string[]>([]);
-  const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
-
-  useEffect(() => {
-    getEnrichmentOptions().then(setEnrichmentOptions).catch(() => {});
-    getActorEnrichmentIndex().then(setEnrichmentIndex).catch(() => {});
-  }, []);
-
-  const allowedActorIds = useMemo((): Set<string> | null => {
-    if (selectedSectors.length === 0 && selectedCountries.length === 0) return null;
-    const sectorSet = selectedSectors.length > 0 ? new Set(selectedSectors.map(s => s.toLowerCase())) : null;
-    const countrySet = selectedCountries.length > 0 ? new Set(selectedCountries.map(c => c.toLowerCase())) : null;
-    const matched = new Set<string>();
-    for (const item of enrichmentIndex) {
-      if (sectorSet) {
-        const actorSectors = new Set(item.target_sectors.map(s => s.toLowerCase()));
-        if (![...sectorSet].some(s => actorSectors.has(s))) continue;
-      }
-      if (countrySet) {
-        const actorCountries = new Set(item.target_countries.map(c => c.toLowerCase()));
-        if (![...countrySet].some(c => actorCountries.has(c))) continue;
-      }
-      matched.add(item.id);
-    }
-    return matched;
-  }, [enrichmentIndex, selectedSectors, selectedCountries]);
 
   async function handleLoadGraph() {
     setLoading(true);
@@ -175,21 +146,10 @@ export function ActorNetworkGraphPanel() {
             <p>Edges appear when similarity is above the selected threshold.</p>
           </div>
 
-          {(enrichmentOptions.sectors.length > 0 || enrichmentOptions.countries.length > 0) ? (
-            <EnrichmentFilterPanel
-              options={enrichmentOptions}
-              selectedSectors={selectedSectors}
-              selectedCountries={selectedCountries}
-              onSectorsChange={setSelectedSectors}
-              onCountriesChange={setSelectedCountries}
-              hint="Show only actors targeting specific sectors or countries. Hold Ctrl / ⌘ to select multiple."
-            />
-          ) : null}
-
           {error ? <StatusMessage message={error} /> : null}
         </form>
 
-        <NetworkPanel matrix={matrix} clusters={clusters} threshold={threshold} nodeLimit={nodeLimit} loading={loading} allowedActorIds={allowedActorIds} />
+        <NetworkPanel matrix={matrix} clusters={clusters} threshold={threshold} nodeLimit={nodeLimit} loading={loading} />
       </div>
     </section>
   );
@@ -200,17 +160,15 @@ function NetworkPanel({
   clusters,
   threshold,
   nodeLimit,
-  loading,
-  allowedActorIds
+  loading
 }: {
   matrix: MatrixResponse | null;
   clusters: ClusterResponse | null;
   threshold: number;
   nodeLimit: number;
   loading: boolean;
-  allowedActorIds: Set<string> | null;
 }) {
-  const graph = useGraphData(matrix, clusters, threshold, nodeLimit, allowedActorIds);
+  const graph = useGraphData(matrix, clusters, threshold, nodeLimit);
   const canExport = Boolean(matrix && clusters && graph.nodes.length > 0);
 
   if (loading) {
@@ -448,12 +406,11 @@ function useGraphData(
   matrix: MatrixResponse | null,
   clusters: ClusterResponse | null,
   threshold: number,
-  nodeLimit: number,
-  allowedActorIds: Set<string> | null
+  nodeLimit: number
 ): GraphData {
   return useMemo(() => {
-    return buildGraphData(matrix, clusters, threshold, nodeLimit, allowedActorIds);
-  }, [allowedActorIds, clusters, matrix, nodeLimit, threshold]);
+    return buildGraphData(matrix, clusters, threshold, nodeLimit);
+  }, [clusters, matrix, nodeLimit, threshold]);
 }
 
 function graphEndpoint(endpoint: string | GraphNode): GraphNode | null {

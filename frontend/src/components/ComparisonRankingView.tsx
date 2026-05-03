@@ -6,23 +6,15 @@ import type { ActorComparisonResponse, ActorEnrichment, ComparisonResult, Softwa
 
 export function ComparisonRankingView({
   comparison,
-  techniqueLookup
+  techniqueLookup,
+  inputSectors = [],
+  inputCountries = []
 }: {
   comparison: ActorComparisonResponse;
   techniqueLookup: TechniqueLookup;
+  inputSectors?: string[];
+  inputCountries?: string[];
 }) {
-  console.log("[ComparisonRankingView] input_name:", comparison.input_name);
-  console.log("[ComparisonRankingView] result count:", comparison.results.length);
-  if (comparison.results.length > 0) {
-    const r = comparison.results[0];
-    console.log("[ComparisonRankingView] result[0]:", {
-      matched_entity_name: r.matched_entity_name,
-      shared_techniques: r.shared_techniques.length,
-      unique_to_input: r.unique_to_input.length,
-      unique_to_matched_entity: r.unique_to_matched_entity.length,
-    });
-  }
-
   return (
     <ol className="result-list">
       {comparison.results.map((result, index) => (
@@ -31,6 +23,8 @@ export function ComparisonRankingView({
           result={result}
           index={index}
           inputName={comparison.input_name}
+          inputSectors={inputSectors}
+          inputCountries={inputCountries}
           techniqueLookup={techniqueLookup}
         />
       ))}
@@ -42,11 +36,15 @@ function ResultRow({
   result,
   index,
   inputName,
+  inputSectors,
+  inputCountries,
   techniqueLookup
 }: {
   result: ComparisonResult;
   index: number;
   inputName: string;
+  inputSectors: string[];
+  inputCountries: string[];
   techniqueLookup: TechniqueLookup;
 }) {
   return (
@@ -72,6 +70,11 @@ function ResultRow({
         {result.explanation ? <p className="result-explanation">{result.explanation}</p> : null}
         <SoftwarePreview software={result.shared_software} />
         <TacticBreakdownList items={result.tactic_breakdown} techniqueLookup={techniqueLookup} />
+        <SharedContextRow
+          enrichment={result.enrichment}
+          inputSectors={inputSectors}
+          inputCountries={inputCountries}
+        />
         {result.enrichment ? (
           <ActorContextPanel
             enrichment={result.enrichment}
@@ -219,6 +222,48 @@ function TechniqueColumn({
           })
         )}
       </ul>
+    </div>
+  );
+}
+
+function SharedContextRow({
+  enrichment,
+  inputSectors,
+  inputCountries
+}: {
+  enrichment: ActorEnrichment | null;
+  inputSectors: string[];
+  inputCountries: string[];
+}) {
+  if (!enrichment || (inputSectors.length === 0 && inputCountries.length === 0)) return null;
+
+  const inputSectorSet = new Set(inputSectors.map((s) => s.toLowerCase()));
+  const inputCountrySet = new Set(inputCountries.map((c) => c.toLowerCase()));
+
+  const sharedSectors = enrichment.target_sectors.filter((s) => inputSectorSet.has(s.toLowerCase()));
+  const sharedCountries = enrichment.target_countries.filter((c) => inputCountrySet.has(c.toLowerCase()));
+
+  if (sharedSectors.length === 0 && sharedCountries.length === 0) return null;
+
+  return (
+    <div className="shared-context-row">
+      <span className="shared-context-label">Shared targeting</span>
+      {sharedSectors.length > 0 ? (
+        <span className="shared-context-group">
+          <span className="shared-context-type">Sectors</span>
+          {sharedSectors.map((s) => (
+            <span className="technique-chip shared-context-chip" key={s}>{s}</span>
+          ))}
+        </span>
+      ) : null}
+      {sharedCountries.length > 0 ? (
+        <span className="shared-context-group">
+          <span className="shared-context-type">Countries</span>
+          {sharedCountries.map((c) => (
+            <span className="technique-chip shared-context-chip" key={c}>{c}</span>
+          ))}
+        </span>
+      ) : null}
     </div>
   );
 }

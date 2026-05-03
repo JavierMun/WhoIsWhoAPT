@@ -248,8 +248,6 @@ class ActorComparisonRequest(BaseModel):
     top_n: int | None = Field(default=None, ge=1, le=100)
     include_self: bool = False
     tactics: list[str] | None = None
-    filter_sectors: list[str] | None = None
-    filter_countries: list[str] | None = None
 
 
 class CustomTTPSetCreate(BaseModel):
@@ -281,8 +279,6 @@ class CustomComparisonRequest(BaseModel):
     metric: SimilarityMetric = "jaccard"
     top_n: int | None = Field(default=None, ge=1, le=100)
     tactics: list[str] | None = None
-    filter_sectors: list[str] | None = None
-    filter_countries: list[str] | None = None
 
 
 class IncidentAnalysisRequest(BaseModel):
@@ -291,26 +287,9 @@ class IncidentAnalysisRequest(BaseModel):
     incident_name: str = Field(min_length=1, max_length=255)
     description: str | None = None
     technique_ids: list[str] = Field(default_factory=list)
-    filter_sectors: list[str] | None = None
-    filter_countries: list[str] | None = None
     metric: SimilarityMetric = "jaccard"
     top_n: int | None = Field(default=10, ge=1, le=100)
     tactics: list[str] | None = None
-
-
-class EnrichmentOptions(BaseModel):
-    """Available sector and country values for enrichment-based filtering."""
-
-    sectors: list[str] = Field(default_factory=list)
-    countries: list[str] = Field(default_factory=list)
-
-
-class ActorEnrichmentIndexItem(BaseModel):
-    """Minimal enrichment data for one actor — used by Explore panels for client-side filtering."""
-
-    id: str
-    target_sectors: list[str] = Field(default_factory=list)
-    target_countries: list[str] = Field(default_factory=list)
 
 
 class ExportMetadata(BaseModel):
@@ -393,8 +372,6 @@ class AnalysisCreateRequest(BaseModel):
     metric: str = Field(min_length=1, max_length=64)
     tactics: list[str] | None = None
     target_ids: list[str] | None = None
-    filter_sectors: list[str] | None = None
-    filter_countries: list[str] | None = None
     top_n: int = Field(ge=1, le=100)
     results: dict[str, Any]
 
@@ -409,8 +386,6 @@ class AnalysisResponse(BaseModel):
     metric: str
     tactics: list[str] | None = None
     target_ids: list[str] | None = None
-    filter_sectors: list[str] | None = None
-    filter_countries: list[str] | None = None
     top_n: int
     created_at: datetime
 

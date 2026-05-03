@@ -6,11 +6,8 @@ export type SavedAnalysisViewModel = {
   topN: number;
   tacticScopeLabel: string;
   comparisonScopeLabel: string;
-  enrichmentFilterLabel: string | null;
   tactics?: string[];
   targetIds?: string[];
-  filterSectors?: string[];
-  filterCountries?: string[];
 };
 
 export function savedAnalysisInputTypeLabel(inputType: AnalysisResponse["input_type"]): string {
@@ -47,20 +44,6 @@ export function savedAnalysisTargetScopeLabel(targetIds: string[] | null | undef
   return `${targetIds.length} selected actor ${targetIds.length === 1 ? "profile" : "profiles"}`;
 }
 
-export function savedAnalysisEnrichmentFilterLabel(
-  filterSectors: string[] | null | undefined,
-  filterCountries: string[] | null | undefined
-): string | null {
-  const parts: string[] = [];
-  if (filterSectors && filterSectors.length > 0) {
-    parts.push(`Sectors: ${filterSectors.join(", ")}`);
-  }
-  if (filterCountries && filterCountries.length > 0) {
-    parts.push(`Countries: ${filterCountries.join(", ")}`);
-  }
-  return parts.length > 0 ? parts.join(" · ") : null;
-}
-
 export function savedAnalysisDateLabel(createdAt: string): string {
   const date = new Date(createdAt);
   if (Number.isNaN(date.getTime())) {
@@ -78,10 +61,7 @@ export function savedAnalysisToViewModel(detail: AnalysisDetail): SavedAnalysisV
     topN: detail.top_n,
     tacticScopeLabel: savedAnalysisTacticScopeLabel(detail.tactics),
     comparisonScopeLabel: savedAnalysisTargetScopeLabel(detail.target_ids),
-    enrichmentFilterLabel: savedAnalysisEnrichmentFilterLabel(detail.filter_sectors, detail.filter_countries),
     tactics: detail.tactics ?? undefined,
-    targetIds: detail.target_ids ?? undefined,
-    filterSectors: detail.filter_sectors ?? undefined,
-    filterCountries: detail.filter_countries ?? undefined
+    targetIds: detail.target_ids ?? undefined
   };
 }

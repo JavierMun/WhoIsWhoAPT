@@ -34,8 +34,7 @@ export function buildGraphData(
   matrix: MatrixResponse | null,
   clusters: ClusterResponse | null,
   threshold: number,
-  nodeLimit: number,
-  allowedActorIds: Set<string> | null = null
+  nodeLimit: number
 ): GraphData {
   if (!matrix || !clusters) {
     return { nodes: [], links: [], totalEdgeCount: 0, omittedEdgeCount: 0 };
@@ -53,10 +52,7 @@ export function buildGraphData(
         : 0;
     return { actor, index, averageSimilarity };
   });
-  const filteredActorScores = allowedActorIds
-    ? actorScores.filter(({ actor }) => allowedActorIds.has(actor.id))
-    : actorScores;
-  const visibleActors = filteredActorScores
+  const visibleActors = actorScores
     .sort((left, right) => right.averageSimilarity - left.averageSimilarity || left.actor.name.localeCompare(right.actor.name))
     .slice(0, safeNodeLimit);
   const visibleIndexes = new Set(visibleActors.map((item) => item.index));
