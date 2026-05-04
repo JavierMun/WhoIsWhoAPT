@@ -1,10 +1,11 @@
-import { AlertCircle, BarChart3, Clock3, Loader2, RefreshCw, Search, Trash2, X } from "lucide-react";
+import { AlertCircle, BarChart3, Clock3, Loader2, Play, RefreshCw, Search, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import {
   compareActor,
   compareTTPProfile,
   deleteAnalysis,
+  getActorDetail,
   getActors,
   getAnalyses,
   getAnalysisDetail,
@@ -30,6 +31,7 @@ import {
 import { formatTactic, splitTactics, techniqueLookupFromList } from "../api/ttpProfileUtils";
 import type {
   ActorComparisonResponse,
+  ActorDetail,
   ActorListItem,
   AnalysisDetail,
   AnalysisResponse,
@@ -43,7 +45,13 @@ import { ComparisonResultTabs } from "./ComparisonResultTabs";
 const DEFAULT_TOP_N = 10;
 type ComparisonScope = "all" | "selected";
 
-export function ActorComparisonPanel({ activeSource = "mitre" }: { activeSource?: PrimarySourceName }) {
+export function ActorComparisonPanel({
+  activeSource = "mitre",
+  onActorCountChange
+}: {
+  activeSource?: PrimarySourceName;
+  onActorCountChange?: (count: number) => void;
+}) {
   const [actors, setActors] = useState<ActorListItem[]>([]);
   const [customProfiles, setCustomProfiles] = useState<TTPProfile[]>([]);
   const [techniques, setTechniques] = useState<TechniqueListItem[]>([]);
@@ -60,6 +68,7 @@ export function ActorComparisonPanel({ activeSource = "mitre" }: { activeSource?
   const [error, setError] = useState<string | null>(null);
   const [comparison, setComparison] = useState<ActorComparisonResponse | null>(null);
   const [savedAnalysesRefreshKey, setSavedAnalysesRefreshKey] = useState(0);
+  const [selectedSourceDetail, setSelectedSourceDetail] = useState<ActorDetail | null>(null);
 
   useEffect(() => {
     Promise.all([getActors(), getTTPProfiles(), getTechniques()])
@@ -69,6 +78,7 @@ export function ActorComparisonPanel({ activeSource = "mitre" }: { activeSource?
         setTechniques(techniqueItems);
         const firstProfile = buildComparableProfiles(actorItems, customProfileItems)[0];
         setSelectedSourceKey(firstProfile?.key ?? "");
+        onActorCountChange?.(actorItems.length);
       })
       .catch((apiError: unknown) => {
         setError(apiError instanceof Error ? apiError.message : "Unable to load comparable profiles");
@@ -174,6 +184,16 @@ export function ActorComparisonPanel({ activeSource = "mitre" }: { activeSource?
     }
   }
 
+  // Fetch actor detail whenever an actor source profile is selected
+  useEffect(() => {
+    if (selectedSource?.type === "actor") {
+      setSelectedSourceDetail(null);
+      getActorDetail(selectedSource.id).then(setSelectedSourceDetail).catch(() => {});
+    } else {
+      setSelectedSourceDetail(null);
+    }
+  }, [selectedSource?.id, selectedSource?.type]);
+
   function handleSourceChange(nextSourceKey: string) {
     setSelectedSourceKey(nextSourceKey);
     setSelectedTargetKeys((currentKeys) => currentKeys.filter((key) => key !== nextSourceKey));
@@ -181,18 +201,44 @@ export function ActorComparisonPanel({ activeSource = "mitre" }: { activeSource?
     setError(null);
   }
 
+  const dynamicTitle = selectedSource
+    ? `Who looks like ${selectedSource.name}?`
+    : "Compare TTP profiles";
+
+  const metricHint: Record<SimilarityMetric, string> = {
+    jaccard: "Counts how many TTPs both actors share relative to their combined set.",
+    jaccard_weighted: "Rare techniques contribute more — penalizes common, well-known TTPs.",
+    tactic_weighted_jaccard: "Favours coverage breadth across kill-chain phases — useful for strategic comparisons.",
+    software_weighted_jaccard: "Incorporates shared malware and tools alongside technique overlap."
+  };
+
   return (
     <section className="comparison-workspace" aria-labelledby="comparison-title">
       <div className="workspace-header">
         <div>
-          <p className="eyebrow">Compare</p>
-          <h1 id="comparison-title">Compare TTP profiles</h1>
+          <p className="eyebrow">Compare · Workspace</p>
+          <h1 id="comparison-title">{dynamicTitle}</h1>
+          {selectedSource ? (
+            <p className="scope-summary" style={{ marginTop: 4 }}>
+              Rank actors by TTP overlap against this profile. Filter by tactic or weight by coverage.
+            </p>
+          ) : null}
         </div>
-        <div className="source-pill">
-          <BarChart3 size={16} aria-hidden="true" />
-          <span>
-            {activeSource === "mitre" ? "MITRE ATT&CK" : "OpenCTI"} · {comparableProfiles.length} profiles
-          </span>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <div className="source-pill">
+            <span className="source-pill-dot" aria-hidden="true" />
+            <span>{activeSource === "mitre" ? "MITRE ATT&CK" : "OpenCTI"}</span>
+          </div>
+          <div className="source-pill">
+            <BarChart3 size={13} aria-hidden="true" />
+            <span>{actors.length} actors</span>
+            {techniques.length > 0 ? (
+              <>
+                <span style={{ color: "var(--text-4)" }}>·</span>
+                <span>{techniques.length} techniques</span>
+              </>
+            ) : null}
+          </div>
         </div>
       </div>
 
@@ -204,137 +250,122 @@ export function ActorComparisonPanel({ activeSource = "mitre" }: { activeSource?
             void handleCompare();
           }}
         >
-          <label className="field-group" htmlFor="source-profile-search">
+          {/* Search */}
+          <div className="field-group">
             <span>Find source profile</span>
             <div className="search-field">
-              <Search size={17} aria-hidden="true" />
+              <Search size={15} aria-hidden="true" />
               <input
-                id="source-profile-search"
                 type="search"
                 value={sourceQuery}
-                onChange={(event) => {
-                  setSourceQuery(event.target.value);
-                }}
-                placeholder="Profile name, actor alias"
+                onChange={(event) => setSourceQuery(event.target.value)}
+                placeholder="Actor name, alias, code…"
               />
             </div>
-          </label>
+          </div>
 
-          <label className="field-group" htmlFor="source-profile-select">
+          {/* Source dropdown */}
+          <div className="field-group">
             <span>Source profile</span>
             <select
-              id="source-profile-select"
               value={selectedSource?.key ?? ""}
               disabled={loading || comparableProfiles.length === 0}
-              onChange={(event) => {
-                handleSourceChange(event.target.value);
-              }}
+              onChange={(event) => handleSourceChange(event.target.value)}
             >
               <ProfileOptionGroups profiles={visibleSourceProfiles} />
             </select>
-          </label>
-
-          <div className="selected-actor">
-            <p>{selectedSource?.name ?? "No source profile selected"}</p>
-            <span>{selectedSource ? profileDetail(selectedSource) : "Load profiles first"}</span>
           </div>
 
-          <label className="field-group" htmlFor="metric-select">
-            <span>Metric</span>
+          {/* Rich profile card */}
+          {selectedSource ? (
+            <SourceProfileCard profile={selectedSource} detail={selectedSourceDetail} />
+          ) : null}
+
+          {/* Metric */}
+          <div className="field-group">
+            <span>Similarity metric</span>
             <select
-              id="metric-select"
               value={metric}
-              onChange={(event) => {
-                setMetric(event.target.value as SimilarityMetric);
-              }}
+              onChange={(event) => setMetric(event.target.value as SimilarityMetric)}
             >
               <option value="jaccard">Jaccard</option>
               <option value="jaccard_weighted">Weighted Jaccard</option>
-              <option value="tactic_weighted_jaccard">Tactic weighted</option>
-              <option value="software_weighted_jaccard">Software weighted</option>
+              <option value="tactic_weighted_jaccard">Tactic-weighted Jaccard</option>
+              <option value="software_weighted_jaccard">Software-weighted Jaccard</option>
             </select>
-          </label>
+          </div>
 
-          <label className="field-group" htmlFor="top-n-input">
-            <span>Results</span>
-            <input
-              id="top-n-input"
-              type="number"
-              min={1}
-              max={100}
-              value={topN}
-              onChange={(event) => {
-                const nextValue = Number(event.target.value);
-                setTopN(Number.isFinite(nextValue) ? Math.min(100, Math.max(1, nextValue)) : DEFAULT_TOP_N);
-              }}
-            />
-          </label>
+          {/* Top N stepper */}
+          <div className="field-group">
+            <span>Top results</span>
+            <div className="topn-stepper">
+              <button
+                type="button"
+                className="topn-btn"
+                onClick={() => setTopN((n) => Math.max(1, n - 1))}
+                aria-label="Decrease"
+              >−</button>
+              <span className="topn-value">{topN}</span>
+              <button
+                type="button"
+                className="topn-btn"
+                onClick={() => setTopN((n) => Math.min(100, n + 1))}
+                aria-label="Increase"
+              >+</button>
+            </div>
+          </div>
 
-          <label className="field-group" htmlFor="tactic-scope-select">
-            <span>Similarity scope</span>
+          {/* Tactic scope */}
+          <div className="field-group">
+            <span>Tactic scope</span>
             <select
-              id="tactic-scope-select"
               value={selectedTactic}
               disabled={loading || availableTactics.length === 0}
-              onChange={(event) => {
-                setSelectedTactic(event.target.value);
-              }}
+              onChange={(event) => setSelectedTactic(event.target.value)}
             >
               <option value="all">All tactics</option>
               {availableTactics.map((tactic) => (
-                <option key={tactic} value={tactic}>
-                  {formatTactic(tactic)}
-                </option>
+                <option key={tactic} value={tactic}>{formatTactic(tactic)}</option>
               ))}
             </select>
-          </label>
+          </div>
 
-          <fieldset className="scope-selector">
-            <legend>Target scope</legend>
-            <label>
-              <input
-                type="radio"
-                name="comparison-scope"
-                value="all"
-                checked={scope === "all"}
-                onChange={() => {
-                  setScope("all");
-                }}
-              />
-              <span>Compare against all actor profiles</span>
-            </label>
-            <label>
-              <input
-                type="radio"
-                name="comparison-scope"
-                value="selected"
-                checked={scope === "selected"}
-                onChange={() => {
-                  setScope("selected");
-                }}
-              />
-              <span>Compare against selected profiles</span>
-            </label>
-          </fieldset>
+          {/* Target scope — segmented buttons */}
+          <div className="field-group">
+            <span>Target scope</span>
+            <div className="segmented-control">
+              <button
+                type="button"
+                className={scope === "all" ? "active" : ""}
+                onClick={() => setScope("all")}
+              >
+                All actors
+              </button>
+              <button
+                type="button"
+                className={scope === "selected" ? "active" : ""}
+                onClick={() => setScope("selected")}
+              >
+                Selected
+              </button>
+            </div>
+          </div>
 
+          {/* Target picker (when selected mode) */}
           {scope === "selected" ? (
             <div className="target-selector">
-              <label className="field-group" htmlFor="target-profile-search">
+              <div className="field-group">
                 <span>Target profiles</span>
                 <div className="search-field">
-                  <Search size={17} aria-hidden="true" />
+                  <Search size={15} aria-hidden="true" />
                   <input
-                    id="target-profile-search"
                     type="search"
                     value={targetQuery}
-                    onChange={(event) => {
-                      setTargetQuery(event.target.value);
-                    }}
-                    placeholder="Search comparable profiles"
+                    onChange={(event) => setTargetQuery(event.target.value)}
+                    placeholder="Search profiles"
                   />
                 </div>
-              </label>
-
+              </div>
               <ProfilePickerGroups
                 profiles={filteredTargetProfiles}
                 selectedKeys={selectedTargetKeys}
@@ -342,43 +373,45 @@ export function ActorComparisonPanel({ activeSource = "mitre" }: { activeSource?
                   setSelectedTargetKeys((currentKeys) => [...currentKeys, profile.key]);
                 }}
               />
-
-              <div className="selected-techniques">
-                <div className="mini-header">
-                  <strong>{selectedTargets.length} target profiles</strong>
-                  {selectedCustomTargetCount > 0 ? <span className="field-hint">Custom targets pending</span> : null}
-                </div>
-                <div className="chip-list">
-                  {selectedTargets.map((target) => (
-                    <button
-                      className={`technique-chip target-chip ${target.type === "custom" ? "profile-chip" : ""}`}
-                      key={target.key}
-                      type="button"
-                      title={profileDetail(target)}
-                      onClick={() => {
-                        setSelectedTargetKeys((currentKeys) => currentKeys.filter((key) => key !== target.key));
-                      }}
-                    >
-                      <span>{target.name}</span>
-                      <X size={14} aria-hidden="true" />
-                    </button>
-                  ))}
-                  {selectedTargets.length === 0 ? <span className="muted">No target profiles selected</span> : null}
-                </div>
+              <div className="chip-list" style={{ marginTop: 4 }}>
+                {selectedTargets.map((target) => (
+                  <button
+                    className="technique-chip"
+                    key={target.key}
+                    type="button"
+                    onClick={() => {
+                      setSelectedTargetKeys((currentKeys) => currentKeys.filter((key) => key !== target.key));
+                    }}
+                  >
+                    <span>{target.name}</span>
+                    <X size={12} aria-hidden="true" />
+                  </button>
+                ))}
+                {selectedTargets.length === 0 ? <span className="muted" style={{ fontSize: "0.8rem" }}>No profiles selected</span> : null}
               </div>
             </div>
           ) : null}
 
-          <button className="primary-action" type="submit" disabled={compareDisabled}>
+          {/* Compare button */}
+          <button
+            className="primary-action compare-run-btn"
+            type="submit"
+            disabled={compareDisabled}
+          >
             {compareLoading ? (
-              <Loader2 className="spin" size={18} aria-hidden="true" />
+              <Loader2 className="spin" size={16} aria-hidden="true" />
             ) : (
-              <BarChart3 size={18} aria-hidden="true" />
+              <Play size={14} aria-hidden="true" />
             )}
-            <span>{compareLoading ? "Comparing" : "Compare"}</span>
+            <span>{compareLoading ? "Running comparison…" : "Run comparison"}</span>
           </button>
 
-          {loading ? <StatusMessage tone="neutral" message="Loading comparable profiles" /> : null}
+          {/* Metric hint */}
+          {metric !== "jaccard" ? (
+            <p className="metric-hint">{metricHint[metric]}</p>
+          ) : null}
+
+          {loading ? <StatusMessage tone="neutral" message="Loading profiles…" /> : null}
           {selectedCustomTargetNotice ? <StatusMessage tone="neutral" message={selectedCustomTargetNotice} /> : null}
           {error ? <StatusMessage tone="error" message={error} /> : null}
         </form>
@@ -391,9 +424,16 @@ export function ActorComparisonPanel({ activeSource = "mitre" }: { activeSource?
           tacticScopeLabel={tacticScopeLabel}
           tactics={selectedTactics}
           targetIds={scope === "selected" ? selectedActorTargetIds : undefined}
+          actorAliases={Object.fromEntries(
+            actors
+              .filter((a) => a.aliases.length > 0)
+              .map((a) => [a.id, a.aliases.find((al) => al !== a.name) ?? a.aliases[0]])
+              .filter((entry): entry is [string, string] => !!entry[1])
+          )}
           onAnalysisSaved={() => {
             setSavedAnalysesRefreshKey((currentKey) => currentKey + 1);
           }}
+          onRerun={() => setComparison(null)}
           techniqueLookup={techniqueLookup}
         />
       </div>
@@ -403,6 +443,52 @@ export function ActorComparisonPanel({ activeSource = "mitre" }: { activeSource?
         techniqueLookup={techniqueLookup}
       />
     </section>
+  );
+}
+
+function SourceProfileCard({
+  profile,
+  detail
+}: {
+  profile: ComparableProfile;
+  detail: ActorDetail | null;
+}) {
+  const aliases = (detail?.aliases ?? profile.aliases ?? []).filter((a) => a !== profile.name);
+  const firstAlias = aliases[0];
+
+  return (
+    <div className="source-card">
+      <div className="source-card-header">
+        <div className="source-card-name">
+          <span>{profile.name}</span>
+          {firstAlias ? <span className="source-card-alias">{firstAlias}</span> : null}
+        </div>
+        <span className="source-card-type-badge">
+          {profile.type === "actor" ? "ACTOR" : "CUSTOM"}
+        </span>
+      </div>
+
+      <div className="source-card-meta">
+        <span className="source-card-stat">
+          ⟨{profile.technique_count}⟩ techniques
+        </span>
+        {detail?.motivation ? (
+          <span className="source-card-tag">{detail.motivation}</span>
+        ) : null}
+      </div>
+
+      {detail?.target_sectors && detail.target_sectors.length > 0 ? (
+        <div className="source-card-chips">
+          {detail.target_sectors.slice(0, 4).map((s) => (
+            <span className="source-card-chip" key={s}>{s}</span>
+          ))}
+          {detail.target_sectors.length > 4 ? (
+            <span className="source-card-chip source-card-chip--more">+{detail.target_sectors.length - 4}</span>
+          ) : null}
+        </div>
+      ) : null}
+
+    </div>
   );
 }
 
@@ -470,7 +556,9 @@ function ComparisonResults({
   tacticScopeLabel,
   tactics,
   targetIds,
+  actorAliases,
   onAnalysisSaved,
+  onRerun,
   techniqueLookup
 }: {
   comparison: ActorComparisonResponse | null;
@@ -480,7 +568,9 @@ function ComparisonResults({
   tacticScopeLabel: string;
   tactics?: string[];
   targetIds?: string[];
+  actorAliases?: Record<string, string>;
   onAnalysisSaved: () => void;
+  onRerun?: () => void;
   techniqueLookup: ReturnType<typeof techniqueLookupFromList>;
 }) {
   if (loading) {
@@ -535,7 +625,9 @@ function ComparisonResults({
       tacticScopeLabel={tacticScopeLabel}
       tactics={tactics}
       targetIds={targetIds}
+      actorAliases={actorAliases}
       onAnalysisSaved={onAnalysisSaved}
+      onRerun={onRerun}
       techniqueLookup={techniqueLookup}
     />
   );

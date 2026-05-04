@@ -199,6 +199,7 @@ class TacticBreakdown(BaseModel):
 class ActorEnrichment(BaseModel):
     """Contextual enrichment for a matched actor in comparison results."""
 
+    description: str | None = None
     target_sectors: list[str] = Field(default_factory=list)
     target_countries: list[str] = Field(default_factory=list)
     cves_exploited: list[str] = Field(default_factory=list)

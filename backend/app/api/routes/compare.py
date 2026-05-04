@@ -394,6 +394,7 @@ def _enrichment_lookup(session: Session, actor_ids: list[str]) -> dict[str, Acto
     ).all()
     return {
         row.id: ActorEnrichment(
+            description=row.description,
             target_sectors=row.target_sectors or [],
             target_countries=row.target_countries or [],
             cves_exploited=row.cves_exploited or [],

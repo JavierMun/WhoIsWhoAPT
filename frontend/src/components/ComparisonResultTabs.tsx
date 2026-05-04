@@ -1,9 +1,9 @@
-import { BarChart3, ChevronDown, ChevronRight, Download, FileJson, GitGraph, Save, Table } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { BarChart3, ChevronDown, ChevronUp, Download, FileJson, RefreshCw, Save, Table } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import { getActorDetail, saveAnalysis } from "../api/client";
 import { downloadComparisonExport } from "../api/exportUtils";
-import { formatTactic, groupTechniquesByTactic, splitTactics, type TechniqueLookup } from "../api/ttpProfileUtils";
+import { formatTactic, type TechniqueLookup } from "../api/ttpProfileUtils";
 import type { ActorComparisonResponse, ActorDetail, SimilarityMetric } from "../api/types";
 import { ComparisonGraphView } from "./ComparisonGraphView";
 import { ComparisonHeatmapView } from "./ComparisonHeatmapView";
@@ -18,8 +18,10 @@ export function ComparisonResultTabs({
   tacticScopeLabel,
   tactics,
   targetIds,
+  actorAliases,
   canSave = true,
   onAnalysisSaved,
+  onRerun,
   techniqueLookup
 }: {
   comparison: ActorComparisonResponse;
@@ -28,8 +30,10 @@ export function ComparisonResultTabs({
   tacticScopeLabel: string;
   tactics?: string[];
   targetIds?: string[];
+  actorAliases?: Record<string, string>;
   canSave?: boolean;
   onAnalysisSaved?: () => void;
+  onRerun?: () => void;
   techniqueLookup: TechniqueLookup;
 }) {
   const [activeView, setActiveView] = useState<ComparisonView>("ranking");
@@ -37,9 +41,11 @@ export function ComparisonResultTabs({
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [inputDetail, setInputDetail] = useState<ActorDetail | null>(null);
+  const [panelOpen, setPanelOpen] = useState(false);
 
   useEffect(() => {
     setInputDetail(null);
+    setPanelOpen(false);
     if (comparison.input_type === "actor" && comparison.input_id) {
       getActorDetail(comparison.input_id).then(setInputDetail).catch(() => {});
     }
@@ -61,7 +67,7 @@ export function ComparisonResultTabs({
         top_n: topN,
         results: comparison
       });
-      setSaveMessage(`Saved analysis ${saved.id.slice(0, 8)}.`);
+      setSaveMessage(`Saved ${saved.id.slice(0, 8)}`);
       onAnalysisSaved?.();
     } catch (apiError) {
       setSaveError(apiError instanceof Error ? apiError.message : "Unable to save analysis");
@@ -70,48 +76,89 @@ export function ComparisonResultTabs({
     }
   }
 
+  const inputAlias = inputDetail?.aliases?.find((a) => a !== comparison.input_name);
+
   return (
     <section className="results-panel comparison-results-panel" aria-live="polite">
-      <div className="results-header comparison-results-header">
-        <div>
-          <p className="panel-label">Source profile</p>
-          <h2>{comparison.input_name}</h2>
-          <p className="scope-summary">Comparing against: {comparisonScopeLabel}</p>
-          <p className="scope-summary">Similarity scope: {tacticScopeLabel}</p>
-          <SourceProfilePanel
-            detail={inputDetail}
-            inputName={comparison.input_name}
-            techniqueLookup={techniqueLookup}
-          />
+
+      {/* ── Compact summary bar ─────────────────────────────────── */}
+      <div className="results-summary-bar">
+        <div className="results-summary-source">
+          <span className="results-summary-label">Source</span>
+          <div className="results-summary-name-row">
+            <strong>{comparison.input_name}</strong>
+            {inputAlias ? <span className="results-summary-alias">{inputAlias}</span> : null}
+            {inputDetail ? (
+              <button
+                type="button"
+                className="summary-expand-btn"
+                onClick={() => setPanelOpen((v) => !v)}
+                aria-expanded={panelOpen}
+                title="Show actor details"
+              >
+                {panelOpen ? <ChevronUp size={12} aria-hidden="true" /> : <ChevronDown size={12} aria-hidden="true" />}
+              </button>
+            ) : null}
+          </div>
+          {inputDetail ? (
+            <div className="results-summary-tags">
+              {inputDetail.motivation ? (
+                <span className="results-summary-tag">◎ {inputDetail.motivation}</span>
+              ) : null}
+              <span className="results-summary-tag">⟨{inputDetail.technique_count}⟩ techniques</span>
+            </div>
+          ) : null}
         </div>
+
+        <div className="results-summary-meta">
+          <div className="results-summary-meta-item">
+            <span className="results-summary-label">Metric</span>
+            <span className="results-summary-value">{metricLabel(comparison.metric)}</span>
+          </div>
+          <div className="results-summary-meta-item">
+            <span className="results-summary-label">Scope</span>
+            <span className="results-summary-value">{tacticScopeLabel}</span>
+          </div>
+          <div className="results-summary-meta-item">
+            <span className="results-summary-label">Compared</span>
+            <span className="results-summary-value">{comparison.results.length} actors</span>
+          </div>
+        </div>
+
         <div className="results-actions">
-          <span className="metric-label">{metricLabel(comparison.metric)}</span>
+          {onRerun ? (
+            <button type="button" className="secondary-action" style={{ height: 32, padding: "0 10px", fontSize: "0.8rem" }} onClick={onRerun}>
+              <RefreshCw size={13} aria-hidden="true" />
+              <span>Re-run</span>
+            </button>
+          ) : null}
           {canSave ? (
-            <button
-              className="save-analysis-button"
-              type="button"
-              title="Save analysis"
-              disabled={savingAnalysis}
-              onClick={() => void handleSaveAnalysis()}
-            >
-              <Save size={16} aria-hidden="true" />
-              <span>{savingAnalysis ? "Saving" : "Save analysis"}</span>
+            <button className="save-analysis-button" type="button" title="Save analysis" disabled={savingAnalysis} onClick={() => void handleSaveAnalysis()}>
+              <Save size={14} aria-hidden="true" />
+              <span>{savingAnalysis ? "Saving" : "Save"}</span>
             </button>
           ) : null}
           <button type="button" title="Export JSON" onClick={() => downloadComparisonExport(comparison, "json", "mitre", topN, techniqueLookup)}>
-            <FileJson size={16} aria-hidden="true" />
+            <FileJson size={14} aria-hidden="true" />
           </button>
           <button type="button" title="Export CSV" onClick={() => downloadComparisonExport(comparison, "csv", "mitre", topN, techniqueLookup)}>
-            <Table size={16} aria-hidden="true" />
+            <Table size={14} aria-hidden="true" />
           </button>
-          <button type="button" title="Export Navigator layer" onClick={() => downloadComparisonExport(comparison, "navigator", "mitre", topN, techniqueLookup)}>
-            <Download size={16} aria-hidden="true" />
+          <button type="button" title="Export Navigator" onClick={() => downloadComparisonExport(comparison, "navigator", "mitre", topN, techniqueLookup)}>
+            <Download size={14} aria-hidden="true" />
           </button>
         </div>
       </div>
+
+      {/* ── Expanded actor profile panel ────────────────────────── */}
+      {panelOpen && inputDetail ? (
+        <ActorProfilePanel detail={inputDetail} techniqueLookup={techniqueLookup} />
+      ) : null}
+
       {saveMessage ? <div className="analysis-save-status success">{saveMessage}</div> : null}
       {saveError ? <div className="analysis-save-status error">{saveError}</div> : null}
 
+      {/* ── Tabs ────────────────────────────────────────────────── */}
       <div className="comparison-tabs" role="tablist" aria-label="Comparison result views">
         <TabButton active={activeView === "ranking"} label="Ranking" onClick={() => setActiveView("ranking")} />
         <TabButton active={activeView === "heatmap"} label="Heatmap" onClick={() => setActiveView("heatmap")} />
@@ -125,6 +172,7 @@ export function ComparisonResultTabs({
             techniqueLookup={techniqueLookup}
             inputSectors={inputDetail?.target_sectors ?? []}
             inputCountries={inputDetail?.target_countries ?? []}
+            actorAliases={actorAliases}
           />
         ) : null}
         {activeView === "heatmap" ? <ComparisonHeatmapView comparison={comparison} /> : null}
@@ -134,80 +182,51 @@ export function ComparisonResultTabs({
   );
 }
 
-function SourceProfilePanel({
-  detail,
-  inputName,
-  techniqueLookup
-}: {
-  detail: ActorDetail | null;
-  inputName: string;
-  techniqueLookup: TechniqueLookup;
-}) {
-  const [open, setOpen] = useState(false);
+// ── Expanded actor profile panel ──────────────────────────────────────────
 
-  const tacticGroups = useMemo(() => {
-    if (!detail) return [];
-    const ids = detail.techniques.map((t) => t.technique_id);
-    return groupTechniquesByTactic(ids, techniqueLookup);
-  }, [detail, techniqueLookup]);
-
-  if (!detail) return null;
-
-  const hasEnrichment =
-    detail.description ||
-    detail.target_sectors.length > 0 ||
-    detail.target_countries.length > 0;
+function ActorProfilePanel({ detail, techniqueLookup }: { detail: ActorDetail; techniqueLookup: TechniqueLookup }) {
+  const techniqueGroups = detail.techniques
+    .map((ref) => {
+      const t = techniqueLookup.get(ref.technique_id);
+      return { id: ref.technique_id, name: t?.name ?? "", tactic: t?.tactic ?? "" };
+    })
+    .filter((t) => t.name);
 
   return (
-    <div className="source-profile-panel">
-      <button
-        type="button"
-        className="breakdown-toggle"
-        style={{ marginTop: 6 }}
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-      >
-        {open ? <ChevronDown size={14} aria-hidden="true" /> : <ChevronRight size={14} aria-hidden="true" />}
-        {inputName} details
-      </button>
+    <div className="actor-profile-panel">
+      <div className="actor-profile-inner">
+        {/* Left: details */}
+        <div className="actor-profile-left">
+          <div className="actor-profile-header">
+            <h3>{detail.name}</h3>
+            <span className="source-card-type-badge">ACTOR</span>
+          </div>
 
-      {open ? (
-        <div className="source-profile-body">
           {detail.description ? (
-            <p className="source-profile-description">{detail.description}</p>
+            <p className="actor-profile-desc">{detail.description.slice(0, 280)}{detail.description.length > 280 ? "…" : ""}</p>
           ) : null}
 
-          {detail.motivation ? (
-            <div className="source-profile-section">
-              <span className="actor-context-label">Motivation</span>
-              <div className="chip-list" style={{ marginTop: 4 }}>
-                <span className="technique-chip">{detail.motivation}</span>
+          <div className="actor-profile-stats">
+            {detail.motivation ? (
+              <div className="actor-stat">
+                <span className="actor-stat-label">Motivation</span>
+                <span className="actor-stat-value">{detail.motivation}</span>
               </div>
+            ) : null}
+            <div className="actor-stat">
+              <span className="actor-stat-label">Techniques</span>
+              <span className="actor-stat-value">{detail.technique_count}</span>
             </div>
-          ) : null}
-
-          <div className="source-profile-section">
-            <span className="actor-context-label">
-              Techniques ({detail.technique_count})
-            </span>
-            {tacticGroups.length > 0 ? (
-              <div className="source-profile-tactics">
-                {tacticGroups.map((group) => (
-                  <span key={group.tactic} className="source-tactic-chip">
-                    {formatTactic(splitTactics(group.tactic)[0] ?? group.tactic)}
-                    <span className="source-tactic-count">{group.techniques.length}</span>
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <span className="source-profile-muted">No technique data loaded</span>
-            )}
+            <div className="actor-stat">
+              <span className="actor-stat-label">Software</span>
+              <span className="actor-stat-value">{detail.software_count}</span>
+            </div>
           </div>
 
           {detail.target_sectors.length > 0 ? (
-            <div className="source-profile-section">
-              <span className="actor-context-label">Target sectors</span>
-              <div className="chip-list" style={{ marginTop: 4 }}>
+            <div className="actor-profile-section">
+              <span className="actor-profile-section-label">Targeted Sectors</span>
+              <div className="chip-list">
                 {detail.target_sectors.map((s) => (
                   <span className="technique-chip" key={s}>{s}</span>
                 ))}
@@ -216,21 +235,72 @@ function SourceProfilePanel({
           ) : null}
 
           {detail.target_countries.length > 0 ? (
-            <div className="source-profile-section">
-              <span className="actor-context-label">Target countries</span>
-              <div className="chip-list" style={{ marginTop: 4 }}>
-                {detail.target_countries.map((c) => (
-                  <span className="technique-chip" key={c}>{c}</span>
+            <div className="actor-profile-section">
+              <span className="actor-profile-section-label">Targeted Regions</span>
+              <div className="chip-list">
+                {detail.target_countries.slice(0, 8).map((c) => (
+                  <span className="technique-chip" key={c}>⊕ {c}</span>
                 ))}
+                {detail.target_countries.length > 8 ? (
+                  <span
+                    className="technique-chip unknown-chip"
+                    title={detail.target_countries.slice(8).join(", ")}
+                    style={{ cursor: "help" }}
+                  >
+                    +{detail.target_countries.length - 8} more
+                  </span>
+                ) : null}
               </div>
             </div>
           ) : null}
 
-          {!hasEnrichment && tacticGroups.length === 0 ? (
-            <p className="source-profile-muted">No additional details available for this profile.</p>
+          {detail.software_used.length > 0 ? (
+            <div className="actor-profile-section">
+              <span className="actor-profile-section-label">Software ({detail.software_used.length})</span>
+              <div className="chip-list">
+                {detail.software_used.slice(0, 12).map((sw) => (
+                  <span
+                    className={`technique-chip ${sw.software_type === "malware" ? "chip-malware" : "chip-tool"}`}
+                    key={sw.id}
+                    title={sw.software_type}
+                  >
+                    {sw.name}
+                  </span>
+                ))}
+                {detail.software_used.length > 12 ? (
+                  <span
+                    className="technique-chip unknown-chip"
+                    title={detail.software_used.slice(12).map((s) => s.name).join(", ")}
+                    style={{ cursor: "help" }}
+                  >
+                    +{detail.software_used.length - 12} more
+                  </span>
+                ) : null}
+              </div>
+            </div>
           ) : null}
         </div>
-      ) : null}
+
+        {/* Right: techniques list */}
+        <div className="actor-profile-right">
+          <div className="actor-profile-section-label" style={{ marginBottom: 8 }}>
+            Techniques ({detail.technique_count})
+          </div>
+          <ul className="actor-technique-list">
+            {techniqueGroups.slice(0, 12).map((t) => (
+              <li key={t.id} className="actor-technique-row">
+                <span className="actor-technique-id">{t.id}</span>
+                <span className="actor-technique-name">{t.name}</span>
+                {t.tactic ? (
+                  <span className="actor-technique-tactic">
+                    {formatTactic(t.tactic.split(",")[0].trim())}
+                  </span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
     </div>
   );
 }
@@ -238,9 +308,9 @@ function SourceProfilePanel({
 function TabButton({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
   return (
     <button className={active ? "active" : ""} type="button" role="tab" aria-selected={active} onClick={onClick}>
-      {label === "Ranking" ? <BarChart3 size={16} aria-hidden="true" /> : null}
-      {label === "Heatmap" ? <Table size={16} aria-hidden="true" /> : null}
-      {label === "Graph" ? <GitGraph size={16} aria-hidden="true" /> : null}
+      {label === "Ranking" ? <BarChart3 size={14} aria-hidden="true" /> : null}
+      {label === "Heatmap" ? <Table size={14} aria-hidden="true" /> : null}
+      {label === "Graph" ? <BarChart3 size={14} aria-hidden="true" /> : null}
       <span>{label}</span>
     </button>
   );
@@ -248,7 +318,7 @@ function TabButton({ active, label, onClick }: { active: boolean; label: string;
 
 function metricLabel(metric: SimilarityMetric): string {
   if (metric === "jaccard_weighted") return "Weighted Jaccard";
-  if (metric === "tactic_weighted_jaccard") return "Tactic weighted";
-  if (metric === "software_weighted_jaccard") return "Software weighted";
+  if (metric === "tactic_weighted_jaccard") return "Tactic-w. Jaccard";
+  if (metric === "software_weighted_jaccard") return "Software-w. Jaccard";
   return "Jaccard";
 }

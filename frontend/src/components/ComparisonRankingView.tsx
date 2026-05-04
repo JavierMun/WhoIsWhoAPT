@@ -1,19 +1,21 @@
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useState } from "react";
 
-import { formatTactic, techniqueLabel, techniqueName, techniqueTitle, type TechniqueLookup } from "../api/ttpProfileUtils";
+import { formatTactic, techniqueName, techniqueTitle, type TechniqueLookup } from "../api/ttpProfileUtils";
 import type { ActorComparisonResponse, ActorEnrichment, ComparisonResult, SoftwareSummary, TacticBreakdown } from "../api/types";
 
 export function ComparisonRankingView({
   comparison,
   techniqueLookup,
   inputSectors = [],
-  inputCountries = []
+  inputCountries = [],
+  actorAliases = {}
 }: {
   comparison: ActorComparisonResponse;
   techniqueLookup: TechniqueLookup;
   inputSectors?: string[];
   inputCountries?: string[];
+  actorAliases?: Record<string, string>;
 }) {
   return (
     <ol className="result-list">
@@ -25,10 +27,24 @@ export function ComparisonRankingView({
           inputName={comparison.input_name}
           inputSectors={inputSectors}
           inputCountries={inputCountries}
+          alias={actorAliases[result.matched_entity_id]}
           techniqueLookup={techniqueLookup}
         />
       ))}
     </ol>
+  );
+}
+
+function ScoreBadge({ score }: { score: number }) {
+  const pct = Math.round(score * 100);
+  return (
+    <div className="score-badge">
+      <span className="score-badge-pct">{pct}<span className="score-badge-unit">%</span></span>
+      <span className="score-badge-label">SIMILARITY</span>
+      <div className="score-spark" aria-hidden="true">
+        <span style={{ width: `${pct}%` }} />
+      </div>
+    </div>
   );
 }
 
@@ -38,6 +54,7 @@ function ResultRow({
   inputName,
   inputSectors,
   inputCountries,
+  alias,
   techniqueLookup
 }: {
   result: ComparisonResult;
@@ -45,36 +62,52 @@ function ResultRow({
   inputName: string;
   inputSectors: string[];
   inputCountries: string[];
+  alias?: string;
   techniqueLookup: TechniqueLookup;
 }) {
+  const enrichment = result.enrichment;
+
   return (
     <li className="result-row">
-      <div className="rank">{index + 1}</div>
+      <div className="rank">
+        <span className="rank-num">{String(index + 1).padStart(2, "0")}</span>
+        <span className="rank-label">RANK</span>
+      </div>
+
       <div className="result-main">
-        <div className="result-title-line">
+        <div className="result-name-line">
           <h3>{result.matched_entity_name}</h3>
-          <strong>{formatScore(result.score)}</strong>
+          {alias ? <span className="result-alias">{alias}</span> : null}
         </div>
-        <div className="result-meta">
-          <span>{result.shared_techniques.length} shared TTPs</span>
-          <span className="result-meta-sep">·</span>
-          <span>{result.unique_to_matched_entity.length} {result.matched_entity_name}-only TTPs</span>
-          <span className="result-meta-sep">·</span>
-          <span>{result.unique_to_input.length} {inputName}-only TTPs</span>
+
+        <div className="result-pills">
+          <span className="meta-pill meta-pill--shared">
+            {result.shared_techniques.length} shared TTPs
+          </span>
+          <span className="meta-pill meta-pill--input">
+            {result.unique_to_input.length} {inputName}-only
+          </span>
+          <span className="meta-pill meta-pill--target">
+            {result.unique_to_matched_entity.length} {result.matched_entity_name}-only
+          </span>
         </div>
-        <TechniqueBreakdownPanel
-          result={result}
-          inputName={inputName}
-          techniqueLookup={techniqueLookup}
-        />
-        {result.explanation ? <p className="result-explanation">{result.explanation}</p> : null}
-        <SoftwarePreview software={result.shared_software} />
+
         <TacticBreakdownList items={result.tactic_breakdown} techniqueLookup={techniqueLookup} />
+
         <SharedContextRow
           enrichment={result.enrichment}
           inputSectors={inputSectors}
           inputCountries={inputCountries}
         />
+
+        <TechniqueBreakdownPanel
+          result={result}
+          inputName={inputName}
+          techniqueLookup={techniqueLookup}
+        />
+
+        {result.explanation ? <p className="result-explanation">{result.explanation}</p> : null}
+
         {result.enrichment ? (
           <ActorContextPanel
             enrichment={result.enrichment}
@@ -82,18 +115,16 @@ function ResultRow({
           />
         ) : null}
       </div>
+
+      <ScoreBadge score={result.score} />
     </li>
   );
 }
 
 function SoftwarePreview({ software }: { software: SoftwareSummary[] }) {
-  if (software.length === 0) {
-    return null;
-  }
-
+  if (software.length === 0) return null;
   const visible = software.slice(0, 6).map((item) => item.name);
   const hiddenCount = software.length - visible.length;
-
   return (
     <p className="software-preview">
       <strong>Shared software</strong> {visible.join(", ")}
@@ -102,33 +133,21 @@ function SoftwarePreview({ software }: { software: SoftwareSummary[] }) {
   );
 }
 
-function TacticBreakdownList({ items, techniqueLookup }: { items: TacticBreakdown[]; techniqueLookup: TechniqueLookup }) {
+function TacticBreakdownList({ items }: { items: TacticBreakdown[]; techniqueLookup?: TechniqueLookup }) {
   const visibleItems = items.filter((item) => item.union_technique_count > 0).slice(0, 6);
-  if (visibleItems.length === 0) {
-    return null;
-  }
+  if (visibleItems.length === 0) return null;
 
   return (
-    <div className="tactic-breakdown" aria-label="Tactic breakdown">
+    <div className="tactic-grid" aria-label="Tactic breakdown">
       {visibleItems.map((item) => (
-        <div className="tactic-row" key={item.tactic}>
-          <div className="tactic-row-header">
-            <strong>{formatTactic(item.tactic)}</strong>
-            <span className="tactic-score">{formatScore(item.score_contribution)}</span>
+        <div className="tactic-cell" key={item.tactic}>
+          <div className="tactic-cell-header">
+            <span className="tactic-cell-name">{formatTactic(item.tactic)}</span>
+            <span className="tactic-cell-score">{item.shared_technique_count}/{item.union_technique_count}</span>
           </div>
           <div className="tactic-meter" aria-hidden="true">
             <span style={{ width: `${Math.round(item.score_contribution * 100)}%` }} />
           </div>
-          <p className="tactic-detail">
-            <span className="tactic-count">{item.shared_technique_count}/{item.union_technique_count} shared</span>
-            {item.shared_techniques.length > 0 ? ": " : ""}
-            {item.shared_techniques.slice(0, 4).map((techniqueId, index) => (
-              <span className="technique-label" key={techniqueId} title={techniqueTitle(techniqueId, techniqueLookup)}>
-                {index > 0 ? ", " : ""}
-                {techniqueLabel(techniqueId, techniqueLookup)}
-              </span>
-            ))}
-          </p>
         </div>
       ))}
     </div>
@@ -160,7 +179,7 @@ function TechniqueBreakdownPanel({
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
       >
-        {open ? <ChevronDown size={14} aria-hidden="true" /> : <ChevronRight size={14} aria-hidden="true" />}
+        {open ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}
         Technique breakdown
       </button>
 
@@ -239,7 +258,6 @@ function SharedContextRow({
 
   const inputSectorSet = new Set(inputSectors.map((s) => s.toLowerCase()));
   const inputCountrySet = new Set(inputCountries.map((c) => c.toLowerCase()));
-
   const sharedSectors = enrichment.target_sectors.filter((s) => inputSectorSet.has(s.toLowerCase()));
   const sharedCountries = enrichment.target_countries.filter((c) => inputCountrySet.has(c.toLowerCase()));
 
@@ -290,15 +308,17 @@ function ActorContextPanel({
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
       >
-        {open ? <ChevronDown size={14} aria-hidden="true" /> : <ChevronRight size={14} aria-hidden="true" />}
+        {open ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}
         {matchedName} — actor profile
       </button>
 
       {open ? (
         <div className="actor-context-body">
-          <p className="actor-context-note">
-            The following are known attributes of <strong>{matchedName}</strong> — not shared with the source profile.
-          </p>
+          {enrichment.description ? (
+            <p className="actor-context-desc">
+              {enrichment.description.slice(0, 300)}{enrichment.description.length > 300 ? "…" : ""}
+            </p>
+          ) : null}
           <div className="actor-context-grid">
             {hasMotivation ? (
               <div className="actor-context-section">
@@ -333,13 +353,7 @@ function ActorContextPanel({
                 <span className="actor-context-label">CVEs exploited</span>
                 <div className="chip-list">
                   {enrichment.cves_exploited.map((cve) => (
-                    <span
-                      className="technique-chip unknown-chip"
-                      key={cve}
-                      style={{ fontFamily: "monospace", fontSize: "0.75rem" }}
-                    >
-                      {cve}
-                    </span>
+                    <span className="technique-chip unknown-chip" key={cve} style={{ fontFamily: "var(--mono)", fontSize: "0.72rem" }}>{cve}</span>
                   ))}
                 </div>
               </div>
@@ -349,8 +363,4 @@ function ActorContextPanel({
       ) : null}
     </div>
   );
-}
-
-function formatScore(score: number): string {
-  return `${Math.round(score * 100)}%`;
 }

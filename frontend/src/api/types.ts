@@ -56,6 +56,7 @@ export interface ActorDetail {
 }
 
 export interface ActorEnrichment {
+  description: string | null;
   target_sectors: string[];
   target_countries: string[];
   cves_exploited: string[];

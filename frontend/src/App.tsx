@@ -15,6 +15,7 @@ function App() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeSource, setActiveSource] = useState<PrimarySourceName>("mitre");
+  const [actorCount, setActorCount] = useState<number | undefined>(undefined);
 
   useEffect(() => {
     getHealth()
@@ -33,8 +34,9 @@ function App() {
       onModuleChange={setActiveModule}
       health={health}
       activeSource={activeSource}
+      actorCount={actorCount}
     >
-      {activeModule === "compare" ? <ActorComparisonPanel activeSource={activeSource} /> : null}
+      {activeModule === "compare" ? <ActorComparisonPanel activeSource={activeSource} onActorCountChange={setActorCount} /> : null}
       {activeModule === "ttp-profiles" ? <TTPProfilesPanel activeSource={activeSource} /> : null}
       {activeModule === "visual-analysis" ? (
         <div className="module-stack">

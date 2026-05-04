@@ -10,12 +10,14 @@ export function Layout({
   onModuleChange,
   health,
   activeSource,
+  actorCount,
   children
 }: {
   activeModule: ModuleKey;
   onModuleChange: (module: ModuleKey) => void;
   health: HealthResponse | null;
   activeSource: PrimarySourceName;
+  actorCount?: number;
   children: ReactNode;
 }) {
   return (
@@ -25,6 +27,7 @@ export function Layout({
         onModuleChange={onModuleChange}
         health={health}
         activeSource={activeSource}
+        actorCount={actorCount}
       />
       <section className="content-area">{children}</section>
     </main>
