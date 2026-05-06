@@ -50,6 +50,10 @@ export function TTPProfilesPanel({ activeSource = "mitre" }: { activeSource?: Pr
   const [libraryQuery, setLibraryQuery] = useState("");
   const [profileName, setProfileName] = useState("Observed TTP Profile");
   const [description, setDescription] = useState("");
+  const [targetSectors, setTargetSectors] = useState("");
+  const [targetCountries, setTargetCountries] = useState("");
+  const [cvesExploited, setCvesExploited] = useState("");
+  const [motivation, setMotivation] = useState("");
   const [techniqueInput, setTechniqueInput] = useState("");
   const [selectedTechniqueIds, setSelectedTechniqueIds] = useState<string[]>([]);
   const [techniqueQuery, setTechniqueQuery] = useState("");
@@ -160,11 +164,19 @@ export function TTPProfilesPanel({ activeSource = "mitre" }: { activeSource?: Pr
     }
   }
 
+  function _resetEnrichment() {
+    setTargetSectors("");
+    setTargetCountries("");
+    setCvesExploited("");
+    setMotivation("");
+  }
+
   function openCreateForm() {
     setFormMode("create");
     setEditingProfileId(null);
     setProfileName("Observed TTP Profile");
     setDescription("");
+    _resetEnrichment();
     setTechniqueInput("");
     setSelectedTechniqueIds([]);
     setTechniqueQuery("");
@@ -196,6 +208,10 @@ export function TTPProfilesPanel({ activeSource = "mitre" }: { activeSource?: Pr
     setEditingProfileId(profile.id);
     setProfileName(profile.name);
     setDescription(profile.description ?? "");
+    setTargetSectors((profile.target_sectors ?? []).join(", "));
+    setTargetCountries((profile.target_countries ?? []).join(", "));
+    setCvesExploited((profile.cves_exploited ?? []).join(", "));
+    setMotivation(profile.motivation ?? "");
     setTechniqueInput("");
     setSelectedTechniqueIds(sortedTechniqueIds(profile.technique_ids));
     setTechniqueQuery("");
@@ -228,21 +244,25 @@ export function TTPProfilesPanel({ activeSource = "mitre" }: { activeSource?: Pr
 
     setSaving(true);
     try {
+      const splitTags = (raw: string) =>
+        raw.split(",").map((s) => s.trim()).filter(Boolean);
+
+      const payload = {
+        name: profileName.trim() || "TTP Profile",
+        description: description.trim() || undefined,
+        techniqueIds: validDraftTechniqueIds,
+        targetSectors: splitTags(targetSectors),
+        targetCountries: splitTags(targetCountries),
+        cvesExploited: splitTags(cvesExploited),
+        motivation: motivation.trim() || undefined
+      };
+
       if (formMode === "edit" && editingProfileId) {
-        const updatedProfile = await updateTTPProfile(
-          editingProfileId,
-          profileName.trim() || "TTP Profile",
-          validDraftTechniqueIds,
-          description.trim() || undefined
-        );
+        const updatedProfile = await updateTTPProfile(editingProfileId, payload);
         await refreshCustomProfiles(updatedProfile.id);
         setNotice(`Saved changes to ${updatedProfile.name}.`);
       } else {
-        const savedProfile = await createTTPProfile(
-          profileName.trim() || "TTP Profile",
-          validDraftTechniqueIds,
-          description.trim() || undefined
-        );
+        const savedProfile = await createTTPProfile(payload);
         await refreshCustomProfiles(savedProfile.id);
         setNotice(`Saved ${savedProfile.name}.`);
       }
@@ -318,6 +338,7 @@ export function TTPProfilesPanel({ activeSource = "mitre" }: { activeSource?: Pr
   function handleClearForm() {
     setProfileName("Observed TTP Profile");
     setDescription("");
+    _resetEnrichment();
     setTechniqueInput("");
     setSelectedTechniqueIds([]);
     setTechniqueQuery("");
@@ -414,8 +435,16 @@ export function TTPProfilesPanel({ activeSource = "mitre" }: { activeSource?: Pr
             saving={saving}
             notice={notice}
             error={error}
+            targetSectors={targetSectors}
+            targetCountries={targetCountries}
+            cvesExploited={cvesExploited}
+            motivation={motivation}
             onNameChange={setProfileName}
             onDescriptionChange={setDescription}
+            onTargetSectorsChange={setTargetSectors}
+            onTargetCountriesChange={setTargetCountries}
+            onCvesExploitedChange={setCvesExploited}
+            onMotivationChange={setMotivation}
             onTechniqueInputChange={setTechniqueInput}
             onTacticFilterChange={setTacticFilter}
             onTechniqueQueryChange={setTechniqueQuery}
@@ -441,6 +470,10 @@ function ProfileForm({
   mode,
   profileName,
   description,
+  targetSectors,
+  targetCountries,
+  cvesExploited,
+  motivation,
   techniqueInput,
   selectedTechniqueIds,
   unknownIds,
@@ -455,6 +488,10 @@ function ProfileForm({
   error,
   onNameChange,
   onDescriptionChange,
+  onTargetSectorsChange,
+  onTargetCountriesChange,
+  onCvesExploitedChange,
+  onMotivationChange,
   onTechniqueInputChange,
   onTacticFilterChange,
   onTechniqueQueryChange,
@@ -468,6 +505,10 @@ function ProfileForm({
   mode: Exclude<FormMode, "hidden">;
   profileName: string;
   description: string;
+  targetSectors: string;
+  targetCountries: string;
+  cvesExploited: string;
+  motivation: string;
   techniqueInput: string;
   selectedTechniqueIds: string[];
   unknownIds: string[];
@@ -482,6 +523,10 @@ function ProfileForm({
   error: string | null;
   onNameChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
+  onTargetSectorsChange: (value: string) => void;
+  onTargetCountriesChange: (value: string) => void;
+  onCvesExploitedChange: (value: string) => void;
+  onMotivationChange: (value: string) => void;
   onTechniqueInputChange: (value: string) => void;
   onTacticFilterChange: (value: string) => void;
   onTechniqueQueryChange: (value: string) => void;
@@ -528,6 +573,49 @@ function ProfileForm({
           rows={3}
         />
       </label>
+
+      <div className="profile-enrichment-fields">
+        <label className="field-group" htmlFor="ttp-profile-sectors">
+          <span>Target sectors <span className="field-hint-inline">(comma-separated)</span></span>
+          <input
+            id="ttp-profile-sectors"
+            type="text"
+            value={targetSectors}
+            onChange={(e) => onTargetSectorsChange(e.target.value)}
+            placeholder="Government, Energy, Finance"
+          />
+        </label>
+        <label className="field-group" htmlFor="ttp-profile-countries">
+          <span>Target countries <span className="field-hint-inline">(comma-separated)</span></span>
+          <input
+            id="ttp-profile-countries"
+            type="text"
+            value={targetCountries}
+            onChange={(e) => onTargetCountriesChange(e.target.value)}
+            placeholder="Iran, Russia, United States"
+          />
+        </label>
+        <label className="field-group" htmlFor="ttp-profile-cves">
+          <span>CVEs exploited <span className="field-hint-inline">(comma-separated)</span></span>
+          <input
+            id="ttp-profile-cves"
+            type="text"
+            value={cvesExploited}
+            onChange={(e) => onCvesExploitedChange(e.target.value)}
+            placeholder="CVE-2023-1234, CVE-2024-5678"
+          />
+        </label>
+        <label className="field-group" htmlFor="ttp-profile-motivation">
+          <span>Motivation</span>
+          <input
+            id="ttp-profile-motivation"
+            type="text"
+            value={motivation}
+            onChange={(e) => onMotivationChange(e.target.value)}
+            placeholder="Espionage, Financial gain, Disruption…"
+          />
+        </label>
+      </div>
 
       <label className="field-group" htmlFor="ttp-profile-paste">
         <span>Paste technique IDs</span>
@@ -820,6 +908,19 @@ function ProfileInspector({
             countries={actorDetail.target_countries}
             cves={actorDetail.cves_exploited}
             motivation={actorDetail.motivation}
+          />
+        ) : null}
+        {customProfile && (
+          (customProfile.target_sectors?.length > 0 ||
+           customProfile.target_countries?.length > 0 ||
+           customProfile.cves_exploited?.length > 0 ||
+           customProfile.motivation)
+        ) ? (
+          <EnrichmentTags
+            sectors={customProfile.target_sectors ?? []}
+            countries={customProfile.target_countries ?? []}
+            cves={customProfile.cves_exploited ?? []}
+            motivation={customProfile.motivation ?? null}
           />
         ) : null}
 

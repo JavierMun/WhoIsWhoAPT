@@ -106,6 +106,10 @@ export interface TTPProfile {
   name: string;
   description: string | null;
   technique_ids: string[];
+  target_sectors: string[];
+  target_countries: string[];
+  cves_exploited: string[];
+  motivation: string | null;
   created_at: string;
   updated_at: string;
 }

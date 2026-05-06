@@ -257,6 +257,10 @@ class CustomTTPSetCreate(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     description: str | None = None
     technique_ids: list[str] = Field(default_factory=list)
+    target_sectors: list[str] = Field(default_factory=list)
+    target_countries: list[str] = Field(default_factory=list)
+    cves_exploited: list[str] = Field(default_factory=list)
+    motivation: str | None = None
 
 
 class CustomTTPSet(BaseModel):
@@ -266,6 +270,10 @@ class CustomTTPSet(BaseModel):
     name: str
     description: str | None = None
     technique_ids: list[str] = Field(default_factory=list)
+    target_sectors: list[str] = Field(default_factory=list)
+    target_countries: list[str] = Field(default_factory=list)
+    cves_exploited: list[str] = Field(default_factory=list)
+    motivation: str | None = None
     created_at: datetime
     updated_at: datetime
 

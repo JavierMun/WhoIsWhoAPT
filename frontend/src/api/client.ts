@@ -92,30 +92,39 @@ export function getTTPProfiles(): Promise<TTPProfile[]> {
   return request<TTPProfile[]>("/api/custom-sets");
 }
 
-export function createTTPProfile(name: string, techniqueIds: string[], description?: string): Promise<TTPProfile> {
-  return request<TTPProfile>("/api/custom-sets", {
-    method: "POST",
-    body: JSON.stringify({
-      name,
-      description,
-      technique_ids: techniqueIds
-    })
+export interface TTPProfilePayload {
+  name: string;
+  description?: string;
+  techniqueIds: string[];
+  targetSectors?: string[];
+  targetCountries?: string[];
+  cvesExploited?: string[];
+  motivation?: string;
+}
+
+function ttpPayloadBody(p: TTPProfilePayload) {
+  return JSON.stringify({
+    name: p.name,
+    description: p.description ?? null,
+    technique_ids: p.techniqueIds,
+    target_sectors: p.targetSectors ?? [],
+    target_countries: p.targetCountries ?? [],
+    cves_exploited: p.cvesExploited ?? [],
+    motivation: p.motivation ?? null
   });
 }
 
-export function updateTTPProfile(
-  profileId: string,
-  name: string,
-  techniqueIds: string[],
-  description?: string
-): Promise<TTPProfile> {
+export function createTTPProfile(payload: TTPProfilePayload): Promise<TTPProfile> {
+  return request<TTPProfile>("/api/custom-sets", {
+    method: "POST",
+    body: ttpPayloadBody(payload)
+  });
+}
+
+export function updateTTPProfile(profileId: string, payload: TTPProfilePayload): Promise<TTPProfile> {
   return request<TTPProfile>(`/api/custom-sets/${encodeURIComponent(profileId)}`, {
     method: "PUT",
-    body: JSON.stringify({
-      name,
-      description,
-      technique_ids: techniqueIds
-    })
+    body: ttpPayloadBody(payload)
   });
 }
 

@@ -171,13 +171,32 @@ def compare_custom_techniques(
 
     technique_tactics = _technique_tactics(session)
     tactic_scope = _normalize_tactic_scope(request.tactics)
-    candidates = _actor_candidates(session, active_source)
+    is_holistic = request.metric == "holistic"
+    candidates = (
+        _actor_candidates_holistic(session, active_source)
+        if is_holistic
+        else _actor_candidates(session, active_source)
+    )
     if isinstance(request, CustomComparisonRequest) and request.target_ids is not None:
         candidates = _target_actor_candidates(candidates, request.target_ids)
     filtered_input_techniques = _filter_techniques_by_tactics(input_techniques, technique_tactics, tactic_scope)
     scoped_input_software = _software_for_tactic_scope(set(), filtered_input_techniques, tactic_scope)
     candidates = [_filter_entity_by_tactics(candidate, technique_tactics, tactic_scope) for candidate in candidates]
     candidate_techniques_by_id = {candidate.id: candidate.techniques for candidate in candidates}
+
+    # Holistic enrichment from saved custom set
+    cst_sectors: frozenset = frozenset()
+    cst_countries: frozenset = frozenset()
+    cst_cves: frozenset = frozenset()
+    cst_motivation: str | None = None
+    if is_holistic and isinstance(request, CustomComparisonRequest) and request.custom_set_id is not None:
+        cs = session.get(entities.CustomTTPSet, request.custom_set_id)
+        if cs:
+            cst_sectors = frozenset(cs.target_sectors or [])
+            cst_countries = frozenset(cs.target_countries or [])
+            cst_cves = frozenset(cs.cves_exploited or [])
+            cst_motivation = cs.motivation
+
     results = compare_against_entities(
         filtered_input_techniques,
         candidates,
@@ -188,6 +207,10 @@ def compare_custom_techniques(
         input_software=scoped_input_software,
         technique_score_weight=settings.scoring.technique_score_weight,
         software_score_weight=settings.scoring.software_score_weight,
+        input_sectors=cst_sectors,
+        input_countries=cst_countries,
+        input_cves=cst_cves,
+        input_motivation=cst_motivation,
     )
     software_lookup = _software_lookup(session)
     enr = _enrichment_lookup(session, [r.matched_entity_id for r in results])

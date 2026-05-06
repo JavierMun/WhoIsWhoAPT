@@ -116,6 +116,10 @@ class CustomTTPSet(Base):
     name: Mapped[str] = mapped_column(String(255), index=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     technique_ids: Mapped[list[str]] = mapped_column(JSON, default=list)
+    target_sectors: Mapped[list[str]] = mapped_column(JSON, default=list)
+    target_countries: Mapped[list[str]] = mapped_column(JSON, default=list)
+    cves_exploited: Mapped[list[str]] = mapped_column(JSON, default=list)
+    motivation: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

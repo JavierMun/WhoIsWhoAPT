@@ -43,6 +43,10 @@ def _apply_column_migrations() -> None:
     _add_column_if_missing(inspector, "analyses", "filter_countries", "JSON")
     _add_column_if_missing(inspector, "campaigns", "target_sectors", "JSON")
     _add_column_if_missing(inspector, "campaigns", "target_countries", "JSON")
+    _add_column_if_missing(inspector, "custom_ttp_sets", "target_sectors", "JSON")
+    _add_column_if_missing(inspector, "custom_ttp_sets", "target_countries", "JSON")
+    _add_column_if_missing(inspector, "custom_ttp_sets", "cves_exploited", "JSON")
+    _add_column_if_missing(inspector, "custom_ttp_sets", "motivation", "TEXT")
 
 
 def _add_column_if_missing(inspector: object, table: str, column: str, col_type: str) -> None:
