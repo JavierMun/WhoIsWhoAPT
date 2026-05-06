@@ -79,13 +79,22 @@ def compare_actor(
             results=[_result_schema(result, software_lookup, explanation=explanation, enrichment=enr.get(result.matched_entity_id))],
         )
 
-    candidates = _actor_candidates(session, active_source)
+    is_holistic = request.metric == "holistic"
+    candidates = (
+        _actor_candidates_holistic(session, active_source)
+        if is_holistic
+        else _actor_candidates(session, active_source)
+    )
     if request.target_ids is not None:
         candidates = _target_actor_candidates(candidates, request.target_ids)
     filtered_input_techniques = _filter_techniques_by_tactics(input_techniques, technique_tactics, tactic_scope)
     scoped_input_software = _software_for_tactic_scope(input_software, filtered_input_techniques, tactic_scope)
     candidates = [_filter_entity_by_tactics(candidate, technique_tactics, tactic_scope) for candidate in candidates]
     candidate_techniques_by_id = {candidate.id: candidate.techniques for candidate in candidates}
+
+    src_sectors, src_countries, src_cves, src_motivation = (
+        _source_enrichment(session, actor.id) if is_holistic else (frozenset(), frozenset(), frozenset(), None)
+    )
 
     results = compare_against_entities(
         filtered_input_techniques,
@@ -98,6 +107,10 @@ def compare_actor(
         input_software=scoped_input_software,
         technique_score_weight=settings.scoring.technique_score_weight,
         software_score_weight=settings.scoring.software_score_weight,
+        input_sectors=src_sectors,
+        input_countries=src_countries,
+        input_cves=src_cves,
+        input_motivation=src_motivation,
     )
     enr = _enrichment_lookup(session, [r.matched_entity_id for r in results])
     return ComparisonResponse(
@@ -234,7 +247,7 @@ def _target_actor_candidates(candidates: list[EntityTechniqueSet], target_ids: l
     return [candidates_by_id[target_id] for target_id in requested_ids]
 
 
-def _actor_entity(actor: entities.Actor) -> EntityTechniqueSet:
+def _actor_entity(actor: entities.Actor, holistic: bool = False) -> EntityTechniqueSet:
     """Convert an actor ORM row to a comparable analytics entity."""
     return EntityTechniqueSet(
         id=actor.id,
@@ -242,6 +255,29 @@ def _actor_entity(actor: entities.Actor) -> EntityTechniqueSet:
         source=actor.source,
         techniques=_technique_ids(actor.techniques),
         software=set(actor.software_used),
+        sectors=frozenset(actor.target_sectors or []) if holistic else frozenset(),
+        countries=frozenset(actor.target_countries or []) if holistic else frozenset(),
+        cves=frozenset(actor.cves_exploited or []) if holistic else frozenset(),
+        motivation=actor.motivation if holistic else None,
+    )
+
+
+def _actor_candidates_holistic(session: Session, source: str) -> list[EntityTechniqueSet]:
+    """Load actor candidates with enrichment fields for holistic scoring."""
+    rows = session.scalars(select(entities.Actor).where(entities.Actor.source == source)).all()
+    return [_actor_entity(row, holistic=True) for row in rows]
+
+
+def _source_enrichment(session: Session, actor_id: str) -> tuple[frozenset, frozenset, frozenset, str | None]:
+    """Fetch enrichment fields for the source actor (holistic metric)."""
+    actor = session.get(entities.Actor, actor_id)
+    if actor is None:
+        return frozenset(), frozenset(), frozenset(), None
+    return (
+        frozenset(actor.target_sectors or []),
+        frozenset(actor.target_countries or []),
+        frozenset(actor.cves_exploited or []),
+        actor.motivation,
     )
 
 

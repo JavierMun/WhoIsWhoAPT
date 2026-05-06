@@ -9,7 +9,8 @@ export type SimilarityMetric =
   | "jaccard"
   | "jaccard_weighted"
   | "tactic_weighted_jaccard"
-  | "software_weighted_jaccard";
+  | "software_weighted_jaccard"
+  | "holistic";
 
 export interface SoftwareSummary {
   id: string;

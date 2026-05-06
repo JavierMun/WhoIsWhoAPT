@@ -1633,6 +1633,29 @@ input, select, textarea { font-family: var(--sans); }
   white-space: nowrap;
 }
 
+.icon-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: var(--bg-4);
+  border: 1px solid var(--border-bright);
+  border-radius: var(--radius);
+  color: var(--text-3);
+  cursor: pointer;
+  transition: color var(--transition), background var(--transition), border-color var(--transition);
+  flex-shrink: 0;
+}
+
+.icon-action-btn:hover:not(:disabled) {
+  color: var(--text-1);
+  background: var(--bg-5);
+  border-color: var(--border-bright);
+}
+
+.icon-action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
 .save-analysis-button {
   display: inline-flex;
   align-items: center;
@@ -1781,18 +1804,115 @@ input, select, textarea { font-family: var(--sans); }
   gap: 2px;
 }
 
-.heatmap-cell {
-  width: 20px;
-  height: 20px;
-  border-radius: 2px;
-  cursor: default;
-  transition: opacity 0.1s;
-  flex-shrink: 0;
+/* ── Heatmap table ───────────────────────────────────────────────────── */
+.heatmap-panel {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
-.heatmap-cell:hover { opacity: 0.8; outline: 1px solid var(--text-1); }
+.heatmap-scroll {
+  overflow: auto;
+  flex: 1;
+}
 
-.heatmap-cell.self { background: var(--bg-4) !important; }
+.heatmap-scroll::-webkit-scrollbar { width: 5px; height: 5px; }
+.heatmap-scroll::-webkit-scrollbar-thumb { background: var(--bg-5); border-radius: 3px; }
+
+.heatmap-table {
+  border-collapse: collapse;
+  font-size: 0.68rem;
+}
+
+.corner-cell {
+  min-width: 80px;
+  width: 80px;
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background: var(--bg-2);
+}
+
+.column-actor {
+  width: var(--cell-size, 22px);
+  min-width: var(--cell-size, 22px);
+  max-width: var(--cell-size, 22px);
+  padding: 0;
+  vertical-align: bottom;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--bg-2);
+}
+
+.column-actor-label {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-height: 90px;
+  padding: 4px 2px;
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: var(--text-2);
+  text-align: left;
+}
+
+.row-actor {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--bg-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 80px;
+  width: 80px;
+  min-width: 80px;
+  padding: 0 6px 0 0;
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: var(--text-2);
+  text-align: right;
+  border-right: 1px solid var(--border);
+}
+
+.heatmap-cell {
+  width: var(--cell-size, 22px);
+  min-width: var(--cell-size, 22px);
+  max-width: var(--cell-size, 22px);
+  height: var(--cell-size, 22px);
+  padding: 0;
+  cursor: default;
+  position: relative;
+  border: 1px solid rgba(0,0,0,0.15);
+  transition: outline 0.1s;
+}
+
+.heatmap-cell:hover {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+  z-index: 10;
+}
+
+.heatmap-cell--self {
+  background: var(--accent) !important;
+  opacity: 0.9;
+}
+
+.heatmap-cell-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  font-weight: 700;
+  line-height: 1;
+  pointer-events: none;
+}
 
 .heatmap-label-col,
 .heatmap-label-row {
@@ -2153,13 +2273,14 @@ input, select, textarea { font-family: var(--sans); }
 
 /* ── Technique picker ────────────────────────────────────────────────── */
 .technique-picker {
-  display: grid;
-  gap: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
   max-height: 260px;
-  overflow: auto;
+  overflow-y: auto;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 6px;
+  padding: 4px;
   background: var(--bg-1);
 }
 
@@ -2173,12 +2294,21 @@ input, select, textarea { font-family: var(--sans); }
   gap: 8px;
   padding: 5px 8px;
   border-radius: var(--radius-sm);
+  border: 1px solid transparent;
   cursor: pointer;
-  transition: background var(--transition);
+  transition: background var(--transition), border-color var(--transition);
+  background: var(--bg-2);
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: var(--text-1);
 }
 
-.technique-option:hover { background: var(--bg-3); }
-.technique-option.selected { background: var(--accent-dim); }
+.technique-option:hover {
+  background: var(--bg-3);
+  border-color: var(--border);
+}
+.technique-option.selected { background: var(--accent-dim); border-color: var(--border-accent); }
 
 .technique-option input[type="checkbox"] {
   accent-color: var(--accent);
@@ -2188,26 +2318,86 @@ input, select, textarea { font-family: var(--sans); }
 }
 
 .technique-option-id {
-  font-family: var(--mono);
-  font-size: 0.73rem;
-  font-weight: 700;
-  color: var(--accent-text);
+  font-family: var(--mono) !important;
+  font-size: 0.73rem !important;
+  font-weight: 700 !important;
+  color: var(--accent-text) !important;
   flex-shrink: 0;
+  min-width: 72px;
 }
 
 .technique-option-name {
-  font-size: 0.8rem;
-  color: var(--text-2);
+  font-size: 0.8rem !important;
+  color: var(--text-1) !important;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  flex: 1;
 }
 
 .technique-option-tactic {
-  font-size: 0.7rem;
-  color: var(--text-4);
+  font-size: 0.68rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-3) !important;
   margin-left: auto;
   flex-shrink: 0;
+}
+
+/* Textarea dark theme */
+textarea {
+  background: var(--bg-3);
+  border: 1px solid var(--border-bright);
+  border-radius: var(--radius);
+  color: var(--text-1);
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 8px 10px;
+  resize: vertical;
+  width: 100%;
+  min-height: 70px;
+  transition: border-color var(--transition);
+  box-sizing: border-box;
+}
+
+textarea::placeholder { color: var(--text-4); }
+
+textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+/* File input dark theme */
+input[type="file"] {
+  background: var(--bg-3);
+  border: 1px solid var(--border-bright);
+  border-radius: var(--radius);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 6px 10px;
+  width: 100%;
+  cursor: pointer;
+}
+
+input[type="file"]::file-selector-button {
+  background: var(--bg-4);
+  border: 1px solid var(--border-bright);
+  border-radius: var(--radius-sm);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 0.78rem;
+  padding: 3px 10px;
+  margin-right: 10px;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+input[type="file"]::file-selector-button:hover {
+  background: var(--bg-5);
+  color: var(--text-1);
 }
 
 /* ── Target actor selection ──────────────────────────────────────────── */
@@ -2623,6 +2813,193 @@ input, select, textarea { font-family: var(--sans); }
 }
 
 .spin { animation: spin 1s linear infinite; }
+
+/* ── TTP Profile layout ──────────────────────────────────────────────── */
+.ttp-profile-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.ttp-profile-layout {
+  display: grid;
+  grid-template-columns: 300px 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.library-first-layout {
+  grid-template-columns: 300px 1fr;
+}
+
+.ttp-profile-workspace .workspace-header {
+  margin-bottom: 20px;
+}
+
+/* ── Comparison graph view ───────────────────────────────────────────── */
+.comparison-graph-view {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 0;
+}
+
+.comparison-graph-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-2);
+}
+
+.graph-threshold {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+
+.graph-threshold span { white-space: nowrap; }
+
+.graph-threshold input[type="range"] {
+  width: 120px;
+  accent-color: var(--accent);
+}
+
+.comparison-graph-canvas {
+  background: var(--bg-1);
+  overflow: hidden;
+  position: relative;
+  min-height: 400px;
+  cursor: grab;
+}
+
+.comparison-graph-canvas:active { cursor: grabbing; }
+
+.comparison-graph {
+  width: 100%;
+  height: 100%;
+}
+
+.comparison-graph-edge {
+  stroke: var(--border-bright);
+  stroke-opacity: 0.5;
+}
+
+.graph-notice {
+  padding: 8px 14px;
+  font-size: 0.78rem;
+  color: var(--text-3);
+  background: var(--warn-dim);
+  border-bottom: 1px solid rgba(245, 183, 68, 0.1);
+}
+
+/* ── Comparison graph nodes ──────────────────────────────────────────── */
+.graph-node-label {
+  fill: var(--text-1);
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 500;
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: var(--bg-1);
+  stroke-width: 3px;
+}
+
+.graph-node-score {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.graph-edge-label {
+  fill: var(--text-2);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+/* graph edges */
+.comparison-graph-edge {
+  stroke: var(--border-bright);
+}
+
+/* ── Profile picker list (Selected scope) ────────────────────────────── */
+.profile-picker-list {
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.profile-picker-list::-webkit-scrollbar { width: 4px; }
+.profile-picker-list::-webkit-scrollbar-thumb { background: var(--bg-5); border-radius: 2px; }
+
+.target-picker-group {
+  padding: 0;
+}
+
+.target-picker-group .mini-header {
+  padding: 6px 10px;
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.target-picker-group .mini-header strong {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-3);
+}
+
+.target-picker-group .mini-header span {
+  font-size: 0.68rem;
+  color: var(--text-4);
+}
+
+.target-picker-list {
+  padding: 4px;
+  display: grid;
+  gap: 2px;
+}
+
+.target-option {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  align-items: flex-start;
+  padding: 6px 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition);
+}
+
+.target-option:hover {
+  background: var(--bg-3);
+  border-color: var(--border);
+}
+
+.target-option > span {
+  font-size: 0.83rem;
+  font-weight: 500;
+  color: var(--text-1);
+}
+
+.target-option > small {
+  font-size: 0.72rem;
+  color: var(--text-4);
+}
 
 /* ── Scrollbar global ────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 5px; height: 5px; }

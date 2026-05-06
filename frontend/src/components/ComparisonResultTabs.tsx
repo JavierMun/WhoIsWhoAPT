@@ -127,15 +127,13 @@ export function ComparisonResultTabs({
 
         <div className="results-actions">
           {onRerun ? (
-            <button type="button" className="secondary-action" style={{ height: 32, padding: "0 10px", fontSize: "0.8rem" }} onClick={onRerun}>
-              <RefreshCw size={13} aria-hidden="true" />
-              <span>Re-run</span>
+            <button type="button" className="icon-action-btn" title="Re-run comparison" onClick={onRerun}>
+              <RefreshCw size={15} aria-hidden="true" />
             </button>
           ) : null}
           {canSave ? (
-            <button className="save-analysis-button" type="button" title="Save analysis" disabled={savingAnalysis} onClick={() => void handleSaveAnalysis()}>
-              <Save size={14} aria-hidden="true" />
-              <span>{savingAnalysis ? "Saving" : "Save"}</span>
+            <button className="icon-action-btn" type="button" title={savingAnalysis ? "Saving…" : "Save analysis"} disabled={savingAnalysis} onClick={() => void handleSaveAnalysis()}>
+              <Save size={15} aria-hidden="true" />
             </button>
           ) : null}
           <button type="button" title="Export JSON" onClick={() => downloadComparisonExport(comparison, "json", "mitre", topN, techniqueLookup)}>
@@ -320,5 +318,6 @@ function metricLabel(metric: SimilarityMetric): string {
   if (metric === "jaccard_weighted") return "Weighted Jaccard";
   if (metric === "tactic_weighted_jaccard") return "Tactic-w. Jaccard";
   if (metric === "software_weighted_jaccard") return "Software-w. Jaccard";
+  if (metric === "holistic") return "Holistic";
   return "Jaccard";
 }

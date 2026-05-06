@@ -16,7 +16,16 @@ from app.analytics.similarity import (
     weighted_jaccard_similarity,
 )
 
-SimilarityMetric = Literal["jaccard", "jaccard_weighted", "tactic_weighted_jaccard", "software_weighted_jaccard"]
+SimilarityMetric = Literal["jaccard", "jaccard_weighted", "tactic_weighted_jaccard", "software_weighted_jaccard", "holistic"]
+
+# Default dimension weights for holistic scoring
+HOLISTIC_WEIGHTS: dict[str, float] = {
+    "techniques": 0.60,
+    "sectors":    0.15,
+    "countries":  0.10,
+    "cves":       0.10,
+    "motivation": 0.05,
+}
 
 
 @dataclass(frozen=True)
@@ -28,6 +37,11 @@ class EntityTechniqueSet:
     source: str
     techniques: set[str]
     software: set[str]
+    # Holistic scoring fields (populated on demand)
+    sectors: frozenset[str] = frozenset()
+    countries: frozenset[str] = frozenset()
+    cves: frozenset[str] = frozenset()
+    motivation: str | None = None
 
 
 @dataclass(frozen=True)
@@ -63,6 +77,10 @@ def compare_against_entities(
     input_software: set[str] | None = None,
     technique_score_weight: float = 0.75,
     software_score_weight: float = 0.25,
+    input_sectors: frozenset[str] = frozenset(),
+    input_countries: frozenset[str] = frozenset(),
+    input_cves: frozenset[str] = frozenset(),
+    input_motivation: str | None = None,
 ) -> list[ComparisonResult]:
     """Compare an input TTP set against candidate entities and rank results."""
     weights = rarity_weights([candidate.techniques for candidate in candidates]) if metric == "jaccard_weighted" else {}
@@ -77,6 +95,10 @@ def compare_against_entities(
             input_software=input_software,
             technique_score_weight=technique_score_weight,
             software_score_weight=software_score_weight,
+            input_sectors=input_sectors,
+            input_countries=input_countries,
+            input_cves=input_cves,
+            input_motivation=input_motivation,
         )
         for candidate in candidates
         if candidate.id != exclude_entity_id
@@ -95,12 +117,28 @@ def compare_pair(
     input_software: set[str] | None = None,
     technique_score_weight: float = 0.75,
     software_score_weight: float = 0.25,
+    # Holistic enrichment for source
+    input_sectors: frozenset[str] = frozenset(),
+    input_countries: frozenset[str] = frozenset(),
+    input_cves: frozenset[str] = frozenset(),
+    input_motivation: str | None = None,
 ) -> ComparisonResult:
     """Compare an input TTP set to one entity."""
     technique_tactics = technique_tactics or {}
     tactic_weights = tactic_weights or {}
 
-    if metric == "jaccard_weighted":
+    if metric == "holistic":
+        score = _holistic_score(
+            input_techniques, candidate,
+            input_sectors, input_countries, input_cves, input_motivation,
+        )
+        technique_score = jaccard_similarity(input_techniques, candidate.techniques)
+        software_score = jaccard_similarity(input_software or set(), candidate.software)
+        technique_contribution = score
+        software_contribution = 0.0
+        contribution_weights: dict[str, float] = {}
+
+    elif metric == "jaccard_weighted":
         technique_score = weighted_jaccard_similarity(input_techniques, candidate.techniques, weights or {})
         contribution_weights = weights or {}
     elif metric == "tactic_weighted_jaccard":
@@ -162,6 +200,59 @@ def compare_pair(
         ),
         rare_shared_techniques=rare_shared_techniques,
     )
+
+
+def _holistic_score(
+    input_techniques: set[str],
+    candidate: EntityTechniqueSet,
+    input_sectors: frozenset[str],
+    input_countries: frozenset[str],
+    input_cves: frozenset[str],
+    input_motivation: str | None,
+) -> float:
+    """Multi-dimensional similarity combining techniques, sectors, countries, CVEs and motivation.
+
+    Each dimension is included only when at least one side has data for it.
+    If both sides lack data for a dimension it is excluded from the weighted average
+    (so MITRE-only actors are not penalized for missing enrichment).
+    """
+
+    def _jaccard(a: frozenset[str] | set[str], b: frozenset[str] | set[str]) -> float:
+        union = a | b
+        if not union:
+            return 0.0
+        return len(a & b) / len(union)
+
+    active: dict[str, float] = {}  # dimension → score
+
+    # Techniques: always active
+    active["techniques"] = _jaccard(input_techniques, candidate.techniques)
+
+    # Sectors
+    if input_sectors or candidate.sectors:
+        active["sectors"] = _jaccard(input_sectors, candidate.sectors)
+
+    # Countries
+    if input_countries or candidate.countries:
+        active["countries"] = _jaccard(input_countries, candidate.countries)
+
+    # CVEs
+    if input_cves or candidate.cves:
+        active["cves"] = _jaccard(input_cves, candidate.cves)
+
+    # Motivation
+    if input_motivation is not None or candidate.motivation is not None:
+        if input_motivation and candidate.motivation:
+            active["motivation"] = 1.0 if input_motivation.lower() == candidate.motivation.lower() else 0.0
+        else:
+            active["motivation"] = 0.0
+
+    # Renormalize weights to active dimensions
+    total_weight = sum(HOLISTIC_WEIGHTS[d] for d in active)
+    if total_weight == 0:
+        return 0.0
+
+    return sum(active[d] * HOLISTIC_WEIGHTS[d] for d in active) / total_weight
 
 
 def _tactic_contribution_weight(tactic_value: str, tactic_weights: dict[str, float]) -> float:

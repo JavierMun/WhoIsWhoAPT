@@ -7,6 +7,17 @@ import type { ActorComparisonResponse } from "../api/types";
 const GRAPH_WIDTH = 820;
 const GRAPH_HEIGHT = 480;
 
+const NODE_COLORS = [
+  "#5ee9c1", // success green
+  "#6cb6ff", // info blue
+  "#ff8a4c", // accent orange
+  "#a78bfa", // purple
+  "#f5b744", // warn yellow
+  "#ff6b6b", // danger red
+  "#34d399", // emerald
+  "#60a5fa", // sky blue
+];
+
 export function ComparisonGraphView({ comparison }: { comparison: ActorComparisonResponse }) {
   const [threshold, setThreshold] = useState(0);
   const [zoom, setZoom] = useState(1);
@@ -82,40 +93,80 @@ export function ComparisonGraphView({ comparison }: { comparison: ActorCompariso
       ) : null}
 
       <div className="comparison-graph-canvas">
-        <svg viewBox={`0 0 ${GRAPH_WIDTH} ${GRAPH_HEIGHT}`} role="img" aria-label="Current comparison relationship graph">
+        <svg className="comparison-graph" viewBox={`0 0 ${GRAPH_WIDTH} ${GRAPH_HEIGHT}`} role="img" aria-label="Current comparison relationship graph">
           <g transform={`translate(${pan.x} ${pan.y}) scale(${zoom})`}>
+            {/* Edges with % labels */}
             <g>
               {graph.edges.map((edge) => {
                 const targetNode = graph.nodes.find((node) => node.id === edge.targetId);
-                if (!sourceNode || !targetNode) {
-                  return null;
-                }
+                if (!sourceNode || !targetNode) return null;
+                const pct = Math.round(clampScore(edge.score) * 100);
+                const mx = (sourceNode.x + targetNode.x) / 2;
+                const my = (sourceNode.y + targetNode.y) / 2;
+                const opacity = 0.3 + clampScore(edge.score) * 0.7;
                 return (
-                  <line
-                    className="comparison-graph-edge"
-                    key={edge.targetId}
-                    x1={sourceNode.x}
-                    y1={sourceNode.y}
-                    x2={targetNode.x}
-                    y2={targetNode.y}
-                    strokeWidth={1.5 + clampScore(edge.score) * 6}
-                  >
-                    <title>{`${sourceNode.name} to ${targetNode.name}: ${formatScore(edge.score)}`}</title>
-                  </line>
+                  <g key={edge.targetId}>
+                    <line
+                      className="comparison-graph-edge"
+                      x1={sourceNode.x} y1={sourceNode.y}
+                      x2={targetNode.x} y2={targetNode.y}
+                      strokeWidth={1 + clampScore(edge.score) * 4}
+                      strokeOpacity={opacity}
+                    />
+                    {pct > 0 ? (
+                      <>
+                        <rect
+                          x={mx - 14} y={my - 9}
+                          width={28} height={15}
+                          rx={4} fill="var(--bg-2)"
+                          fillOpacity={0.85}
+                        />
+                        <text
+                          x={mx} y={my + 2}
+                          className="graph-edge-label"
+                          textAnchor="middle"
+                        >{pct}%</text>
+                      </>
+                    ) : null}
+                  </g>
                 );
               })}
             </g>
+            {/* Nodes */}
             <g>
-              {graph.nodes.map((node) => (
-                <g key={node.id} transform={`translate(${node.x}, ${node.y})`}>
-                  <circle
-                    className={node.isSource ? "comparison-graph-node source" : "comparison-graph-node"}
-                    r={node.isSource ? 24 : 12 + clampScore(node.score) * 12}
-                  />
-                  <title>{node.isSource ? node.name : `${node.name}: ${formatScore(node.score)}`}</title>
-                  <text dy={node.isSource ? 38 : 28}>{shortName(node.name)}</text>
-                </g>
-              ))}
+              {graph.nodes.map((node, i) => {
+                const r = node.isSource ? 22 : 10 + clampScore(node.score) * 12;
+                const color = node.isSource
+                  ? "var(--accent)"
+                  : NODE_COLORS[i % NODE_COLORS.length];
+                return (
+                  <g key={node.id} transform={`translate(${node.x}, ${node.y})`}>
+                    <circle
+                      r={r}
+                      fill={color}
+                      fillOpacity={node.isSource ? 0.25 : 0.2}
+                      stroke={color}
+                      strokeWidth={node.isSource ? 2.5 : 2}
+                    />
+                    <title>{node.isSource ? node.name : `${node.name}: ${formatScore(node.score)}`}</title>
+                    <text
+                      dy={r + 14}
+                      className="graph-node-label"
+                      textAnchor="middle"
+                    >{shortName(node.name)}</text>
+                    {!node.isSource ? (
+                      <text
+                        dy={5}
+                        className="graph-node-score"
+                        textAnchor="middle"
+                        fill={color}
+                      >{formatScore(node.score)}</text>
+                    ) : (
+                      <text dy={6} className="graph-node-score" textAnchor="middle" fill="var(--accent)">SRC</text>
+                    )}
+                  </g>
+                );
+              })}
             </g>
           </g>
         </svg>

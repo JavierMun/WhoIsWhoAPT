@@ -298,7 +298,8 @@ function ActorContextPanel({
   const hasCountries = enrichment.target_countries.length > 0;
   const hasCves = enrichment.cves_exploited.length > 0;
   const hasMotivation = !!enrichment.motivation;
-  if (!hasSectors && !hasCountries && !hasCves && !hasMotivation) return null;
+  const hasDescription = !!enrichment.description;
+  if (!hasSectors && !hasCountries && !hasCves && !hasMotivation && !hasDescription) return null;
 
   return (
     <div className="breakdown-panel">

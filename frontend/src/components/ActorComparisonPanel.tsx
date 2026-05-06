@@ -209,7 +209,8 @@ export function ActorComparisonPanel({
     jaccard: "Counts how many TTPs both actors share relative to their combined set.",
     jaccard_weighted: "Rare techniques contribute more — penalizes common, well-known TTPs.",
     tactic_weighted_jaccard: "Favours coverage breadth across kill-chain phases — useful for strategic comparisons.",
-    software_weighted_jaccard: "Incorporates shared malware and tools alongside technique overlap."
+    software_weighted_jaccard: "Incorporates shared malware and tools alongside technique overlap.",
+    holistic: "Multi-dimensional: techniques (60%) + target sectors (15%) + countries (10%) + CVEs (10%) + motivation (5%). Dimensions with no data on either side are excluded and weights renormalized."
   };
 
   return (
@@ -292,6 +293,7 @@ export function ActorComparisonPanel({
               <option value="jaccard_weighted">Weighted Jaccard</option>
               <option value="tactic_weighted_jaccard">Tactic-weighted Jaccard</option>
               <option value="software_weighted_jaccard">Software-weighted Jaccard</option>
+              <option value="holistic">Holistic (TTPs + sectors + countries + CVEs + motivation)</option>
             </select>
           </div>
 

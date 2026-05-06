@@ -200,23 +200,24 @@ function HeatmapPanel({
   }
 
   const capped = visibleIndexes.length < matrix.actors.length;
-  const showCellText = visibleIndexes.length <= 16;
+  const n = visibleIndexes.length;
+  // Smaller cells when more actors are shown
+  const cellSize = n <= 15 ? 32 : n <= 25 ? 22 : 16;
+  const showText = cellSize >= 22;
 
   return (
     <section className="results-panel heatmap-panel" aria-live="polite">
-      <HeatmapHeader matrix={matrix} visibleCount={visibleIndexes.length} capped={capped} />
+      <HeatmapHeader matrix={matrix} visibleCount={n} capped={capped} />
       <div className="heatmap-scroll">
-        <table className="heatmap-table" aria-label="Actor similarity heatmap">
+        <table className="heatmap-table" aria-label="Actor similarity heatmap" style={{ "--cell-size": `${cellSize}px` } as React.CSSProperties}>
           <thead>
             <tr>
-              <th className="corner-cell" scope="col">
-                Actor
-              </th>
+              <th className="corner-cell" scope="col" />
               {visibleIndexes.map((columnIndex) => {
                 const actor = matrix.actors[columnIndex];
                 return (
                   <th className="column-actor" key={actor.id} scope="col" title={actor.name}>
-                    <span>{actor.name}</span>
+                    <div className="column-actor-label">{actor.name}</div>
                   </th>
                 );
               })}
@@ -233,14 +234,20 @@ function HeatmapPanel({
                   {visibleIndexes.map((columnIndex) => {
                     const columnActor = matrix.actors[columnIndex];
                     const value = clampScore(matrix.matrix[rowIndex]?.[columnIndex] ?? 0);
+                    const pct = Math.round(value * 100);
+                    const isDiag = rowIndex === columnIndex;
                     return (
                       <td
-                        className="heatmap-cell"
+                        className={`heatmap-cell${isDiag ? " heatmap-cell--self" : ""}`}
                         key={columnActor.id}
-                        style={{ backgroundColor: comparisonHeatColor(value), color: value >= 0.62 ? "#ffffff" : "#172026" }}
-                        title={`${rowActor.name} to ${columnActor.name}: ${formatScore(value)} (${value.toFixed(4)})`}
+                        style={{ backgroundColor: isDiag ? "#ff8a4c" : comparisonHeatColor(value) }}
+                        title={`${rowActor.name} → ${columnActor.name}: ${pct}%`}
                       >
-                        {showCellText ? formatScore(value) : ""}
+                        {showText && !isDiag && pct > 0 ? (
+                          <span className="heatmap-cell-text" style={{ color: value > 0.45 ? "#fff" : value > 0.15 ? "#e0e0e0" : "#888" }}>
+                            {pct}%
+                          </span>
+                        ) : null}
                       </td>
                     );
                   })}

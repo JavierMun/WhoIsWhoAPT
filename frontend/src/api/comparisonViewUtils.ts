@@ -26,11 +26,29 @@ export function visibleComparisonResults(results: ComparisonResult[], limit: num
 }
 
 export function comparisonHeatColor(score: number): string {
-  const value = clampScore(score);
-  const hue = 38 - value * 28;
-  const saturation = 72 + value * 18;
-  const lightness = 94 - value * 46;
-  return `hsl(${hue} ${saturation}% ${lightness}%)`;
+  const v = clampScore(score);
+  if (v === 0) return "#0e1318";
+  // Dark theme: near-black → dark teal → amber → bright orange
+  const stops: [number, [number, number, number]][] = [
+    [0,    [14,  19,  24]],   // bg-1 dark
+    [0.1,  [15,  50,  60]],   // very dark teal
+    [0.3,  [10,  100, 90]],   // dark teal/green
+    [0.55, [120, 80,  40]],   // amber/brown
+    [0.75, [180, 90,  50]],   // orange
+    [1.0,  [220, 100, 60]],   // bright orange
+  ];
+  for (let i = 1; i < stops.length; i++) {
+    const [t0, c0] = stops[i - 1];
+    const [t1, c1] = stops[i];
+    if (v <= t1) {
+      const t = (v - t0) / (t1 - t0);
+      const r = Math.round(c0[0] + (c1[0] - c0[0]) * t);
+      const g = Math.round(c0[1] + (c1[1] - c0[1]) * t);
+      const b = Math.round(c0[2] + (c1[2] - c0[2]) * t);
+      return `rgb(${r},${g},${b})`;
+    }
+  }
+  return "rgb(220,100,60)";
 }
 
 export function buildComparisonGraph(

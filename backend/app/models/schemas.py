@@ -181,7 +181,7 @@ class SourceLoadStatus(BaseModel):
     technique_count: int = 0
 
 
-SimilarityMetric = Literal["jaccard", "jaccard_weighted", "tactic_weighted_jaccard", "software_weighted_jaccard"]
+SimilarityMetric = Literal["jaccard", "jaccard_weighted", "tactic_weighted_jaccard", "software_weighted_jaccard", "holistic"]
 
 
 class TacticBreakdown(BaseModel):
