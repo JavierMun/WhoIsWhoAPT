@@ -880,7 +880,7 @@ function ProfileInspector({
             type="button"
             title={canExport ? "Export Navigator profile" : "Technique details are still loading"}
             disabled={!canExport}
-            onClick={() => downloadProfileNavigator(profile.name, description, techniqueIds)}
+            onClick={() => downloadProfileNavigator(profile.name, description, techniqueIds, techniqueLookup)}
           >
             <Download size={16} aria-hidden="true" />
           </button>
@@ -1053,7 +1053,7 @@ function StatusMessage({ tone, message }: { tone: "neutral" | "error"; message: 
   );
 }
 
-function downloadProfileNavigator(name: string, description: string | null | undefined, techniqueIds: string[]) {
+function downloadProfileNavigator(name: string, description: string | null | undefined, techniqueIds: string[], techniqueLookup?: TechniqueLookup) {
   const payload = {
     version: "4.5",
     name,
@@ -1070,12 +1070,17 @@ function downloadProfileNavigator(name: string, description: string | null | und
     legendItems: [
       { label: name, color: "#ff8a4c" }
     ],
-    techniques: techniqueIds.map((techniqueID) => ({
-      techniqueID,
-      color: "#ff8a4c",
-      enabled: true,
-      comment: `Included in profile: ${name}`
-    }))
+    techniques: techniqueIds.map((techniqueID) => {
+      const t = techniqueLookup?.get(techniqueID);
+      const tactic = t?.tactic ? t.tactic.split(",")[0].trim().toLowerCase().replace(/\s+/g, "-") : undefined;
+      return {
+        techniqueID,
+        ...(tactic ? { tactic } : {}),
+        color: "#ff8a4c",
+        enabled: true,
+        comment: `Included in profile: ${name}`
+      };
+    })
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);

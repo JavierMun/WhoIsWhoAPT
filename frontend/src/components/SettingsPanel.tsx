@@ -8,6 +8,7 @@ import {
   testSourceConnection,
   updateSettings
 } from "../api/client";
+import { nextReloadLabel } from "../api/savedAnalysisUtils";
 import type {
   ApplicationSettings,
   ConnectionTestResult,
@@ -40,14 +41,17 @@ function statusBadgeClass(status: string): string {
 // Source Status Panel
 // ---------------------------------------------------------------------------
 
+
 function SourceStatusPanel({
   status,
+  settings,
   ingesting,
   canLoad,
   ingestError,
   onLoad
 }: {
   status: SourceLoadStatus | null;
+  settings: ApplicationSettings | null;
   ingesting: boolean;
   canLoad: boolean;
   ingestError: string | null;
@@ -84,6 +88,17 @@ function SourceStatusPanel({
           {formatDateTime(status?.last_loaded_at ?? null)}
         </p>
       </div>
+
+      {settings ? (
+        <div className="field-group">
+          <span>Next auto-reload</span>
+          <p style={{ margin: 0, color: "var(--text-3)", fontSize: "0.88rem" }}>
+            {settings.active_source === "mitre"
+              ? nextReloadLabel(status?.last_loaded_at ?? null, settings.mitre.update_frequency_hours, settings.mitre.auto_update)
+              : nextReloadLabel(status?.last_loaded_at ?? null, settings.opencti.update_frequency_hours, settings.opencti.auto_update)}
+          </p>
+        </div>
+      ) : null}
 
       {hasData ? (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
@@ -461,6 +476,7 @@ export function SettingsPanel({
         {/* ── Right: status + load ─────────────────────────────────── */}
         <SourceStatusPanel
           status={sourceStatus}
+          settings={settings}
           ingesting={ingesting}
           canLoad={canLoad}
           ingestError={ingestError}

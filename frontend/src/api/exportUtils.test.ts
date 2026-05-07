@@ -1,9 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
-// Mock URL.createObjectURL so download tests don't fail in JSDOM
-vi.stubGlobal("URL", { createObjectURL: () => "blob:mock", revokeObjectURL: () => {} });
-
-import { downloadComparisonExport } from "./exportUtils";
+import { comparisonCsv, comparisonNavigatorLayer, exportPayload } from "./exportUtils";
 import type { ActorComparisonResponse } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -42,183 +39,150 @@ function mockComparison(overrides: Partial<ActorComparisonResponse> = {}): Actor
   };
 }
 
-function captureDownload(): { filename: string; content: string } | null {
-  let captured: { filename: string; content: string } | null = null;
-  const origCreateElement = document.createElement.bind(document);
-  vi.spyOn(document, "createElement").mockImplementation((tag: string) => {
-    const el = origCreateElement(tag);
-    if (tag === "a") {
-      Object.defineProperty(el, "download", { set(v: string) { captured = { filename: v, content: "" }; }, get() { return ""; } });
-      vi.spyOn(el, "click").mockImplementation(() => {});
-    }
-    return el;
-  });
-  return captured;
-}
-
 // ---------------------------------------------------------------------------
 // CSV export
 // ---------------------------------------------------------------------------
 
-describe("CSV export", () => {
-  it("includes info header and result row", () => {
-    const comparison = mockComparison();
-    let blobContent = "";
-    vi.spyOn(globalThis, "Blob").mockImplementationOnce((parts) => {
-      blobContent = parts?.join("") ?? "";
-      return { size: 0, type: "" } as Blob;
-    });
-
-    downloadComparisonExport(comparison, "csv");
-
-    expect(blobContent).toContain("APT Alpha");
-    expect(blobContent).toContain("jaccard");
-    expect(blobContent).toContain("APT Beta");
+describe("comparisonCsv", () => {
+  it("includes info header with source profile name and metric", () => {
+    const payload = exportPayload(mockComparison(), "opencti", 10);
+    const csv = comparisonCsv(payload);
+    expect(csv).toContain("APT Alpha");
+    expect(csv).toContain("jaccard");
   });
 
-  it("formats similarity as percentage", () => {
-    const comparison = mockComparison();
-    let blobContent = "";
-    vi.spyOn(globalThis, "Blob").mockImplementationOnce((parts) => {
-      blobContent = parts?.join("") ?? "";
-      return { size: 0, type: "" } as Blob;
-    });
-
-    downloadComparisonExport(comparison, "csv");
-
-    expect(blobContent).toContain("50.00%");
+  it("formats similarity score as percentage string", () => {
+    const payload = exportPayload(mockComparison(), "mitre", 10);
+    const csv = comparisonCsv(payload);
+    expect(csv).toContain("50.00%");
   });
 
   it("separates shared technique IDs with semicolons", () => {
-    const comparison = mockComparison();
-    let blobContent = "";
-    vi.spyOn(globalThis, "Blob").mockImplementationOnce((parts) => {
-      blobContent = parts?.join("") ?? "";
-      return { size: 0, type: "" } as Blob;
-    });
-
-    downloadComparisonExport(comparison, "csv");
-
-    expect(blobContent).toContain("T1059;T1078");
+    const payload = exportPayload(mockComparison(), "mitre", 10);
+    const csv = comparisonCsv(payload);
+    expect(csv).toContain("T1059;T1078");
   });
 
-  it("includes unique technique counts", () => {
-    const comparison = mockComparison();
-    let blobContent = "";
-    vi.spyOn(globalThis, "Blob").mockImplementationOnce((parts) => {
-      blobContent = parts?.join("") ?? "";
-      return { size: 0, type: "" } as Blob;
-    });
+  it("includes correct counts", () => {
+    const payload = exportPayload(mockComparison(), "mitre", 10);
+    const csv = comparisonCsv(payload);
+    expect(csv).toContain('"2"');   // shared_ttp_count
+    expect(csv).toContain('"1"');   // input_only_count and target_only_count
+  });
 
-    downloadComparisonExport(comparison, "csv");
+  it("includes unique technique IDs for input and target", () => {
+    const payload = exportPayload(mockComparison(), "mitre", 10);
+    const csv = comparisonCsv(payload);
+    expect(csv).toContain("T1566");   // input-only
+    expect(csv).toContain("T1003");   // target-only
+  });
 
-    // shared_ttp_count = 2, input_only_count = 1, target_only_count = 1
-    expect(blobContent).toContain('"2"');
-    expect(blobContent).toContain('"1"');
+  it("includes rank starting at 1", () => {
+    const payload = exportPayload(mockComparison(), "mitre", 10);
+    const csv = comparisonCsv(payload);
+    expect(csv).toContain('"1"');   // rank = 1
   });
 });
 
 // ---------------------------------------------------------------------------
-// Navigator export — comparison
+// Navigator comparison export
 // ---------------------------------------------------------------------------
 
-describe("Navigator comparison export", () => {
-  it("includes gradient field for score-based coloring", () => {
-    const comparison = mockComparison();
-    let blobContent = "";
-    vi.spyOn(globalThis, "Blob").mockImplementationOnce((parts) => {
-      blobContent = parts?.join("") ?? "";
-      return { size: 0, type: "" } as Blob;
-    });
-
-    downloadComparisonExport(comparison, "navigator");
-
-    const layer = JSON.parse(blobContent);
+describe("comparisonNavigatorLayer", () => {
+  it("includes gradient field so scores map to visible colors", () => {
+    const payload = exportPayload(mockComparison(), "mitre", 10);
+    const layer = comparisonNavigatorLayer(payload);
     expect(layer).toHaveProperty("gradient");
-    expect(layer.gradient.colors).toHaveLength(2);
-    expect(layer.gradient.minValue).toBe(1);
+    const g = layer.gradient as { colors: string[]; minValue: number };
+    expect(g.colors).toHaveLength(2);
+    expect(g.minValue).toBe(1);
   });
 
-  it("colors shared techniques with score", () => {
-    const comparison = mockComparison();
-    let blobContent = "";
-    vi.spyOn(globalThis, "Blob").mockImplementationOnce((parts) => {
-      blobContent = parts?.join("") ?? "";
-      return { size: 0, type: "" } as Blob;
-    });
-
-    downloadComparisonExport(comparison, "navigator");
-
-    const layer = JSON.parse(blobContent);
-    const sharedT = layer.techniques.find((t: { techniqueID: string }) => t.techniqueID === "T1059");
-    expect(sharedT).toBeDefined();
-    expect(sharedT.score).toBe(1);  // shared with 1 actor
-    expect(sharedT.color).toBeUndefined();  // uses gradient, no fixed color
+  it("includes shared techniques as scored entries (no fixed color)", () => {
+    const payload = exportPayload(mockComparison(), "mitre", 10);
+    const layer = comparisonNavigatorLayer(payload);
+    const techs = layer.techniques as Array<{ techniqueID: string; score?: number; color?: string }>;
+    const shared = techs.find((t) => t.techniqueID === "T1059");
+    expect(shared).toBeDefined();
+    expect(shared?.score).toBe(1);
+    expect(shared?.color).toBeUndefined();
   });
 
-  it("colors source-only techniques in blue", () => {
-    const comparison = mockComparison();
-    let blobContent = "";
-    vi.spyOn(globalThis, "Blob").mockImplementationOnce((parts) => {
-      blobContent = parts?.join("") ?? "";
-      return { size: 0, type: "" } as Blob;
-    });
-
-    downloadComparisonExport(comparison, "navigator");
-
-    const layer = JSON.parse(blobContent);
-    const sourceOnly = layer.techniques.find((t: { techniqueID: string }) => t.techniqueID === "T1566");
+  it("colors source-only techniques blue", () => {
+    const payload = exportPayload(mockComparison(), "mitre", 10);
+    const layer = comparisonNavigatorLayer(payload);
+    const techs = layer.techniques as Array<{ techniqueID: string; color?: string }>;
+    const sourceOnly = techs.find((t) => t.techniqueID === "T1566");
     expect(sourceOnly).toBeDefined();
-    expect(sourceOnly.color).toBe("#4a9eff");
+    expect(sourceOnly?.color).toBe("#4a9eff");
   });
 
   it("does not include target-only techniques", () => {
-    const comparison = mockComparison();
-    let blobContent = "";
-    vi.spyOn(globalThis, "Blob").mockImplementationOnce((parts) => {
-      blobContent = parts?.join("") ?? "";
-      return { size: 0, type: "" } as Blob;
-    });
-
-    downloadComparisonExport(comparison, "navigator");
-
-    const layer = JSON.parse(blobContent);
-    const targetOnly = layer.techniques.find((t: { techniqueID: string }) => t.techniqueID === "T1003");
-    expect(targetOnly).toBeUndefined();
+    const payload = exportPayload(mockComparison(), "mitre", 10);
+    const layer = comparisonNavigatorLayer(payload);
+    const techs = layer.techniques as Array<{ techniqueID: string }>;
+    expect(techs.find((t) => t.techniqueID === "T1003")).toBeUndefined();
   });
 
-  it("includes legend items", () => {
-    const comparison = mockComparison();
-    let blobContent = "";
-    vi.spyOn(globalThis, "Blob").mockImplementationOnce((parts) => {
-      blobContent = parts?.join("") ?? "";
-      return { size: 0, type: "" } as Blob;
-    });
+  it("includes legend items for both color bands", () => {
+    const payload = exportPayload(mockComparison(), "mitre", 10);
+    const layer = comparisonNavigatorLayer(payload);
+    const legends = layer.legendItems as Array<{ color: string }>;
+    expect(legends.length).toBeGreaterThanOrEqual(2);
+    expect(legends.some((l) => l.color === "#4a9eff")).toBe(true);
+  });
 
-    downloadComparisonExport(comparison, "navigator");
+  it("technique comment lists which actors share it", () => {
+    const payload = exportPayload(mockComparison(), "mitre", 10);
+    const layer = comparisonNavigatorLayer(payload);
+    const techs = layer.techniques as Array<{ techniqueID: string; comment: string }>;
+    const shared = techs.find((t) => t.techniqueID === "T1059");
+    expect(shared?.comment).toContain("APT Beta");
+  });
 
-    const layer = JSON.parse(blobContent);
-    expect(layer.legendItems.length).toBeGreaterThanOrEqual(2);
+  it("uses 'enterprise-attack' domain", () => {
+    const payload = exportPayload(mockComparison(), "mitre", 10);
+    const layer = comparisonNavigatorLayer(payload);
+    expect(layer.domain).toBe("enterprise-attack");
+  });
+
+  it("layer name includes source profile name", () => {
+    const payload = exportPayload(mockComparison(), "mitre", 10);
+    const layer = comparisonNavigatorLayer(payload);
+    expect((layer.name as string)).toContain("APT Alpha");
   });
 });
 
 // ---------------------------------------------------------------------------
-// JSON export
+// Multiple matched actors — score increments
 // ---------------------------------------------------------------------------
 
-describe("JSON export", () => {
-  it("includes full comparison payload", () => {
-    const comparison = mockComparison();
-    let blobContent = "";
-    vi.spyOn(globalThis, "Blob").mockImplementationOnce((parts) => {
-      blobContent = parts?.join("") ?? "";
-      return { size: 0, type: "" } as Blob;
+describe("Navigator scoring with multiple actors", () => {
+  it("shared-by-2-actors technique gets score 2", () => {
+    const comparison = mockComparison({
+      results: [
+        {
+          matched_entity_id: "b", matched_entity_name: "Actor B",
+          matched_entity_source: "opencti", score: 0.5,
+          technique_score: 0.5, software_score: 0, technique_score_contribution: 0.5, software_score_contribution: 0,
+          shared_techniques: ["T1059"], unique_to_input: [], unique_to_matched_entity: [],
+          shared_software: [], unique_to_input_software: [], unique_to_matched_entity_software: [],
+          tactic_breakdown: [], rare_shared_techniques: [], explanation: null, enrichment: null
+        },
+        {
+          matched_entity_id: "c", matched_entity_name: "Actor C",
+          matched_entity_source: "opencti", score: 0.4,
+          technique_score: 0.4, software_score: 0, technique_score_contribution: 0.4, software_score_contribution: 0,
+          shared_techniques: ["T1059"], unique_to_input: [], unique_to_matched_entity: [],
+          shared_software: [], unique_to_input_software: [], unique_to_matched_entity_software: [],
+          tactic_breakdown: [], rare_shared_techniques: [], explanation: null, enrichment: null
+        }
+      ]
     });
-
-    downloadComparisonExport(comparison, "json");
-
-    const payload = JSON.parse(blobContent);
-    expect(payload.metadata.input_name).toBe("APT Alpha");
-    expect(payload.comparison.results).toHaveLength(1);
+    const payload = exportPayload(comparison, "mitre", 10);
+    const layer = comparisonNavigatorLayer(payload);
+    const techs = layer.techniques as Array<{ techniqueID: string; score: number }>;
+    const t = techs.find((e) => e.techniqueID === "T1059");
+    expect(t?.score).toBe(2);
   });
 });

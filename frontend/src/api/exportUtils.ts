@@ -46,7 +46,7 @@ export function downloadComparisonExport(
   downloadText(`${filenameBase}.json`, "application/json", JSON.stringify(payload, null, 2));
 }
 
-function exportPayload(comparison: ActorComparisonResponse, source: string, topN: number): ExportPayload {
+export function exportPayload(comparison: ActorComparisonResponse, source: string, topN: number): ExportPayload {
   return {
     metadata: {
       source,
@@ -61,7 +61,7 @@ function exportPayload(comparison: ActorComparisonResponse, source: string, topN
   };
 }
 
-function comparisonCsv(payload: ExportPayload, techniqueLookup?: TechniqueLookup): string {
+export function comparisonCsv(payload: ExportPayload, techniqueLookup?: TechniqueLookup): string {
   // Header row: info about the comparison
   const infoRows = [
     ["WhoIsWhoAPT Comparison Export"],
@@ -116,7 +116,7 @@ function formatTechnique(techniqueId: string, techniqueLookup?: TechniqueLookup)
   return techniqueLookup ? techniqueLabel(techniqueId, techniqueLookup) : techniqueId;
 }
 
-function comparisonNavigatorLayer(payload: ExportPayload, techniqueLookup?: TechniqueLookup): Record<string, unknown> {
+export function comparisonNavigatorLayer(payload: ExportPayload, techniqueLookup?: TechniqueLookup): Record<string, unknown> {
   const techniques = navigatorTechniques(payload.comparison.results, techniqueLookup);
   const maxScore = Math.max(1, ...techniques.map((t) => t.score as number));
 

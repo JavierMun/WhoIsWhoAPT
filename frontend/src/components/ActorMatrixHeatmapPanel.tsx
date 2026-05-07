@@ -199,9 +199,10 @@ function HeatmapPanel({
 
   const capped = visibleIndexes.length < matrix.actors.length;
   const n = visibleIndexes.length;
-  // Smaller cells when more actors are shown
-  const cellSize = n <= 15 ? 32 : n <= 25 ? 22 : 16;
-  const showText = cellSize >= 22;
+  const cellSize = n <= 15 ? 34 : n <= 25 ? 24 : n <= 40 ? 18 : 14;
+  // Show text in cells: always for large cells, only non-zero for small ones
+  const showText = cellSize >= 18;
+  const textSize = cellSize >= 24 ? "0.58rem" : "0.48rem";
 
   return (
     <section className="results-panel heatmap-panel" aria-live="polite">
@@ -242,7 +243,13 @@ function HeatmapPanel({
                         title={`${rowActor.name} → ${columnActor.name}: ${pct}%`}
                       >
                         {showText && !isDiag && pct > 0 ? (
-                          <span className="heatmap-cell-text" style={{ color: value > 0.45 ? "#fff" : value > 0.15 ? "#e0e0e0" : "#888" }}>
+                          <span
+                            className="heatmap-cell-text"
+                            style={{
+                              color: value > 0.45 ? "#fff" : value > 0.2 ? "#e8edf2" : "#aab",
+                              fontSize: textSize
+                            }}
+                          >
                             {pct}%
                           </span>
                         ) : null}

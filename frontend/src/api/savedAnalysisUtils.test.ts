@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  nextReloadLabel,
   savedAnalysisInputTypeLabel,
   savedAnalysisDateLabel,
   savedAnalysisMetricLabel,
@@ -26,6 +27,7 @@ describe("saved analysis utilities", () => {
     expect(savedAnalysisMetricLabel("jaccard_weighted")).toBe("Weighted Jaccard");
     expect(savedAnalysisMetricLabel("tactic_weighted_jaccard")).toBe("Tactic weighted");
     expect(savedAnalysisMetricLabel("software_weighted_jaccard")).toBe("Software weighted");
+    expect(savedAnalysisMetricLabel("holistic")).toBe("holistic");
     expect(savedAnalysisMetricLabel("future_metric")).toBe("future_metric");
   });
 
@@ -43,6 +45,38 @@ describe("saved analysis utilities", () => {
     expect(viewModel.comparisonScopeLabel).toBe("1 selected actor profile");
     expect(viewModel.tactics).toEqual(["execution"]);
     expect(viewModel.targetIds).toEqual(["actor-b"]);
+  });
+});
+
+describe("nextReloadLabel", () => {
+  const base = "2026-05-07T10:00:00.000Z";
+
+  it("returns disabled label when auto-update is off", () => {
+    expect(nextReloadLabel(base, 24, false)).toBe("Auto-update disabled");
+  });
+
+  it("returns 'After first load' when no last loaded timestamp", () => {
+    expect(nextReloadLabel(null, 24, true)).toBe("After first load");
+  });
+
+  it("returns 'Due now' when next reload is in the past", () => {
+    const pastBase = "2026-01-01T00:00:00.000Z";
+    const nowMs = new Date("2026-06-01T00:00:00.000Z").getTime();
+    expect(nextReloadLabel(pastBase, 24, true, nowMs)).toBe("Due now");
+  });
+
+  it("returns hours and minutes when > 1h remaining", () => {
+    const nowMs = new Date(base).getTime() + 1000; // 1 second after base
+    // Frequency = 24h → next = base + 24h, diff ≈ 23h 59m
+    const result = nextReloadLabel(base, 24, true, nowMs);
+    expect(result).toMatch(/^in \d+h \d+m$/);
+    expect(result).toContain("23h");
+  });
+
+  it("returns minutes only when < 1h remaining", () => {
+    const nowMs = new Date(base).getTime() + 23.5 * 3_600_000; // 30min before next
+    const result = nextReloadLabel(base, 24, true, nowMs);
+    expect(result).toMatch(/^in \d+m$/);
   });
 });
 

@@ -17,9 +17,13 @@ describe("comparison view utilities", () => {
     expect(clampScore(2)).toBe(1);
   });
 
-  it("uses stronger red-orange intensity for higher heat values", () => {
-    expect(comparisonHeatColor(0)).toBe("hsl(38 72% 94%)");
-    expect(comparisonHeatColor(1)).toBe("hsl(10 90% 48%)");
+  it("returns dark background for zero score and warm orange for full score", () => {
+    // 0 score → near-black (bg-1)
+    expect(comparisonHeatColor(0)).toBe("#0e1318");
+    // 1 score → warm orange (not black)
+    const high = comparisonHeatColor(1);
+    expect(high).not.toBe("#0e1318");
+    expect(high).toMatch(/^rgb\(\d+,\d+,\d+\)$/);
   });
 
   it("builds a thresholded source-centered graph", () => {

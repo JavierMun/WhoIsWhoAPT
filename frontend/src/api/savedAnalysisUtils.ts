@@ -55,6 +55,19 @@ export function savedAnalysisDateLabel(createdAt: string): string {
   }).format(date);
 }
 
+export function nextReloadLabel(lastLoaded: string | null, frequencyHours: number, autoUpdate: boolean, nowMs?: number): string {
+  if (!autoUpdate) return "Auto-update disabled";
+  if (!lastLoaded) return "After first load";
+  const next = new Date(new Date(lastLoaded).getTime() + frequencyHours * 60 * 60 * 1000);
+  const now = nowMs ?? Date.now();
+  if (next.getTime() <= now) return "Due now";
+  const diffMs = next.getTime() - now;
+  const diffH = Math.floor(diffMs / 3_600_000);
+  const diffM = Math.floor((diffMs % 3_600_000) / 60_000);
+  if (diffH >= 1) return `in ${diffH}h ${diffM}m`;
+  return `in ${diffM}m`;
+}
+
 export function savedAnalysisToViewModel(detail: AnalysisDetail): SavedAnalysisViewModel {
   return {
     comparison: detail.results,

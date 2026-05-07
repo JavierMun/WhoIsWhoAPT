@@ -856,6 +856,14 @@ function SavedAnalysesPanel({
                     <span>{savedAnalysisTacticScopeLabel(analysis.tactics)}</span>
                     <span style={{ color: "var(--text-4)" }}>·</span>
                     <span>Top {analysis.top_n}</span>
+                    {analysis.target_ids && analysis.target_ids.length > 0 ? (
+                      <>
+                        <span style={{ color: "var(--text-4)" }}>·</span>
+                        <span style={{ color: "var(--accent-text)", fontFamily: "var(--mono)", fontSize: "0.68rem" }}>
+                          {analysis.target_ids.length} targets
+                        </span>
+                      </>
+                    ) : null}
                   </span>
                   <span className="saved-analysis-date-line">{savedAnalysisDateLabel(analysis.created_at)}</span>
                 </button>
