@@ -61,44 +61,54 @@ function exportPayload(comparison: ActorComparisonResponse, source: string, topN
 }
 
 function comparisonCsv(payload: ExportPayload, techniqueLookup?: TechniqueLookup): string {
-  const headers = [
-    "source",
-    "metric",
-    "generated_at",
-    "input_id",
-    "input_name",
-    "input_type",
-    "top_n",
+  // Header row: info about the comparison
+  const infoRows = [
+    ["WhoIsWhoAPT Comparison Export"],
+    ["Source profile", payload.metadata.input_name],
+    ["Metric", payload.metadata.metric],
+    ["Generated", payload.metadata.generated_at],
+    ["Source", payload.metadata.source],
+    [],
+  ];
+
+  // Result rows
+  const resultHeaders = [
     "rank",
-    "matched_entity_id",
-    "matched_entity_name",
-    "matched_entity_source",
-    "score",
-    "technique_score",
-    "software_score",
-    "shared_techniques",
+    "actor_name",
+    "actor_source",
+    "similarity_pct",
+    "technique_score_pct",
+    "shared_ttp_count",
+    "input_only_count",
+    "target_only_count",
+    "shared_software_count",
+    "shared_technique_ids",
+    "shared_technique_names",
+    "input_only_ids",
+    "target_only_ids",
     "shared_software"
   ];
-  const rows = payload.comparison.results.map((result, index) => [
-    payload.metadata.source,
-    payload.metadata.metric,
-    payload.metadata.generated_at,
-    payload.metadata.input_id ?? "",
-    payload.metadata.input_name,
-    payload.metadata.input_type,
-    String(payload.metadata.top_n),
+
+  const resultRows = payload.comparison.results.map((result, index) => [
     String(index + 1),
-    result.matched_entity_id,
     result.matched_entity_name,
     result.matched_entity_source,
-    score(result.score),
-    score(result.technique_score),
-    score(result.software_score),
-    result.shared_techniques.map((techniqueId) => formatTechnique(techniqueId, techniqueLookup)).join(";"),
+    pct(result.score),
+    pct(result.technique_score),
+    String(result.shared_techniques.length),
+    String(result.unique_to_input.length),
+    String(result.unique_to_matched_entity.length),
+    String(result.shared_software.length),
+    result.shared_techniques.join(";"),
+    result.shared_techniques.map((id) => (techniqueLookup?.get(id)?.name ?? id)).join(";"),
+    result.unique_to_input.join(";"),
+    result.unique_to_matched_entity.join(";"),
     result.shared_software.map((item) => item.name).join(";")
   ]);
 
-  return [headers, ...rows].map((row) => row.map(csvCell).join(",")).join("\n");
+  const infoSection = infoRows.map((row) => row.map(csvCell).join(",")).join("\n");
+  const resultsSection = [resultHeaders, ...resultRows].map((row) => row.map(csvCell).join(",")).join("\n");
+  return `${infoSection}\n${resultsSection}`;
 }
 
 function formatTechnique(techniqueId: string, techniqueLookup?: TechniqueLookup): string {
@@ -106,43 +116,80 @@ function formatTechnique(techniqueId: string, techniqueLookup?: TechniqueLookup)
 }
 
 function comparisonNavigatorLayer(payload: ExportPayload): Record<string, unknown> {
+  const techniques = navigatorTechniques(payload.comparison.results);
+  const maxScore = Math.max(1, ...techniques.map((t) => t.score as number));
+
   return {
     version: "4.5",
-    name: `${payload.metadata.input_name} shared techniques`,
+    name: `${payload.metadata.input_name} — shared TTPs`,
     domain: "enterprise-attack",
-    description: `Shared techniques exported from WhoIsWhoAPT comparison. Source: ${payload.metadata.source}. Metric: ${payload.metadata.metric}.`,
+    description: `Techniques shared between ${payload.metadata.input_name} and top-${payload.metadata.top_n} matched actors. Exported from WhoIsWhoAPT · metric: ${payload.metadata.metric}.`,
     filters: { platforms: ["Windows", "macOS", "Linux"] },
-    sorting: 0,
-    layout: { layout: "side", aggregateFunction: "average", showID: false, showName: true },
+    sorting: 3,  // sort by score descending
+    layout: { layout: "side", aggregateFunction: "sum", showID: true, showName: true, showAggregateScores: true },
     hideDisabled: false,
+    // Gradient: light orange (shared by 1 actor) → dark orange (shared by many)
+    gradient: {
+      colors: ["#ffd9b3", "#ff6b00"],
+      minValue: 1,
+      maxValue: maxScore
+    },
+    legendItems: [
+      { label: "Shared by 1 actor", color: "#ffd9b3" },
+      { label: `Shared by ${maxScore} actors`, color: "#ff6b00" },
+      { label: "Source-only (not in any matched actor)", color: "#4a9eff" }
+    ],
     metadata: [
-      { name: "source", value: payload.metadata.source },
+      { name: "source_profile", value: payload.metadata.input_name },
       { name: "metric", value: payload.metadata.metric },
       { name: "generated_at", value: payload.metadata.generated_at },
-      { name: "input_name", value: payload.metadata.input_name },
-      { name: "input_type", value: payload.metadata.input_type },
-      { name: "top_n", value: String(payload.metadata.top_n) }
+      { name: "data_source", value: payload.metadata.source }
     ],
-    techniques: navigatorTechniques(payload.comparison.results)
+    techniques
   };
 }
 
 function navigatorTechniques(results: ComparisonResult[]): Array<Record<string, unknown>> {
+  // Shared: technique appears in at least one result's shared_techniques
   const matchedByTechnique = new Map<string, string[]>();
   results.forEach((result) => {
-    result.shared_techniques.forEach((techniqueId) => {
-      matchedByTechnique.set(techniqueId, [...(matchedByTechnique.get(techniqueId) ?? []), result.matched_entity_name]);
+    result.shared_techniques.forEach((id) => {
+      matchedByTechnique.set(id, [...(matchedByTechnique.get(id) ?? []), result.matched_entity_name]);
     });
   });
 
-  return Array.from(matchedByTechnique.entries())
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([techniqueID, matchedNames]) => ({
+  // Source-only: in unique_to_input for at least one result but NEVER in shared_techniques
+  const sharedAll = new Set(matchedByTechnique.keys());
+  const sourceOnlyIds = new Set(
+    results.flatMap((r) => r.unique_to_input).filter((id) => !sharedAll.has(id))
+  );
+
+  const sharedEntries = Array.from(matchedByTechnique.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([techniqueID, matchedNames]) => {
+      const sorted = matchedNames.sort((a, b) => a.localeCompare(b));
+      return {
+        techniqueID,
+        score: sorted.length,
+        enabled: true,
+        comment: `Shared with (${sorted.length}): ${sorted.join(", ")}`
+      };
+    });
+
+  const sourceOnlyEntries = Array.from(sourceOnlyIds)
+    .sort((a, b) => a.localeCompare(b))
+    .map((techniqueID) => ({
       techniqueID,
-      score: Math.min(100, matchedNames.length),
+      color: "#4a9eff",  // blue — source-only (not shared with any matched actor)
       enabled: true,
-      comment: `Shared with: ${matchedNames.sort((left, right) => left.localeCompare(right)).join(", ")}`
+      comment: "Source-only — not found in any of the matched actors"
     }));
+
+  return [...sharedEntries, ...sourceOnlyEntries];
+}
+
+function pct(value: number): string {
+  return `${(value * 100).toFixed(2)}%`;
 }
 
 function downloadText(filename: string, mediaType: string, content: string): void {
@@ -159,10 +206,6 @@ function downloadText(filename: string, mediaType: string, content: string): voi
 
 function csvCell(value: string): string {
   return `"${value.replaceAll('"', '""')}"`;
-}
-
-function score(value: number): string {
-  return value.toFixed(6);
 }
 
 function safeFilename(value: string): string {

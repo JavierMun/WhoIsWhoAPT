@@ -2516,30 +2516,41 @@ input[type="file"]::file-selector-button:hover {
 
 .saved-analysis-item {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 7px 10px;
-  background: transparent;
-  border: 1px solid transparent;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   width: 100%;
   text-align: left;
   cursor: pointer;
   font: inherit;
+  color: var(--text-1);
   transition: background var(--transition), border-color var(--transition);
 }
 
-.saved-analysis-item:hover { background: var(--bg-3); }
-.saved-analysis-item.selected { background: var(--accent-dim); border-color: var(--border-accent); }
+.saved-analysis-item:hover { background: var(--bg-4); border-color: var(--border-bright); }
+.saved-analysis-item.active { background: var(--accent-dim); border-color: var(--border-accent); }
 
 .saved-analysis-item-info {
   flex: 1;
   overflow: hidden;
 }
 
+.saved-analysis-name {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .saved-analysis-item-name {
-  font-size: 0.84rem;
-  font-weight: 500;
+  font-size: 0.88rem;
+  font-weight: 600;
   color: var(--text-1);
   white-space: nowrap;
   overflow: hidden;
@@ -2548,7 +2559,22 @@ input[type="file"]::file-selector-button:hover {
 
 .saved-analysis-item-meta {
   font-size: 0.73rem;
+  color: var(--text-3);
+}
+
+.saved-analysis-meta-line {
+  font-size: 0.75rem;
+  color: var(--text-3);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.saved-analysis-date-line {
+  font-size: 0.7rem;
   color: var(--text-4);
+  font-family: var(--mono);
 }
 
 .saved-analysis-summary-bar {

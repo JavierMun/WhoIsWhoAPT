@@ -1050,9 +1050,22 @@ function downloadProfileNavigator(name: string, description: string | null | und
     name,
     domain: "enterprise-attack",
     description: description ?? "TTP profile exported from WhoIsWhoAPT.",
+    sorting: 0,
+    layout: { layout: "side", aggregateFunction: "average", showID: true, showName: true },
+    hideDisabled: false,
+    gradient: {
+      colors: ["#ffd9b3", "#ff6b00"],
+      minValue: 0,
+      maxValue: 100
+    },
+    legendItems: [
+      { label: name, color: "#ff8a4c" }
+    ],
     techniques: techniqueIds.map((techniqueID) => ({
       techniqueID,
-      enabled: true
+      color: "#ff8a4c",
+      enabled: true,
+      comment: `Included in profile: ${name}`
     }))
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });

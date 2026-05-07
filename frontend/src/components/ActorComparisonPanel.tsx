@@ -823,9 +823,16 @@ function SavedAnalysesPanel({
                   }}
                 >
                   <span className="saved-analysis-name">{analysis.input_name}</span>
-                  <span>{savedAnalysisInputTypeLabel(analysis.input_type)}</span>
-                  <span>{savedAnalysisMetricLabel(analysis.metric)} - {savedAnalysisTacticScopeLabel(analysis.tactics)}</span>
-                  <span>Top {analysis.top_n} - {savedAnalysisDateLabel(analysis.created_at)}</span>
+                  <span className="saved-analysis-meta-line">
+                    <span>{savedAnalysisInputTypeLabel(analysis.input_type)}</span>
+                    <span style={{ color: "var(--text-4)" }}>·</span>
+                    <span>{savedAnalysisMetricLabel(analysis.metric)}</span>
+                    <span style={{ color: "var(--text-4)" }}>·</span>
+                    <span>{savedAnalysisTacticScopeLabel(analysis.tactics)}</span>
+                    <span style={{ color: "var(--text-4)" }}>·</span>
+                    <span>Top {analysis.top_n}</span>
+                  </span>
+                  <span className="saved-analysis-date-line">{savedAnalysisDateLabel(analysis.created_at)}</span>
                 </button>
               ))}
             </div>
