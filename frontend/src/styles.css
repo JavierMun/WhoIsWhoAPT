@@ -3126,16 +3126,67 @@ input[type="file"]::file-selector-button:hover {
   border-bottom: 1px solid rgba(245, 183, 68, 0.1);
 }
 
+/* ── Explore network graph ───────────────────────────────────────────── */
+.network-canvas {
+  position: relative;
+  background: var(--bg-1);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  overflow: hidden;
+}
+
+.network-canvas svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.network-node {
+  stroke: rgba(255,255,255,0.2);
+  stroke-width: 1.5;
+  transition: stroke-opacity 0.1s;
+}
+
+.network-node:hover {
+  stroke: rgba(255,255,255,0.6);
+  stroke-width: 2;
+}
+
+.network-edge {
+  stroke: rgba(255,255,255,0.35);
+}
+
+.network-node-label {
+  fill: var(--text-1);
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 500;
+  pointer-events: none;
+  /* White halo so text readable on any node color */
+  paint-order: stroke;
+  stroke: var(--bg-1);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+.network-edge-label {
+  fill: var(--text-2);
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  pointer-events: none;
+}
+
 /* ── Comparison graph nodes ──────────────────────────────────────────── */
 .graph-node-label {
   fill: var(--text-1);
   font-family: var(--sans);
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 600;
   pointer-events: none;
   paint-order: stroke;
   stroke: var(--bg-1);
-  stroke-width: 3px;
+  stroke-width: 3.5px;
+  stroke-linejoin: round;
 }
 
 .graph-node-score {
@@ -3143,19 +3194,22 @@ input[type="file"]::file-selector-button:hover {
   font-size: 10px;
   font-weight: 700;
   pointer-events: none;
+  paint-order: stroke;
+  stroke: var(--bg-1);
+  stroke-width: 2px;
 }
 
 .graph-edge-label {
-  fill: var(--text-2);
+  fill: var(--text-1);
   font-family: var(--mono);
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 700;
   pointer-events: none;
 }
 
 /* graph edges */
 .comparison-graph-edge {
-  stroke: var(--border-bright);
+  stroke: rgba(255, 255, 255, 0.3);
 }
 
 /* ── Profile picker list (Selected scope) ────────────────────────────── */

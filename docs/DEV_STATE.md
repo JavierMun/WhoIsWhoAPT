@@ -1,11 +1,27 @@
 # DEV STATE
 
-## Last updated: 2026-05-07 (ongoing)
+## Last updated: 2026-05-07
 
 ### Completed this session
 
-**Session 23 — Navigator export tactic field + actor description in TTP Profiles + D3 drag + ICS techniques + saved analysis re-run + frontend tests**
-*(see tasks below — to be filled after completion)*
+**Session 25 — Graph canvas drag + PNG export + graph readability**
+- `ActorNetworkGraphPanel`: canvas drag-to-pan — `canvasDragRef` tracks background pointer events; node `onPointerDown` still uses `stopPropagation` so node drag and canvas drag don't conflict; cursor changes to `grabbing` during drag
+- PNG export: `exportAsImage()` serializes SVG clone with inline styles + dark background rect, renders to 2× canvas via `Image` + `canvas.toBlob()`, downloads as `whoiswhoapt-network.png`; `📷` Camera button in graph controls; JSON export button removed
+- Graph readability: `.network-node-label` with `paint-order: stroke` halo (white outline behind text), `.network-edge` with `rgba(255,255,255,0.35)` + opacity proportional to similarity, edge % labels at midpoint with semi-transparent backdrop, `.comparison-graph-edge` also brighter
+- `ActorNetworkGraphPanel`: "Fit" button calculates bounding box and auto-adjusts zoom+pan; zoom minimum lowered from 0.6 → 0.15
+
+**Session 24 — Graph visibility: node labels, edges, % labels**
+- Network graph: node labels `paint-order: stroke` halo for readability; edges `rgba(255,255,255,0.35)` with similarity-proportional opacity; edge % labels (badge rect + monospace text) for similarities ≥10%; node glow ring + full color fill
+- Comparison graph: stronger edge color, improved label stroke for readability
+
+**Session 23 — 8 improvements (commit 0e83d15)**
+- DEV_STATE documented sessions 17-22
+- TTP Profiles inspector: full actor description shown in body panel
+- Explore network graph: full D3 pointer-based node drag (simulationRef persists simulation; node fixed on drag, alpha releases on drop)
+- OpenCTI ICS supplement: `ingestion.py` supplements MitreSource Enterprise techniques with T0xxx ICS techniques from OpenCTI adapter
+- Frontend tests: `exportUtils.test.ts` (13 tests for CSV/Navigator/JSON); `ttpProfileUtils.test.ts` extended with `splitTactics()` and `techniqueName()` including bad-data guard and sub-technique parent prefix
+- Saved analyses re-run: "Re-run" button calls compareActor/compareTTPProfile with original params; fresh result shown in ComparisonResultTabs; canSave=true on fresh result
+- Navigator export: `tacticFor()` adds first individual tactic to each technique entry
 
 **Session 22 — Export fixes + saved analyses visibility**
 - CSV export: info header block + columns (rank, actor_name, similarity_pct, shared_ttp_count, input/target only counts, IDs, names, software); scores as `%` strings
@@ -202,13 +218,13 @@
 - Report importer uses two-strategy technique extraction: primary (embedded objects in report.read()) → fallback (containedBy filter on attack_pattern.list())
 - `activeSource` is fetched once on App mount from `GET /api/settings` and passed down as a prop — no global context needed at this scale
 
-### Next steps (active)
-- TTP Profiles inspector: show actor description (same as Compare's ActorProfilePanel)
-- Explore network graph: real D3 drag-to-reposition nodes
-- OpenCTI ICS techniques (T0xxx): supplement MitreSource with OpenCTI attack patterns for ICS-only techniques
-- Frontend component tests: no React component tests exist yet
-- Saved analyses: add re-run capability (re-execute with original parameters)
-- Navigator export: add `tactic` field per technique (better Navigator layout)
+### Next steps
+- Comparison graph (Compare tab) `📷` image export — same as Explore network graph
+- TTP Profiles: Navigator export could include `tactic` field (already done for comparison Navigator; profile export uses color only)
+- Explore heatmap: show % in cells when > 25 actors (currently hidden for cell size)
+- Saved analyses: persist metric hint / enrichment filter info in the list view
+- Settings: OpenCTI auto-refresh status indicator (shows when next scheduled reload is)
+- Frontend React component tests (no DOM tests exist, only utility tests)
 
 ---
 

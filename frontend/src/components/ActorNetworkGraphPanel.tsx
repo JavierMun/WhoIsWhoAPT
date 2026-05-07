@@ -5,7 +5,7 @@ import {
   forceManyBody,
   forceSimulation
 } from "d3-force";
-import { AlertCircle, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, FileJson, Loader2, Network, RefreshCw, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
+import { AlertCircle, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Camera, Loader2, Network, RefreshCw, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { computeMatrix, getClusters, getMatrixResult } from "../api/client";
@@ -212,9 +212,7 @@ function NetworkPanel({
         renderedEdgeCount={graph.links.length}
         limited={graph.nodes.length < matrix.actors.length}
         canExport={canExport}
-        onExport={() => {
-          downloadGraphExport(matrix, clusters, graph, threshold);
-        }}
+        onExport={() => downloadGraphExport(matrix, clusters, graph, threshold)}
       />
       {graph.omittedEdgeCount > 0 ? (
         <div className="graph-notice">{graph.omittedEdgeCount} weaker edges hidden to keep the graph readable.</div>
@@ -257,14 +255,7 @@ function NetworkHeader({
       <div className="results-actions">
         {limited ? <span className="matrix-note">Limited view</span> : null}
         <span className="metric-label">{metricLabel(clusters.metric)}</span>
-        <button
-          type="button"
-          title={canExport ? "Export graph JSON" : "Load graph data before exporting"}
-          disabled={!canExport}
-          onClick={onExport}
-        >
-          <FileJson size={16} aria-hidden="true" />
-        </button>
+        {/* JSON export removed — use screenshot export in graph controls */}
       </div>
     </div>
   );
@@ -279,6 +270,7 @@ function ForceGraph({ nodes, links }: { nodes: GraphNode[]; links: GraphLink[] }
   const simulationRef = useRef<{ alpha: (v: number) => any; alphaTarget: (v: number) => any; restart: () => any; stop: () => any } | null>(null);
   const liveNodesRef = useRef<GraphNode[]>([]);
   const dragRef = useRef<{ nodeId: string; startX: number; startY: number; nodeX: number; nodeY: number } | null>(null);
+  const canvasDragRef = useRef<{ startX: number; startY: number; startPanX: number; startPanY: number } | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
 
   useEffect(() => {
@@ -355,7 +347,28 @@ function ForceGraph({ nodes, links }: { nodes: GraphNode[]; links: GraphLink[] }
     simulationRef.current?.alphaTarget(0.1).restart();
   }
 
+  function handleSvgPointerDown(e: React.PointerEvent<SVGSVGElement>) {
+    // Only start canvas drag when clicking the background (not a node)
+    // Node pointerdown stops propagation, so this only fires for background clicks
+    if (dragRef.current) return;
+    canvasDragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      startPanX: pan.x,
+      startPanY: pan.y
+    };
+  }
+
   function handleSvgPointerMove(e: React.PointerEvent<SVGSVGElement>) {
+    // Canvas drag (background pan)
+    const canvas = canvasDragRef.current;
+    if (canvas) {
+      const dx = e.clientX - canvas.startX;
+      const dy = e.clientY - canvas.startY;
+      setPan({ x: canvas.startPanX + dx, y: canvas.startPanY + dy });
+      return;
+    }
+
     const drag = dragRef.current;
     if (!drag) return;
     const pt = svgPoint(e);
@@ -368,15 +381,88 @@ function ForceGraph({ nodes, links }: { nodes: GraphNode[]; links: GraphLink[] }
     simulationRef.current?.alphaTarget(0.1).restart();
   }
 
+  function fitToView() {
+    const nodes = layoutNodes.filter((n) => n.x != null && n.y != null);
+    if (nodes.length === 0) return;
+    const PADDING = 48;
+    const minX = Math.min(...nodes.map((n) => n.x ?? 0));
+    const maxX = Math.max(...nodes.map((n) => n.x ?? 0));
+    const minY = Math.min(...nodes.map((n) => n.y ?? 0));
+    const maxY = Math.max(...nodes.map((n) => n.y ?? 0));
+    const contentW = maxX - minX + PADDING * 2;
+    const contentH = maxY - minY + PADDING * 2;
+    const scale = Math.min(GRAPH_WIDTH / contentW, GRAPH_HEIGHT / contentH, 1.5);
+    const panX = (GRAPH_WIDTH - contentW * scale) / 2 - (minX - PADDING) * scale;
+    const panY = (GRAPH_HEIGHT - contentH * scale) / 2 - (minY - PADDING) * scale;
+    setZoom(Math.round(scale * 100) / 100);
+    setPan({ x: Math.round(panX), y: Math.round(panY) });
+  }
+
   function handleSvgPointerUp() {
+    if (canvasDragRef.current) {
+      canvasDragRef.current = null;
+      return;
+    }
     const drag = dragRef.current;
     if (!drag) return;
-    const node = liveNodesRef.current.find((n) => n.id === drag.nodeId);
-    if (node) {
-      // Keep the node fixed where user dropped it
-      simulationRef.current?.alphaTarget(0);
-    }
+    simulationRef.current?.alphaTarget(0);
     dragRef.current = null;
+  }
+
+  function exportAsImage() {
+    const svg = svgRef.current;
+    if (!svg) return;
+
+    const clone = svg.cloneNode(true) as SVGSVGElement;
+    clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    clone.setAttribute("width", String(GRAPH_WIDTH));
+    clone.setAttribute("height", String(GRAPH_HEIGHT));
+
+    const bg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    bg.setAttribute("width", String(GRAPH_WIDTH));
+    bg.setAttribute("height", String(GRAPH_HEIGHT));
+    bg.setAttribute("fill", "#0e1318");
+    clone.insertBefore(bg, clone.firstChild);
+
+    const style = document.createElementNS("http://www.w3.org/2000/svg", "style");
+    style.textContent = `
+      text { font-family: ui-sans-serif, system-ui, sans-serif; }
+      .network-node-label { fill: #e8edf2; font-size: 10px; font-weight: 500; paint-order: stroke; stroke: #0e1318; stroke-width: 3px; }
+      .network-edge { stroke: rgba(255,255,255,0.35); }
+      .network-edge-label { fill: #a8b4c0; font-size: 9px; font-weight: 700; font-family: monospace; }
+    `;
+    clone.insertBefore(style, clone.firstChild);
+
+    const svgData = new XMLSerializer().serializeToString(clone);
+    const blob = new Blob([svgData], { type: "image/svg+xml" });
+    const url = URL.createObjectURL(blob);
+
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      const scale = 2;
+      canvas.width = GRAPH_WIDTH * scale;
+      canvas.height = GRAPH_HEIGHT * scale;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { URL.revokeObjectURL(url); return; }
+      ctx.scale(scale, scale);
+      ctx.fillStyle = "#0e1318";
+      ctx.fillRect(0, 0, GRAPH_WIDTH, GRAPH_HEIGHT);
+      ctx.drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+      canvas.toBlob((pngBlob) => {
+        if (!pngBlob) return;
+        const pngUrl = URL.createObjectURL(pngBlob);
+        const a = document.createElement("a");
+        a.href = pngUrl;
+        a.download = "whoiswhoapt-network.png";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(pngUrl);
+      }, "image/png");
+    };
+    img.src = url;
   }
 
   return (
@@ -384,29 +470,37 @@ function ForceGraph({ nodes, links }: { nodes: GraphNode[]; links: GraphLink[] }
       <div className="graph-viewport-controls network-viewport-controls" aria-label="Network graph viewport controls">
         <button
           type="button"
+          title="Export graph as PNG image"
+          onClick={exportAsImage}
+        >
+          <Camera size={16} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          title="Fit all nodes in view"
+          onClick={fitToView}
+          style={{ fontWeight: 700, fontSize: "0.7rem", width: "auto", padding: "0 8px" }}
+        >
+          Fit
+        </button>
+        <button
+          type="button"
           title="Zoom in"
-          onClick={() => {
-            setZoom((value) => Math.min(1.9, value + 0.15));
-          }}
+          onClick={() => setZoom((v) => Math.min(2.5, v + 0.15))}
         >
           <ZoomIn size={16} aria-hidden="true" />
         </button>
         <button
           type="button"
           title="Zoom out"
-          onClick={() => {
-            setZoom((value) => Math.max(0.6, value - 0.15));
-          }}
+          onClick={() => setZoom((v) => Math.max(0.15, v - 0.15))}
         >
           <ZoomOut size={16} aria-hidden="true" />
         </button>
         <button
           type="button"
           title="Reset graph view"
-          onClick={() => {
-            setZoom(1);
-            setPan({ x: 0, y: 0 });
-          }}
+          onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}
         >
           <RotateCcw size={16} aria-hidden="true" />
         </button>
@@ -428,47 +522,74 @@ function ForceGraph({ nodes, links }: { nodes: GraphNode[]; links: GraphLink[] }
         viewBox={`0 0 ${GRAPH_WIDTH} ${GRAPH_HEIGHT}`}
         role="img"
         aria-label="Actor similarity network graph"
-        style={{ cursor: dragRef.current ? "grabbing" : "default" }}
+        style={{ cursor: canvasDragRef.current ? "grabbing" : dragRef.current ? "grabbing" : "grab" }}
+        onPointerDown={handleSvgPointerDown}
         onPointerMove={handleSvgPointerMove}
         onPointerUp={handleSvgPointerUp}
         onPointerLeave={handleSvgPointerUp}
       >
         <g transform={`translate(${pan.x} ${pan.y}) scale(${zoom})`}>
           <g>
+          {/* Edges */}
           {layoutLinks.map((link, index) => {
             const source = graphEndpoint(link.source);
             const target = graphEndpoint(link.target);
-            if (!source || !target) {
-              return null;
-            }
+            if (!source || !target) return null;
+            const mx = ((source.x ?? 0) + (target.x ?? 0)) / 2;
+            const my = ((source.y ?? 0) + (target.y ?? 0)) / 2;
+            const pct = Math.round(clampScore(link.similarity) * 100);
+            const opacity = 0.25 + clampScore(link.similarity) * 0.75;
             return (
-              <line
-                key={`${source.id}-${target.id}-${index}`}
-                x1={source.x}
-                y1={source.y}
-                x2={target.x}
-                y2={target.y}
-                strokeWidth={1 + link.similarity * 5}
-                className="network-edge"
-              >
-                <title>{`${source.name} to ${target.name}: ${formatScore(link.similarity)}`}</title>
-              </line>
+              <g key={`${source.id}-${target.id}-${index}`}>
+                <line
+                  x1={source.x} y1={source.y}
+                  x2={target.x} y2={target.y}
+                  strokeWidth={1 + link.similarity * 4}
+                  className="network-edge"
+                  strokeOpacity={opacity}
+                />
+                {pct >= 10 ? (
+                  <>
+                    <rect
+                      x={mx - 14} y={my - 8} width={28} height={14}
+                      rx={3} fill="var(--bg-2)" fillOpacity={0.85}
+                    />
+                    <text x={mx} y={my + 4} className="network-edge-label" textAnchor="middle">
+                      {pct}%
+                    </text>
+                  </>
+                ) : null}
+              </g>
             );
           })}
           </g>
           <g>
-          {layoutNodes.map((node) => (
-            <g
-              key={node.id}
-              transform={`translate(${node.x ?? GRAPH_WIDTH / 2}, ${node.y ?? GRAPH_HEIGHT / 2})`}
-              style={{ cursor: "grab" }}
-              onPointerDown={(e) => handleNodePointerDown(e, node.id)}
-            >
-              <circle r={nodeRadius(node)} fill={clusterColor(node.clusterId)} className="network-node" />
-              <title>{`${node.name}\nCluster ${node.clusterId}`}</title>
-              <text dy={nodeRadius(node) + 13}>{shortActorName(node.name)}</text>
-            </g>
-          ))}
+          {/* Nodes */}
+          {layoutNodes.map((node) => {
+            const r = nodeRadius(node);
+            const color = clusterColor(node.clusterId);
+            return (
+              <g
+                key={node.id}
+                transform={`translate(${node.x ?? GRAPH_WIDTH / 2}, ${node.y ?? GRAPH_HEIGHT / 2})`}
+                style={{ cursor: "grab" }}
+                onPointerDown={(e) => handleNodePointerDown(e, node.id)}
+              >
+                {/* Glow ring */}
+                <circle r={r + 2} fill={color} fillOpacity={0.15} />
+                <circle r={r} fill={color} fillOpacity={0.85} className="network-node" />
+                <title>{`${node.name} · Cluster ${node.clusterId}`}</title>
+                {/* Name label below node */}
+                <text
+                  dy={r + 14}
+                  className="network-node-label"
+                  textAnchor="middle"
+                >
+                  {shortActorName(node.name)}
+                </text>
+              </g>
+            );
+          })}
           </g>
         </g>
       </svg>
