@@ -54,6 +54,10 @@ function custom(id: string, name: string): TTPProfile {
     name,
     description: null,
     technique_ids: ["T1059", "T1105"],
+    target_sectors: [],
+    target_countries: [],
+    cves_exploited: [],
+    motivation: null,
     created_at: "2026-01-01T00:00:00Z",
     updated_at: "2026-01-01T00:00:00Z"
   };

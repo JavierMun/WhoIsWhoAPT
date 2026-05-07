@@ -1,4 +1,4 @@
-import { AlertCircle, Grid3X3, Loader2, RefreshCw, Search } from "lucide-react";
+import { AlertCircle, Grid3X3, Loader2, RefreshCw } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { computeMatrix, getMatrixResult } from "../api/client";
@@ -10,7 +10,6 @@ const MAX_VISIBLE_ACTORS = 80;
 
 export function ActorMatrixHeatmapPanel() {
   const [metric, setMetric] = useState<SimilarityMetric>("jaccard");
-  const [actorQuery, setActorQuery] = useState("");
   const [visibleLimit, setVisibleLimit] = useState(DEFAULT_VISIBLE_ACTORS);
   const [matrix, setMatrix] = useState<MatrixResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -75,24 +74,11 @@ export function ActorMatrixHeatmapPanel() {
               <option value="jaccard_weighted">Weighted Jaccard</option>
               <option value="tactic_weighted_jaccard">Tactic weighted</option>
               <option value="software_weighted_jaccard">Software weighted</option>
+              <option value="holistic">Holistic</option>
             </select>
           </label>
 
-          <label className="field-group" htmlFor="matrix-actor-filter">
-            <span>Filter actors</span>
-            <div className="search-field">
-              <Search size={17} aria-hidden="true" />
-              <input
-                id="matrix-actor-filter"
-                type="search"
-                value={actorQuery}
-                onChange={(event) => {
-                  setActorQuery(event.target.value);
-                }}
-                placeholder="APT, group, alias"
-              />
-            </div>
-          </label>
+
 
           <label className="field-group" htmlFor="matrix-visible-limit">
             <span>Top actors</span>
@@ -135,7 +121,7 @@ export function ActorMatrixHeatmapPanel() {
           {error ? <StatusMessage tone="error" message={error} /> : null}
         </form>
 
-        <HeatmapPanel matrix={matrix} actorQuery={actorQuery} visibleLimit={visibleLimit} loading={loading} />
+        <HeatmapPanel matrix={matrix} actorQuery="" visibleLimit={visibleLimit} loading={loading} />
       </div>
     </section>
   );
@@ -192,8 +178,20 @@ function HeatmapPanel({
       <section className="results-panel heatmap-panel">
         <HeatmapHeader matrix={matrix} visibleCount={0} capped={false} />
         <div className="empty-state compact-empty">
-          <Search size={24} aria-hidden="true" />
+          <Grid3X3 size={24} aria-hidden="true" />
           <p>No actors match the filter.</p>
+        </div>
+      </section>
+    );
+  }
+
+  if (visibleIndexes.length === 1) {
+    return (
+      <section className="results-panel heatmap-panel">
+        <HeatmapHeader matrix={matrix} visibleCount={1} capped={true} />
+        <div className="empty-state compact-empty">
+          <Grid3X3 size={24} aria-hidden="true" />
+          <p>Only one actor matches — broaden the filter to compare at least two actors.</p>
         </div>
       </section>
     );
@@ -287,17 +285,29 @@ function HeatmapHeader({
 }
 
 function HeatmapLegend() {
+  // Matches the comparisonHeatColor stops
+  const stops = [
+    { pct: 0,   color: "#0e1318", label: "0%" },
+    { pct: 10,  color: "rgb(15,50,60)" },
+    { pct: 30,  color: "rgb(10,100,90)" },
+    { pct: 55,  color: "rgb(120,80,40)" },
+    { pct: 75,  color: "rgb(180,90,50)" },
+    { pct: 100, color: "rgb(220,100,60)", label: "100%" },
+  ];
+  const gradient = `linear-gradient(90deg, ${stops.map(s => `${s.color} ${s.pct}%`).join(", ")})`;
+
   return (
     <div className="heatmap-legend" aria-label="Similarity color legend">
-      <div className="mini-header">
-        <strong>Legend</strong>
-        <span>0-100%</span>
-      </div>
-      <div className="legend-ramp" aria-hidden="true" />
-      <div className="legend-labels">
-        <span>Low</span>
-        <span>Medium</span>
-        <span>High</span>
+      <span className="heatmap-legend-label">Similarity</span>
+      <div className="heatmap-legend-track">
+        <div className="heatmap-legend-bar" style={{ background: gradient }} aria-hidden="true" />
+        <div className="heatmap-legend-ticks">
+          <span>0%</span>
+          <span>25%</span>
+          <span>50%</span>
+          <span>75%</span>
+          <span>100%</span>
+        </div>
       </div>
     </div>
   );

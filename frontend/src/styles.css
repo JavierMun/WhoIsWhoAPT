@@ -1950,15 +1950,41 @@ input, select, textarea { font-family: var(--sans); }
   align-items: center;
   gap: 8px;
   margin-top: 10px;
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   color: var(--text-3);
+  flex-wrap: nowrap;
+}
+
+.heatmap-legend-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-4);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.heatmap-legend-track {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
 }
 
 .heatmap-legend-bar {
-  flex: 1;
-  height: 6px;
-  border-radius: 3px;
-  background: linear-gradient(90deg, var(--bg-4), var(--success));
+  height: 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+
+.heatmap-legend-ticks {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.62rem;
+  color: var(--text-4);
+  font-family: var(--mono);
 }
 
 /* ── Network graph ───────────────────────────────────────────────────── */
@@ -2851,6 +2877,169 @@ input[type="file"]::file-selector-button:hover {
 
 .ttp-profile-workspace .workspace-header {
   margin-bottom: 20px;
+}
+
+/* ── Actor Similarity Search panel ──────────────────────────────────── */
+.similarity-search-workspace {
+  display: flex;
+  flex-direction: column;
+}
+
+.sim-actor-dropdown {
+  background: var(--bg-1);
+  border: 1px solid var(--border-bright);
+  border-radius: var(--radius);
+  max-height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px;
+  margin-top: 2px;
+}
+
+.sim-actor-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition: background var(--transition);
+  width: 100%;
+}
+
+.sim-actor-option:hover { background: var(--bg-3); border-color: var(--border); }
+
+.sim-actor-name { font-size: 0.85rem; font-weight: 500; color: var(--text-1); }
+.sim-actor-count { font-size: 0.72rem; color: var(--text-4); font-family: var(--mono); flex-shrink: 0; }
+
+.sim-result-summary {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  text-align: center;
+  gap: 2px;
+}
+
+.sim-result-count {
+  font-family: var(--mono);
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--accent);
+  line-height: 1;
+}
+
+.sim-result-label { font-size: 0.8rem; color: var(--text-2); font-weight: 500; }
+.sim-result-total { font-size: 0.72rem; color: var(--text-4); }
+
+.sim-results-panel { min-height: 400px; }
+
+.sim-result-list {
+  list-style: none;
+  margin: 0;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sim-result-row {
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  transition: border-color var(--transition);
+}
+
+.sim-result-row:hover { border-color: var(--border-bright); }
+
+.sim-rank {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-4);
+  text-align: center;
+}
+
+.sim-result-row:nth-child(1) .sim-rank { color: var(--accent); }
+.sim-result-row:nth-child(2) .sim-rank,
+.sim-result-row:nth-child(3) .sim-rank { color: var(--text-3); }
+
+.sim-result-main {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.sim-result-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sim-bar-track {
+  height: 4px;
+  background: var(--bg-5);
+  border-radius: 99px;
+  overflow: hidden;
+  cursor: default;
+}
+
+.sim-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), #ffb88c);
+  border-radius: inherit;
+  min-width: 2px;
+  transition: width 0.3s ease;
+}
+
+.sim-result-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  color: var(--text-3);
+}
+
+.sim-pair-names {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 2px;
+}
+
+.sim-pair-sep {
+  font-size: 0.72rem;
+  color: var(--text-4);
+  flex-shrink: 0;
+}
+
+.sim-score {
+  font-family: var(--mono);
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--accent-text);
+  flex-shrink: 0;
+  text-align: right;
 }
 
 /* ── Comparison graph view ───────────────────────────────────────────── */

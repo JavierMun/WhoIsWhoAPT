@@ -73,14 +73,14 @@ function SourceStatusPanel({
             {status?.status ?? "never loaded"}
           </span>
           {status?.version ? (
-            <span style={{ color: "#52606a", fontSize: "0.85rem" }}>v{status.version}</span>
+            <span style={{ color: "var(--text-3)", fontSize: "0.85rem" }}>v{status.version}</span>
           ) : null}
         </p>
       </div>
 
       <div className="field-group">
         <span>Last loaded</span>
-        <p style={{ margin: 0, color: "#52606a", fontSize: "0.88rem" }}>
+        <p style={{ margin: 0, color: "var(--text-3)", fontSize: "0.88rem" }}>
           {formatDateTime(status?.last_loaded_at ?? null)}
         </p>
       </div>
@@ -98,13 +98,13 @@ function SourceStatusPanel({
               style={{
                 textAlign: "center",
                 padding: "10px 8px",
-                background: "#f7f9fa",
-                border: "1px solid #e4eaed",
-                borderRadius: 6
+                background: "var(--bg-3)",
+                border: "1px solid var(--border-bright)",
+                borderRadius: "var(--radius)"
               }}
             >
-              <p style={{ margin: 0, fontWeight: 700, fontSize: "1.2rem", color: "#0d704f" }}>{count}</p>
-              <p style={{ margin: 0, color: "#52606a", fontSize: "0.78rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</p>
+              <p style={{ margin: 0, fontWeight: 700, fontSize: "1.2rem", color: "var(--accent-text)" }}>{count}</p>
+              <p style={{ margin: 0, color: "var(--text-3)", fontSize: "0.78rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</p>
             </div>
           ))}
         </div>
@@ -478,15 +478,7 @@ export function SettingsPanel({
             </p>
           </div>
           <span
-            className={health ? "metric-label" : "metric-label"}
-            style={{
-              padding: "4px 12px",
-              borderRadius: 99,
-              background: health ? "#e3f2ed" : "#f5f5f5",
-              color: health ? "#0d704f" : "#70808a",
-              fontWeight: 700,
-              fontSize: "0.82rem"
-            }}
+            className="metric-label"
           >
             {health?.environment ?? "unknown"}
           </span>

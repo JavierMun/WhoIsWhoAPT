@@ -83,6 +83,7 @@ export function ActorNetworkGraphPanel() {
               <option value="jaccard_weighted">Weighted Jaccard</option>
               <option value="tactic_weighted_jaccard">Tactic weighted</option>
               <option value="software_weighted_jaccard">Software weighted</option>
+              <option value="holistic">Holistic</option>
             </select>
           </label>
 

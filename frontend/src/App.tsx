@@ -5,6 +5,7 @@ import type { HealthResponse, PrimarySourceName } from "./api/types";
 import { ActorComparisonPanel } from "./components/ActorComparisonPanel";
 import { ActorMatrixHeatmapPanel } from "./components/ActorMatrixHeatmapPanel";
 import { ActorNetworkGraphPanel } from "./components/ActorNetworkGraphPanel";
+import { ActorSimilarityPanel } from "./components/ActorSimilarityPanel";
 import { Layout, type ModuleKey } from "./components/Layout";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { TTPProfilesPanel } from "./components/TTPProfilesPanel";
@@ -40,6 +41,7 @@ function App() {
       {activeModule === "ttp-profiles" ? <TTPProfilesPanel activeSource={activeSource} /> : null}
       {activeModule === "visual-analysis" ? (
         <div className="module-stack">
+          <ActorSimilarityPanel />
           <ActorMatrixHeatmapPanel />
           <ActorNetworkGraphPanel />
         </div>
