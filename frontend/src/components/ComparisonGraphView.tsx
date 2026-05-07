@@ -113,6 +113,16 @@ export function ComparisonGraphView({ comparison }: { comparison: ActorCompariso
           />
           <span className="field-hint">{formatScore(threshold)} and higher</span>
         </label>
+      </div>
+
+      {graph.hiddenCount > 0 ? (
+        <div className="graph-notice">{graph.hiddenCount} matches hidden below the selected threshold.</div>
+      ) : null}
+      {graph.edges.length === 0 ? (
+        <div className="graph-notice">No comparison targets meet the selected threshold. Lower the threshold to show edges.</div>
+      ) : null}
+
+      <div className="comparison-graph-canvas">
         <div className="graph-viewport-controls" aria-label="Graph viewport controls">
           <button type="button" title="Export as PNG image" onClick={exportAsImage}>
             <Camera size={16} aria-hidden="true" />
@@ -139,16 +149,6 @@ export function ComparisonGraphView({ comparison }: { comparison: ActorCompariso
             <ArrowDown size={16} aria-hidden="true" />
           </button>
         </div>
-      </div>
-
-      {graph.hiddenCount > 0 ? (
-        <div className="graph-notice">{graph.hiddenCount} matches hidden below the selected threshold.</div>
-      ) : null}
-      {graph.edges.length === 0 ? (
-        <div className="graph-notice">No comparison targets meet the selected threshold. Lower the threshold to show edges.</div>
-      ) : null}
-
-      <div className="comparison-graph-canvas">
         <svg
           ref={svgRef}
           className="comparison-graph"

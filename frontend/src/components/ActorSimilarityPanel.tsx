@@ -6,7 +6,9 @@ import { clampScore } from "../api/comparisonViewUtils";
 import type { MatrixResponse, SimilarityMetric } from "../api/types";
 
 interface ActorPair {
+  actorAId: string;
   actorA: string;
+  actorBId: string;
   actorB: string;
   score: number;
 }
@@ -18,14 +20,24 @@ function extractPairs(matrix: MatrixResponse): ActorPair[] {
     for (let j = i + 1; j < actors.length; j++) {
       const score = clampScore(matrix.matrix[i]?.[j] ?? 0);
       if (score > 0) {
-        pairs.push({ actorA: actors[i].name, actorB: actors[j].name, score });
+        pairs.push({
+          actorAId: actors[i].id,
+          actorA: actors[i].name,
+          actorBId: actors[j].id,
+          actorB: actors[j].name,
+          score
+        });
       }
     }
   }
   return pairs.sort((a, b) => b.score - a.score);
 }
 
-export function ActorSimilarityPanel() {
+export function ActorSimilarityPanel({
+  onComparePair
+}: {
+  onComparePair?: (sourceId: string, targetId: string) => void;
+}) {
   const [metric, setMetric] = useState<SimilarityMetric>("jaccard");
   const [threshold, setThreshold] = useState(20);
   const [matrix, setMatrix] = useState<MatrixResponse | null>(null);
@@ -180,6 +192,16 @@ export function ActorSimilarityPanel() {
                           <span className="sim-result-name">{pair.actorA}</span>
                           <span className="sim-pair-sep">↔</span>
                           <span className="sim-result-name">{pair.actorB}</span>
+                          {onComparePair ? (
+                            <button
+                              type="button"
+                              className="sim-compare-btn"
+                              title={`Compare ${pair.actorA} vs ${pair.actorB} in Compare module`}
+                              onClick={() => onComparePair(pair.actorAId, pair.actorBId)}
+                            >
+                              Compare →
+                            </button>
+                          ) : null}
                         </div>
                         <div className="sim-bar-track" title={`${pct}%`}>
                           <div className="sim-bar-fill" style={{ width: `${barWidth}%` }} />

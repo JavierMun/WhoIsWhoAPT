@@ -3053,6 +3053,26 @@ input[type="file"]::file-selector-button:hover {
   margin-bottom: 2px;
 }
 
+.sim-compare-btn {
+  margin-left: auto;
+  background: none;
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius-sm);
+  padding: 1px 8px;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--accent-text);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--transition);
+  flex-shrink: 0;
+}
+
+.sim-compare-btn:hover {
+  background: var(--accent-dim);
+}
+
 .sim-pair-sep {
   font-size: 0.72rem;
   color: var(--text-4);

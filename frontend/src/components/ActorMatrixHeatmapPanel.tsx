@@ -1,4 +1,4 @@
-import { AlertCircle, Grid3X3, Loader2, RefreshCw } from "lucide-react";
+import { AlertCircle, Camera, Grid3X3, Loader2, RefreshCw } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { computeMatrix, getMatrixResult } from "../api/client";
@@ -204,9 +204,84 @@ function HeatmapPanel({
   const showText = cellSize >= 18;
   const textSize = cellSize >= 24 ? "0.58rem" : "0.48rem";
 
+  function exportHeatmapImage() {
+    if (!matrix) return;
+    const LABEL_W = 120;
+    const LABEL_H = 100;
+    const CELL = Math.max(cellSize, 14);
+    const w = LABEL_W + n * CELL;
+    const h = LABEL_H + n * CELL;
+    const canvas = document.createElement("canvas");
+    canvas.width = w * 2; canvas.height = h * 2;
+    const ctx = canvas.getContext("2d")!;
+    ctx.scale(2, 2);
+
+    // Background
+    ctx.fillStyle = "#0e1318";
+    ctx.fillRect(0, 0, w, h);
+
+    const fontSize = Math.max(7, Math.min(11, CELL * 0.5));
+    ctx.font = `500 ${fontSize}px ui-sans-serif, system-ui, sans-serif`;
+
+    // Row labels
+    ctx.fillStyle = "#a8b4c0";
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+    visibleIndexes.forEach((rowIndex, ri) => {
+      const name = matrix.actors[rowIndex].name;
+      const label = name.length > 18 ? `${name.slice(0, 16)}…` : name;
+      ctx.fillText(label, LABEL_W - 4, LABEL_H + ri * CELL + CELL / 2);
+    });
+
+    // Column labels (rotated)
+    visibleIndexes.forEach((colIndex, ci) => {
+      const name = matrix.actors[colIndex].name;
+      const label = name.length > 14 ? `${name.slice(0, 12)}…` : name;
+      ctx.save();
+      ctx.translate(LABEL_W + ci * CELL + CELL / 2, LABEL_H - 4);
+      ctx.rotate(-Math.PI / 2);
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = "#a8b4c0";
+      ctx.fillText(label, 0, 0);
+      ctx.restore();
+    });
+
+    // Cells
+    visibleIndexes.forEach((rowIndex, ri) => {
+      visibleIndexes.forEach((colIndex, ci) => {
+        const value = clampScore(matrix.matrix[rowIndex]?.[colIndex] ?? 0);
+        const isDiag = rowIndex === colIndex;
+        const color = isDiag ? "#ff8a4c" : comparisonHeatColor(value);
+        ctx.fillStyle = color;
+        ctx.fillRect(LABEL_W + ci * CELL, LABEL_H + ri * CELL, CELL - 1, CELL - 1);
+
+        // % text
+        if (!isDiag && value > 0 && CELL >= 16) {
+          const pct = Math.round(value * 100);
+          ctx.fillStyle = value > 0.45 ? "#fff" : value > 0.2 ? "#e8edf2" : "#aab";
+          ctx.font = `700 ${Math.max(6, CELL * 0.4)}px ui-monospace, monospace`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(`${pct}%`, LABEL_W + ci * CELL + CELL / 2, LABEL_H + ri * CELL + CELL / 2);
+          ctx.font = `500 ${fontSize}px ui-sans-serif, system-ui, sans-serif`;
+        }
+      });
+    });
+
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = "whoiswhoapt-heatmap.png";
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    }, "image/png");
+  }
+
   return (
     <section className="results-panel heatmap-panel" aria-live="polite">
-      <HeatmapHeader matrix={matrix} visibleCount={n} capped={capped} />
+      <HeatmapHeader matrix={matrix} visibleCount={n} capped={capped} onExport={exportHeatmapImage} />
       <div className="heatmap-scroll">
         <table className="heatmap-table" aria-label="Actor similarity heatmap" style={{ "--cell-size": `${cellSize}px` } as React.CSSProperties}>
           <thead>
@@ -269,23 +344,28 @@ function HeatmapPanel({
 function HeatmapHeader({
   matrix,
   visibleCount,
-  capped
+  capped,
+  onExport
 }: {
   matrix: MatrixResponse;
   visibleCount: number;
   capped: boolean;
+  onExport?: () => void;
 }) {
   return (
     <div className="results-header heatmap-header">
       <div>
         <p className="panel-label">Generated {formatDate(matrix.metadata.generated_at)}</p>
-        <h2>
-          {visibleCount}/{matrix.metadata.actor_count} actors
-        </h2>
+        <h2>{visibleCount}/{matrix.metadata.actor_count} actors</h2>
       </div>
       <div className="results-actions">
         {capped ? <span className="matrix-note">Limited view</span> : null}
         <span className="metric-label">{metricLabel(matrix.metadata.metric)}</span>
+        {onExport ? (
+          <button type="button" title="Export heatmap as PNG image" onClick={onExport}>
+            <Camera size={15} aria-hidden="true" />
+          </button>
+        ) : null}
       </div>
     </div>
   );

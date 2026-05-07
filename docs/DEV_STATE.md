@@ -4,6 +4,24 @@
 
 ### Completed this session
 
+**Session 27 — 6 improvements (commit 26b72cb + graph button fix)**
+- Compare graph (ComparisonGraphView): PNG export via Camera button; canvas drag-to-pan; zoom min 0.15/max 2.5; viewport controls moved inside canvas div (fixes displaced buttons)
+- Heatmap: % labels shown for all cell sizes (dynamic font 0.58rem/0.48rem); Camera export button draws cells to 2× canvas → PNG with row/col labels
+- Explore all-vs-all: "Compare →" button on each pair row; navigates to Compare with source+target pre-selected; `pendingComparison` state flows App → ActorComparisonPanel via props
+- Saved analyses: pagination (20 per page with "Show more N remaining" button); page resets on refresh
+- Settings: `nextReloadLabel()` extracted to savedAnalysisUtils.ts; "Next auto-reload" field shows time remaining
+- TTP Profiles Navigator: `tactic` field per technique using techniqueLookup
+- Backend rebuild: ICS techniques (T0xxx) supplement from OpenCTI now actually deployed
+- Tests: 51 passing; exportUtils tests use exported pure functions (no jsdom)
+
+**Session 26 — 8 improvements (commit 0e83d15)**
+- TTP Profiles inspector: actor description shown in body
+- D3 node drag + canvas pan in Explore network graph
+- OpenCTI ICS techniques supplement in ingestion.py
+- Saved analyses re-run button
+- Navigator export tactic field
+- Frontend tests: exportUtils.test.ts + ttpProfileUtils expanded
+
 **Session 25 — Graph canvas drag + PNG export + graph readability**
 - `ActorNetworkGraphPanel`: canvas drag-to-pan — `canvasDragRef` tracks background pointer events; node `onPointerDown` still uses `stopPropagation` so node drag and canvas drag don't conflict; cursor changes to `grabbing` during drag
 - PNG export: `exportAsImage()` serializes SVG clone with inline styles + dark background rect, renders to 2× canvas via `Image` + `canvas.toBlob()`, downloads as `whoiswhoapt-network.png`; `📷` Camera button in graph controls; JSON export button removed
@@ -219,12 +237,10 @@
 - `activeSource` is fetched once on App mount from `GET /api/settings` and passed down as a prop — no global context needed at this scale
 
 ### Next steps
-- Comparison graph (Compare tab) `📷` image export — same as Explore network graph
-- TTP Profiles: Navigator export could include `tactic` field (already done for comparison Navigator; profile export uses color only)
-- Explore heatmap: show % in cells when > 25 actors (currently hidden for cell size)
-- Saved analyses: persist metric hint / enrichment filter info in the list view
-- Settings: OpenCTI auto-refresh status indicator (shows when next scheduled reload is)
-- Frontend React component tests (no DOM tests exist, only utility tests)
+- No critical functional gaps. System is fully operational with OpenCTI integration, holistic scoring, enrichment, dark theme, and all export options.
+- Minor: heatmap export could include the legend bar in the PNG
+- Minor: Compare graph "Fit" button (like Explore graph)
+- Minor: Saved analyses could show a count badge in the sidebar
 
 ---
 

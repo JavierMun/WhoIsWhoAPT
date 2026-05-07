@@ -17,6 +17,7 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [activeSource, setActiveSource] = useState<PrimarySourceName>("mitre");
   const [actorCount, setActorCount] = useState<number | undefined>(undefined);
+  const [pendingComparison, setPendingComparison] = useState<{ sourceId: string; targetId: string } | null>(null);
 
   useEffect(() => {
     getHealth()
@@ -37,11 +38,23 @@ function App() {
       activeSource={activeSource}
       actorCount={actorCount}
     >
-      {activeModule === "compare" ? <ActorComparisonPanel activeSource={activeSource} onActorCountChange={setActorCount} /> : null}
+      {activeModule === "compare" ? (
+        <ActorComparisonPanel
+          activeSource={activeSource}
+          onActorCountChange={setActorCount}
+          pendingComparison={pendingComparison}
+          onPendingConsumed={() => setPendingComparison(null)}
+        />
+      ) : null}
       {activeModule === "ttp-profiles" ? <TTPProfilesPanel activeSource={activeSource} /> : null}
       {activeModule === "visual-analysis" ? (
         <div className="module-stack">
-          <ActorSimilarityPanel />
+          <ActorSimilarityPanel
+            onComparePair={(sourceId, targetId) => {
+              setPendingComparison({ sourceId, targetId });
+              setActiveModule("compare");
+            }}
+          />
           <ActorMatrixHeatmapPanel />
           <ActorNetworkGraphPanel />
         </div>

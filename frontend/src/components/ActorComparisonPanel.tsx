@@ -47,10 +47,14 @@ type ComparisonScope = "all" | "selected";
 
 export function ActorComparisonPanel({
   activeSource = "mitre",
-  onActorCountChange
+  onActorCountChange,
+  pendingComparison,
+  onPendingConsumed
 }: {
   activeSource?: PrimarySourceName;
   onActorCountChange?: (count: number) => void;
+  pendingComparison?: { sourceId: string; targetId: string } | null;
+  onPendingConsumed?: () => void;
 }) {
   const [actors, setActors] = useState<ActorListItem[]>([]);
   const [customProfiles, setCustomProfiles] = useState<TTPProfile[]>([]);
@@ -183,6 +187,20 @@ export function ActorComparisonPanel({
       setCompareLoading(false);
     }
   }
+
+  // Apply pending comparison from Explore all-vs-all panel
+  useEffect(() => {
+    if (!pendingComparison || comparableProfiles.length === 0) return;
+    const { sourceId, targetId } = pendingComparison;
+    const sourceProfile = comparableProfiles.find((p) => p.id === sourceId && p.type === "actor");
+    const targetProfile = comparableProfiles.find((p) => p.id === targetId && p.type === "actor");
+    if (sourceProfile) {
+      setSelectedSourceKey(sourceProfile.key);
+      setSelectedTargetKeys(targetProfile ? [targetProfile.key] : []);
+      setScope(targetProfile ? "selected" : "all");
+    }
+    onPendingConsumed?.();
+  }, [pendingComparison, comparableProfiles]);
 
   // Fetch actor detail whenever an actor source profile is selected
   useEffect(() => {
@@ -646,6 +664,8 @@ function SavedAnalysesPanel({
   const [selectedAnalysisId, setSelectedAnalysisId] = useState<string | null>(null);
   const [selectedAnalysis, setSelectedAnalysis] = useState<AnalysisDetail | null>(null);
   const [loadingList, setLoadingList] = useState(true);
+  const [analysisPage, setAnalysisPage] = useState(0);
+  const ANALYSES_PAGE_SIZE = 20;
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [rerunning, setRerunning] = useState(false);
@@ -663,6 +683,7 @@ function SavedAnalysesPanel({
           return;
         }
         setAnalyses(items);
+        setAnalysisPage(0);
         setSelectedAnalysisId((currentId) => {
           const nextId = currentId && items.some((item) => item.id === currentId) ? currentId : items[0]?.id ?? null;
           if (nextId && (nextId !== currentId || !hasSelectedAnalysisDetail)) {
@@ -789,6 +810,7 @@ function SavedAnalysesPanel({
             getAnalyses()
               .then((items) => {
                 setAnalyses(items);
+        setAnalysisPage(0);
                 if (items.length === 0) {
                   setSelectedAnalysis(null);
                   setLoadingDetail(false);
@@ -832,7 +854,7 @@ function SavedAnalysesPanel({
 
           {!loadingList && analyses.length > 0 ? (
             <div className="saved-analysis-list">
-              {analyses.map((analysis) => (
+              {analyses.slice(0, (analysisPage + 1) * ANALYSES_PAGE_SIZE).map((analysis) => (
                 <button
                   className={`saved-analysis-item ${analysis.id === selectedAnalysisId ? "active" : ""}`}
                   key={analysis.id}
@@ -868,6 +890,16 @@ function SavedAnalysesPanel({
                   <span className="saved-analysis-date-line">{savedAnalysisDateLabel(analysis.created_at)}</span>
                 </button>
               ))}
+              {(analysisPage + 1) * ANALYSES_PAGE_SIZE < analyses.length ? (
+                <button
+                  type="button"
+                  className="secondary-action"
+                  style={{ width: "100%", marginTop: 4, fontSize: "0.78rem", height: 30 }}
+                  onClick={() => setAnalysisPage((p) => p + 1)}
+                >
+                  Show more ({analyses.length - (analysisPage + 1) * ANALYSES_PAGE_SIZE} remaining)
+                </button>
+              ) : null}
             </div>
           ) : null}
 
