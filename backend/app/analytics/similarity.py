@@ -139,16 +139,16 @@ def tactic_breakdown(
     if union_weight == 0:
         union_weight = DEFAULT_TACTIC_WEIGHT
 
-    tactics = sorted({_tactic_for(technique_id, technique_tactics) for technique_id in union})
+    tactics = sorted({_primary_tactic_for(technique_id, technique_tactics) for technique_id in union})
     breakdown: list[TacticBreakdown] = []
     for tactic in tactics:
         input_for_tactic = {
-            technique_id for technique_id in input_techniques if _tactic_for(technique_id, technique_tactics) == tactic
+            technique_id for technique_id in input_techniques
+            if _primary_tactic_for(technique_id, technique_tactics) == tactic
         }
         matched_for_tactic = {
-            technique_id
-            for technique_id in matched_techniques
-            if _tactic_for(technique_id, technique_tactics) == tactic
+            technique_id for technique_id in matched_techniques
+            if _primary_tactic_for(technique_id, technique_tactics) == tactic
         }
         union_for_tactic = input_for_tactic | matched_for_tactic
         shared_for_tactic = input_for_tactic & matched_for_tactic
@@ -182,8 +182,19 @@ def _tactic_weights_for_techniques(
 
 
 def _tactic_for(technique_id: str, technique_tactics: dict[str, str]) -> str:
-    """Return a stable tactic bucket for techniques missing local metadata."""
+    """Return the full tactic value for a technique (may be comma-separated)."""
     return technique_tactics.get(technique_id) or "unknown"
+
+
+def _primary_tactic_for(technique_id: str, technique_tactics: dict[str, str]) -> str:
+    """Return the first individual tactic for grouping in breakdown displays.
+
+    Uses only the first comma-separated value so each technique belongs to
+    exactly one tactic bucket and shared counts sum correctly.
+    """
+    raw = technique_tactics.get(technique_id) or "unknown"
+    first = raw.split(",")[0].strip()
+    return first if first else "unknown"
 
 
 def _weight_for_tactic_value(tactic_value: str, tactic_weights: dict[str, float]) -> float:

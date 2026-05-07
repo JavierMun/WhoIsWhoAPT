@@ -134,7 +134,7 @@ function SoftwarePreview({ software }: { software: SoftwareSummary[] }) {
 }
 
 function TacticBreakdownList({ items }: { items: TacticBreakdown[]; techniqueLookup?: TechniqueLookup }) {
-  const visibleItems = items.filter((item) => item.union_technique_count > 0).slice(0, 6);
+  const visibleItems = items.filter((item) => item.union_technique_count > 0);
   if (visibleItems.length === 0) return null;
 
   return (

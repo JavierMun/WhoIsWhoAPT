@@ -3,7 +3,7 @@
 from datetime import date, datetime
 from typing import Any, Literal
 
-from pydantic import AnyHttpUrl, BaseModel, Field
+from pydantic import AnyHttpUrl, BaseModel, Field, field_validator
 
 SourceName = Literal["mitre", "opencti", "navigator"]
 PrimarySourceName = Literal["mitre", "opencti"]
@@ -276,6 +276,11 @@ class CustomTTPSet(BaseModel):
     motivation: str | None = None
     created_at: datetime
     updated_at: datetime
+
+    @field_validator("technique_ids", "target_sectors", "target_countries", "cves_exploited", mode="before")
+    @classmethod
+    def coerce_none_to_list(cls, v: object) -> list:
+        return v if v is not None else []
 
 
 class CustomComparisonRequest(BaseModel):
