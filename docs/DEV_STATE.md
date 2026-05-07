@@ -1,8 +1,48 @@
 # DEV STATE
 
-## Last updated: 2026-04-29 (session 5)
+## Last updated: 2026-05-07
 
 ### Completed this session
+
+**Session 16 — Tactic breakdown correctness**
+- `similarity.py`: `_primary_tactic_for()` splits comma-separated tactic strings and returns the first individual tactic; `tactic_breakdown()` now uses it so each technique belongs to exactly one bucket and shared counts sum to the pill total; `_tactic_for()` unchanged (still used for scoring)
+- `ComparisonRankingView`: removed `.slice(0, 6)` limit — all ~12-15 tactics now shown
+- `schemas.py`: `@field_validator` coerces NULL DB values to `[]` for CustomTTPSet list fields (fixes 500 on pre-migration rows)
+
+**Session 15 — Custom TTP profiles enrichment + holistic scoring for custom profiles**
+- `CustomTTPSet` entity + schema: `target_sectors`, `target_countries`, `cves_exploited`, `motivation`
+- Auto-migration in `database.py` for 4 new columns
+- `custom_sets.py`: create/update persist enrichment via `_normalize_tags()`
+- `compare.py`: holistic metric for custom profiles uses their enrichment as source input
+- Frontend: `TTPProfilePayload` interface; form with 4 new inputs (comma-separated); inspector shows `EnrichmentTags` for custom profiles; `openEditForm` pre-fills
+
+**Session 14 — Holistic similarity metric**
+- `comparison.py`: `"holistic"` added to `SimilarityMetric`; `EntityTechniqueSet` extended with `sectors/countries/cves/motivation` (frozenset fields); `_holistic_score()` with adaptive weight renormalization; `compare_pair()` dispatches to holistic; `compare_against_entities()` accepts holistic enrichment params
+- `schemas.py`: `"holistic"` added to SimilarityMetric Literal
+- `compare.py`: `_actor_candidates_holistic()`, `_source_enrichment()` — actor-vs-all and custom paths both support holistic
+- Default weights: techniques 60%, sectors 15%, countries 10%, CVEs 10%, motivation 5%
+- Frontend: "Holistic" option in dropdown with contextual hint; validated live
+
+**Session 13 — Settings panel overhaul + settings API tests**
+- Settings panel: radio fieldset source selector, SourceStatusPanel with 4-metric grid (actors/campaigns/software/techniques), test connection → green success, save → flash message, load button hidden when no config, scheduler rewires on save
+- 11 new API tests for GET/PUT /api/settings, GET /api/source/status, POST /api/source/test-connection
+
+**Session 12 — Frontend dark theme from Claude Design + compare UX iteration**
+- Complete `styles.css` rewrite: dark theme CSS variables (`--bg-0` → `--bg-5`, `--accent: #ff8a4c`), Inter + JetBrains Mono fonts
+- `Sidebar`: panda-octopus logo, WORKSPACE label, RECENT section with last 2 analyses, badge counts, health-card footer
+- Compare: dynamic title "Who looks like {actor}?", `SourceProfileCard`, stepper for TopN, segmented scope buttons, `► Run comparison`
+- `ComparisonResultTabs`: compact results summary bar, `ActorProfilePanel` (expandable with description/stats/techniques), icon-only Re-run/Save buttons
+- `ComparisonRankingView`: `ScoreBadge` with % + SIMILARITY + spark bar, rank `01/RANK`, meta-pills (shared/input-only/target-only), `TacticBreakdownList` 2-column grid, `TechniqueBreakdownPanel` collapsible (kept), `ActorContextPanel` collapsible with description
+- Graph nodes: colored palette, white text, edge % labels
+- Heatmap: dark color scale (black→teal→orange), dynamic cell sizes, rotated column headers
+- TTP Profiles: layout fix, technique picker dark styling, textarea/file input dark
+
+**Session 11 — Compare UX: dynamic labels, technique breakdown, tactic filter fix, MITRE technique names**
+- `ingestion.py`: always loads techniques from `MitreSource` (fixes bad names from OpenCTI instances)
+- `ttpProfileUtils`: `techniqueName()` for sub-technique full names, `splitTactics()` for filter
+- `ActorComparisonPanel`: tactic dropdown splits compound strings, no more "execution, persistence" options
+- `ComparisonRankingView`: removed noisy inline technique preview, technique breakdown colapsable (3 columns), `ActorContextPanel` with actor description, `SharedContextRow` for shared sectors/countries, meta-pills with "TTPs" suffix
+- `database.py`: `_apply_column_migrations()` idempotent ALTER TABLE
 
 **Session 10 — fastapi 0.129.2 + pycti 7.x upgrade**
 - Updated `requirements.txt`: `fastapi>=0.129.2,<0.130.0` (unpinned minor), `uvicorn[standard]>=0.34.2`, `pycti==7.260430.0`
@@ -127,15 +167,18 @@
 - `activeSource` is fetched once on App mount from `GET /api/settings` and passed down as a prop — no global context needed at this scale
 
 ### Next steps
-- No outstanding technical debt. OpenCTI integration is complete and aligned with the live server version.
-- Future: surface enrichment data (sectors/countries/CVEs) in the Compare panel filter count / scope label so it's visible in the results header
+- Saved analyses: add re-run capability (re-execute with original parameters)
+- Explore: add enrichment-based coloring to heatmap/graph (e.g. highlight actors by sector)
+- Heatmap: show % in cells when > 25 actors (currently hidden for readability)
+- Frontend tests: no component-level tests exist yet
+- OpenCTI ICS techniques (T0xxx): currently excluded because MitreSource is always used for techniques; consider feeding OpenCTI technique names as a supplement for ICS-heavy instances
 
 ---
 
 ## Current Status
 
 Project: WhoIsWhoAPT v2
-Stage: Iteration 4 complete — OpenCTI integration validated end-to-end against live instance
+Stage: Iteration 5 complete — Multi-dimensional scoring, enriched custom profiles, dark theme, tactic breakdown correctness
 
 The system is now a functional CTI analysis tool with:
 
