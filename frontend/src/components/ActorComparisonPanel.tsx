@@ -648,6 +648,8 @@ function SavedAnalysesPanel({
   const [loadingList, setLoadingList] = useState(true);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [rerunning, setRerunning] = useState(false);
+  const [rerunResult, setRerunResult] = useState<ActorComparisonResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [deleteMessage, setDeleteMessage] = useState<string | null>(null);
   const hasSelectedAnalysisDetail = Boolean(selectedAnalysis);
@@ -745,6 +747,28 @@ function SavedAnalysesPanel({
     }
   }
 
+  async function handleRerun() {
+    if (!selectedAnalysis) return;
+    setRerunning(true);
+    setRerunResult(null);
+    setError(null);
+    try {
+      let fresh: ActorComparisonResponse;
+      const tactics = selectedAnalysis.tactics ?? undefined;
+      const targetIds = selectedAnalysis.target_ids ?? undefined;
+      if (selectedAnalysis.input_type === "actor" && selectedAnalysis.input_id) {
+        fresh = await compareActor(selectedAnalysis.input_id, selectedAnalysis.metric as SimilarityMetric, selectedAnalysis.top_n, targetIds, tactics);
+      } else {
+        fresh = await compareTTPProfile({ profileId: selectedAnalysis.input_id ?? "", metric: selectedAnalysis.metric as SimilarityMetric, topN: selectedAnalysis.top_n, targetIds, tactics });
+      }
+      setRerunResult(fresh);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Re-run failed");
+    } finally {
+      setRerunning(false);
+    }
+  }
+
   const selectedViewModel = selectedAnalysis ? savedAnalysisToViewModel(selectedAnalysis) : null;
 
   return (
@@ -816,6 +840,7 @@ function SavedAnalysesPanel({
                   onClick={() => {
                     setDeleteMessage(null);
                     setError(null);
+                    setRerunResult(null);
                     if (analysis.id !== selectedAnalysisId) {
                       setLoadingDetail(true);
                     }
@@ -876,25 +901,41 @@ function SavedAnalysesPanel({
                   </p>
                   <p>{savedAnalysisDateLabel(selectedAnalysis.created_at)}</p>
                 </div>
-                <button
-                  className="danger-action"
-                  type="button"
-                  disabled={deleting}
-                  onClick={() => void handleDeleteSelected()}
-                >
-                  <Trash2 size={16} aria-hidden="true" />
-                  <span>{deleting ? "Deleting" : "Delete"}</span>
-                </button>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    className="secondary-action"
+                    type="button"
+                    disabled={rerunning}
+                    title="Re-run with original parameters"
+                    onClick={() => void handleRerun()}
+                  >
+                    <RefreshCw size={14} aria-hidden="true" className={rerunning ? "spin" : ""} />
+                    <span>{rerunning ? "Running…" : "Re-run"}</span>
+                  </button>
+                  <button
+                    className="danger-action"
+                    type="button"
+                    disabled={deleting}
+                    onClick={() => void handleDeleteSelected()}
+                  >
+                    <Trash2 size={16} aria-hidden="true" />
+                    <span>{deleting ? "Deleting" : "Delete"}</span>
+                  </button>
+                </div>
               </div>
 
               <ComparisonResultTabs
-                comparison={selectedViewModel.comparison}
+                comparison={rerunResult ?? selectedViewModel.comparison}
                 topN={selectedViewModel.topN}
                 comparisonScopeLabel={selectedViewModel.comparisonScopeLabel}
                 tacticScopeLabel={selectedViewModel.tacticScopeLabel}
                 tactics={selectedViewModel.tactics}
                 targetIds={selectedViewModel.targetIds}
-                canSave={false}
+                canSave={Boolean(rerunResult)}
+                onAnalysisSaved={() => {
+                  setRerunResult(null);
+                  getAnalyses().then(setAnalyses).catch(() => {});
+                }}
                 techniqueLookup={techniqueLookup}
               />
             </div>

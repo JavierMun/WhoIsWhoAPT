@@ -901,6 +901,15 @@ function ProfileInspector({
           </div>
         ) : null}
 
+        {actorDetail?.description ? (
+          <div className="why-match">
+            <strong>Description</strong>
+            <p style={{ whiteSpace: "pre-wrap", lineHeight: 1.55, fontSize: "0.82rem" }}>
+              {actorDetail.description}
+            </p>
+          </div>
+        ) : null}
+
         {actorDetail ? <SoftwareList software={actorDetail.software_used} /> : null}
         {actorDetail ? (
           <EnrichmentTags

@@ -6,7 +6,7 @@ import {
   forceSimulation
 } from "d3-force";
 import { AlertCircle, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, FileJson, Loader2, Network, RefreshCw, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { computeMatrix, getClusters, getMatrixResult } from "../api/client";
 import { buildGraphData, type GraphData, type GraphLink, type GraphNode } from "../api/graphUtils";
@@ -275,6 +275,11 @@ function ForceGraph({ nodes, links }: { nodes: GraphNode[]; links: GraphLink[] }
   const [layoutLinks, setLayoutLinks] = useState<GraphLink[]>(links);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const simulationRef = useRef<{ alpha: (v: number) => any; alphaTarget: (v: number) => any; restart: () => any; stop: () => any } | null>(null);
+  const liveNodesRef = useRef<GraphNode[]>([]);
+  const dragRef = useRef<{ nodeId: string; startX: number; startY: number; nodeX: number; nodeY: number } | null>(null);
+  const svgRef = useRef<SVGSVGElement | null>(null);
 
   useEffect(() => {
     const nextNodes = nodes.map((node, index) => {
@@ -286,6 +291,8 @@ function ForceGraph({ nodes, links }: { nodes: GraphNode[]; links: GraphLink[] }
       };
     });
     const nextLinks = links.map((link) => ({ ...link }));
+    liveNodesRef.current = nextNodes;
+
     const simulation = forceSimulation<GraphNode>(nextNodes)
       .force(
         "link",
@@ -297,6 +304,8 @@ function ForceGraph({ nodes, links }: { nodes: GraphNode[]; links: GraphLink[] }
       .force("charge", forceManyBody().strength(-170))
       .force("center", forceCenter(GRAPH_WIDTH / 2, GRAPH_HEIGHT / 2))
       .force("collide", forceCollide<GraphNode>().radius(24));
+
+    simulationRef.current = simulation;
 
     let tickCount = 0;
     simulation.on("tick", () => {
@@ -313,8 +322,62 @@ function ForceGraph({ nodes, links }: { nodes: GraphNode[]; links: GraphLink[] }
 
     return () => {
       simulation.stop();
+      simulationRef.current = null;
     };
   }, [links, nodes]);
+
+  function svgPoint(e: React.PointerEvent<SVGSVGElement>): { x: number; y: number } {
+    const svg = svgRef.current;
+    if (!svg) return { x: e.clientX, y: e.clientY };
+    const pt = svg.createSVGPoint();
+    pt.x = e.clientX;
+    pt.y = e.clientY;
+    const ctm = svg.getScreenCTM();
+    const inv = ctm?.inverse();
+    if (!inv) return { x: e.clientX, y: e.clientY };
+    const transformed = pt.matrixTransform(inv);
+    // Adjust for pan + zoom
+    return {
+      x: (transformed.x - pan.x) / zoom,
+      y: (transformed.y - pan.y) / zoom
+    };
+  }
+
+  function handleNodePointerDown(e: React.PointerEvent<SVGGElement>, nodeId: string) {
+    e.stopPropagation();
+    const node = liveNodesRef.current.find((n) => n.id === nodeId);
+    if (!node) return;
+    const pt = svgPoint(e as unknown as React.PointerEvent<SVGSVGElement>);
+    dragRef.current = { nodeId, startX: pt.x, startY: pt.y, nodeX: node.x ?? 0, nodeY: node.y ?? 0 };
+    // Fix the node in place so simulation doesn't move it
+    (node as Record<string, unknown>).fx = node.x;
+    (node as Record<string, unknown>).fy = node.y;
+    simulationRef.current?.alphaTarget(0.1).restart();
+  }
+
+  function handleSvgPointerMove(e: React.PointerEvent<SVGSVGElement>) {
+    const drag = dragRef.current;
+    if (!drag) return;
+    const pt = svgPoint(e);
+    const dx = pt.x - drag.startX;
+    const dy = pt.y - drag.startY;
+    const node = liveNodesRef.current.find((n) => n.id === drag.nodeId);
+    if (!node) return;
+    (node as Record<string, unknown>).fx = drag.nodeX + dx;
+    (node as Record<string, unknown>).fy = drag.nodeY + dy;
+    simulationRef.current?.alphaTarget(0.1).restart();
+  }
+
+  function handleSvgPointerUp() {
+    const drag = dragRef.current;
+    if (!drag) return;
+    const node = liveNodesRef.current.find((n) => n.id === drag.nodeId);
+    if (node) {
+      // Keep the node fixed where user dropped it
+      simulationRef.current?.alphaTarget(0);
+    }
+    dragRef.current = null;
+  }
 
   return (
     <div className="network-canvas">
@@ -360,7 +423,16 @@ function ForceGraph({ nodes, links }: { nodes: GraphNode[]; links: GraphLink[] }
           <ArrowDown size={16} aria-hidden="true" />
         </button>
       </div>
-      <svg viewBox={`0 0 ${GRAPH_WIDTH} ${GRAPH_HEIGHT}`} role="img" aria-label="Actor similarity network graph">
+      <svg
+        ref={svgRef}
+        viewBox={`0 0 ${GRAPH_WIDTH} ${GRAPH_HEIGHT}`}
+        role="img"
+        aria-label="Actor similarity network graph"
+        style={{ cursor: dragRef.current ? "grabbing" : "default" }}
+        onPointerMove={handleSvgPointerMove}
+        onPointerUp={handleSvgPointerUp}
+        onPointerLeave={handleSvgPointerUp}
+      >
         <g transform={`translate(${pan.x} ${pan.y}) scale(${zoom})`}>
           <g>
           {layoutLinks.map((link, index) => {
@@ -386,7 +458,12 @@ function ForceGraph({ nodes, links }: { nodes: GraphNode[]; links: GraphLink[] }
           </g>
           <g>
           {layoutNodes.map((node) => (
-            <g key={node.id} transform={`translate(${node.x ?? GRAPH_WIDTH / 2}, ${node.y ?? GRAPH_HEIGHT / 2})`}>
+            <g
+              key={node.id}
+              transform={`translate(${node.x ?? GRAPH_WIDTH / 2}, ${node.y ?? GRAPH_HEIGHT / 2})`}
+              style={{ cursor: "grab" }}
+              onPointerDown={(e) => handleNodePointerDown(e, node.id)}
+            >
               <circle r={nodeRadius(node)} fill={clusterColor(node.clusterId)} className="network-node" />
               <title>{`${node.name}\nCluster ${node.clusterId}`}</title>
               <text dy={nodeRadius(node) + 13}>{shortActorName(node.name)}</text>

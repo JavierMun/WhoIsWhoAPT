@@ -5,8 +5,10 @@ import {
   groupTechniquesByTactic,
   normalizeTechniqueIds,
   parseTechniqueIds,
+  splitTactics,
   techniqueLabel,
   techniqueLookupFromList,
+  techniqueName,
   techniqueTitle,
   unknownTechniqueIds
 } from "./ttpProfileUtils";
@@ -61,12 +63,57 @@ describe("TTP profile utilities", () => {
   });
 });
 
-function technique(technique_id: string, name: string, tactic: string): TechniqueListItem {
-  return {
-    technique_id,
-    name,
-    tactic,
-    is_subtechnique: false,
-    parent_id: null
-  };
+function technique(technique_id: string, name: string, tactic: string, is_subtechnique = false, parent_id: string | null = null): TechniqueListItem {
+  return { technique_id, name, tactic, is_subtechnique, parent_id };
 }
+
+describe("splitTactics", () => {
+  it("splits a single tactic", () => {
+    expect(splitTactics("execution")).toEqual(["execution"]);
+  });
+
+  it("splits comma-separated tactics and trims whitespace", () => {
+    expect(splitTactics("execution, persistence")).toEqual(["execution", "persistence"]);
+  });
+
+  it("lowercases all tactics", () => {
+    expect(splitTactics("Execution")).toEqual(["execution"]);
+  });
+
+  it("filters empty strings", () => {
+    expect(splitTactics("")).toEqual([]);
+  });
+});
+
+describe("techniqueName", () => {
+  it("returns empty string when technique not in lookup", () => {
+    const lookup = techniqueLookupFromList([]);
+    expect(techniqueName("T9999", lookup)).toBe("");
+  });
+
+  it("returns empty string when name equals the ID (bad data guard)", () => {
+    const lookup = techniqueLookupFromList([technique("T1008", "T1008", "command-and-control")]);
+    expect(techniqueName("T1008", lookup)).toBe("");
+  });
+
+  it("returns the technique name for a top-level technique", () => {
+    const lookup = techniqueLookupFromList([technique("T1059", "Command and Scripting Interpreter", "execution")]);
+    expect(techniqueName("T1059", lookup)).toBe("Command and Scripting Interpreter");
+  });
+
+  it("returns ParentName: ChildName for sub-techniques", () => {
+    const lookup = techniqueLookupFromList([
+      technique("T1027", "Obfuscated Files or Information", "defense-evasion"),
+      technique("T1027.009", "Embedded Payloads", "defense-evasion", true, "T1027")
+    ]);
+    expect(techniqueName("T1027.009", lookup)).toBe("Obfuscated Files or Information: Embedded Payloads");
+  });
+
+  it("returns child name only when parent name equals parent ID (bad data)", () => {
+    const lookup = techniqueLookupFromList([
+      technique("T1027", "T1027", "defense-evasion"),       // bad data: name = ID
+      technique("T1027.009", "Embedded Payloads", "defense-evasion", true, "T1027")
+    ]);
+    expect(techniqueName("T1027.009", lookup)).toBe("Embedded Payloads");
+  });
+});

@@ -1,8 +1,44 @@
 # DEV STATE
 
-## Last updated: 2026-05-07
+## Last updated: 2026-05-07 (ongoing)
 
 ### Completed this session
+
+**Session 23 — Navigator export tactic field + actor description in TTP Profiles + D3 drag + ICS techniques + saved analysis re-run + frontend tests**
+*(see tasks below — to be filled after completion)*
+
+**Session 22 — Export fixes + saved analyses visibility**
+- CSV export: info header block + columns (rank, actor_name, similarity_pct, shared_ttp_count, input/target only counts, IDs, names, software); scores as `%` strings
+- Navigator comparison: `gradient` field so scores map to visible colors; source-only techniques in blue `#4a9eff`; legend items; sorting/layout fields
+- Navigator individual profile (TTP Profiles): techniques colored orange `#ff8a4c` with comment and layout
+- Saved analyses list: explicit `color: var(--text-1)` on buttons (was near-invisible); `background: var(--bg-3)` + border; 3-line layout (name / meta / date)
+
+**Session 21 — Explore all-vs-all + heatmap fixes + Settings dark theme + metric options**
+- `ActorSimilarityPanel`: extracts all unique actor pairs from matrix, ranks by score, slider threshold (0-80%), paginated 50-at-a-time; true all-vs-all — no actor selection needed
+- Heatmap: removed "Search in matrix" filter; legend now shows real gradient bar (black→teal→orange) with 0/25/50/75/100% ticks; single-actor filter result shows friendly message
+- All metric selectors (Heatmap, Graph, SimilarityPanel, ActorComparisonPanel): include Holistic option
+- Settings stat cards: replaced hardcoded light backgrounds (`#f7f9fa`) with CSS variables (`--bg-3`, `--accent-text`, `--text-3`); environment badge uses `.metric-label` class
+
+**Session 20 — Tactic breakdown correctness + NULL coercion fix**
+- `similarity.py`: `_primary_tactic_for()` for grouping (first individual tactic); shared counts now sum to pill total; all ~15 tactics shown (no more 6-row limit)
+- `schemas.py`: `@field_validator` coerces NULL DB values to `[]` for CustomTTPSet list fields
+
+**Session 19 — Custom TTP profiles enrichment + holistic scoring for custom profiles**
+- `CustomTTPSet`: `target_sectors`, `target_countries`, `cves_exploited`, `motivation` columns + auto-migration
+- `compare.py`: holistic for custom profiles uses their enrichment as source input
+- Frontend: `TTPProfilePayload`; 4 new form inputs; inspector shows `EnrichmentTags`; `openEditForm` pre-fills
+
+**Session 18 — Holistic similarity metric**
+- `"holistic"` metric: techniques 60% + sectors 15% + countries 10% + CVEs 10% + motivation 5%; adaptive weight renormalization when dimensions absent
+- `EntityTechniqueSet` extended with enrichment frozenset fields
+- Actor-vs-all and custom comparison paths both support holistic
+
+**Session 17 — Frontend dark theme, compare UX, explore improvements**
+- Complete `styles.css` dark theme (CSS variables, Inter + JetBrains Mono)
+- Sidebar: panda logo, WORKSPACE/RECENT sections, badge counts, health-card footer
+- Compare: dynamic title, SourceProfileCard, stepper TopN, segmented scope buttons, results summary bar, ActorProfilePanel expandable, technique breakdown, SharedContextRow, ActorContextPanel
+- Graph/Heatmap: colored nodes + edge % labels, real color scale, cell size adapts to actor count
+- TTP Profiles: layout fix, technique picker dark styling
 
 **Session 16 — Tactic breakdown correctness**
 - `similarity.py`: `_primary_tactic_for()` splits comma-separated tactic strings and returns the first individual tactic; `tactic_breakdown()` now uses it so each technique belongs to exactly one bucket and shared counts sum to the pill total; `_tactic_for()` unchanged (still used for scoring)
@@ -166,12 +202,13 @@
 - Report importer uses two-strategy technique extraction: primary (embedded objects in report.read()) → fallback (containedBy filter on attack_pattern.list())
 - `activeSource` is fetched once on App mount from `GET /api/settings` and passed down as a prop — no global context needed at this scale
 
-### Next steps
+### Next steps (active)
+- TTP Profiles inspector: show actor description (same as Compare's ActorProfilePanel)
+- Explore network graph: real D3 drag-to-reposition nodes
+- OpenCTI ICS techniques (T0xxx): supplement MitreSource with OpenCTI attack patterns for ICS-only techniques
+- Frontend component tests: no React component tests exist yet
 - Saved analyses: add re-run capability (re-execute with original parameters)
-- Explore: add enrichment-based coloring to heatmap/graph (e.g. highlight actors by sector)
-- Heatmap: show % in cells when > 25 actors (currently hidden for readability)
-- Frontend tests: no component-level tests exist yet
-- OpenCTI ICS techniques (T0xxx): currently excluded because MitreSource is always used for techniques; consider feeding OpenCTI technique names as a supplement for ICS-heavy instances
+- Navigator export: add `tactic` field per technique (better Navigator layout)
 
 ---
 

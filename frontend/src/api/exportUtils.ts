@@ -25,6 +25,7 @@ export function downloadComparisonExport(
   topN = comparison.results.length,
   techniqueLookup?: TechniqueLookup
 ): void {
+  // techniqueLookup used for tactic field in Navigator and names in CSV
   const payload = exportPayload(comparison, source, topN);
   const filenameBase = safeFilename(`${comparison.input_name}-${comparison.metric}`);
 
@@ -37,7 +38,7 @@ export function downloadComparisonExport(
     downloadText(
       `${filenameBase}-navigator.json`,
       "application/json",
-      JSON.stringify(comparisonNavigatorLayer(payload), null, 2)
+      JSON.stringify(comparisonNavigatorLayer(payload, techniqueLookup), null, 2)
     );
     return;
   }
@@ -115,8 +116,8 @@ function formatTechnique(techniqueId: string, techniqueLookup?: TechniqueLookup)
   return techniqueLookup ? techniqueLabel(techniqueId, techniqueLookup) : techniqueId;
 }
 
-function comparisonNavigatorLayer(payload: ExportPayload): Record<string, unknown> {
-  const techniques = navigatorTechniques(payload.comparison.results);
+function comparisonNavigatorLayer(payload: ExportPayload, techniqueLookup?: TechniqueLookup): Record<string, unknown> {
+  const techniques = navigatorTechniques(payload.comparison.results, techniqueLookup);
   const maxScore = Math.max(1, ...techniques.map((t) => t.score as number));
 
   return {
@@ -149,7 +150,7 @@ function comparisonNavigatorLayer(payload: ExportPayload): Record<string, unknow
   };
 }
 
-function navigatorTechniques(results: ComparisonResult[]): Array<Record<string, unknown>> {
+function navigatorTechniques(results: ComparisonResult[], techniqueLookup?: TechniqueLookup): Array<Record<string, unknown>> {
   // Shared: technique appears in at least one result's shared_techniques
   const matchedByTechnique = new Map<string, string[]>();
   results.forEach((result) => {
@@ -164,12 +165,21 @@ function navigatorTechniques(results: ComparisonResult[]): Array<Record<string, 
     results.flatMap((r) => r.unique_to_input).filter((id) => !sharedAll.has(id))
   );
 
+  function tacticFor(techniqueID: string): string | undefined {
+    const t = techniqueLookup?.get(techniqueID);
+    if (!t?.tactic) return undefined;
+    // Use the first individual tactic (split by comma)
+    return t.tactic.split(",")[0].trim().toLowerCase().replace(/\s+/g, "-") || undefined;
+  }
+
   const sharedEntries = Array.from(matchedByTechnique.entries())
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([techniqueID, matchedNames]) => {
       const sorted = matchedNames.sort((a, b) => a.localeCompare(b));
+      const tactic = tacticFor(techniqueID);
       return {
         techniqueID,
+        ...(tactic ? { tactic } : {}),
         score: sorted.length,
         enabled: true,
         comment: `Shared with (${sorted.length}): ${sorted.join(", ")}`
@@ -178,12 +188,16 @@ function navigatorTechniques(results: ComparisonResult[]): Array<Record<string, 
 
   const sourceOnlyEntries = Array.from(sourceOnlyIds)
     .sort((a, b) => a.localeCompare(b))
-    .map((techniqueID) => ({
-      techniqueID,
-      color: "#4a9eff",  // blue — source-only (not shared with any matched actor)
-      enabled: true,
-      comment: "Source-only — not found in any of the matched actors"
-    }));
+    .map((techniqueID) => {
+      const tactic = tacticFor(techniqueID);
+      return {
+        techniqueID,
+        ...(tactic ? { tactic } : {}),
+        color: "#4a9eff",
+        enabled: true,
+        comment: "Source-only — not found in any of the matched actors"
+      };
+    });
 
   return [...sharedEntries, ...sourceOnlyEntries];
 }
