@@ -29,7 +29,10 @@ dist/
 *.swp
 *.swo
 
-# Claude Code internal state
+# Internal development notes
+docs/
+
+# Local tooling state
 .claude/
 
 # OS
