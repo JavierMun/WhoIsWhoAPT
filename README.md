@@ -4,10 +4,15 @@
 ## About
 
 <p align="center">
-  <img width="500" height="324" src="https://user-images.githubusercontent.com/113699569/191086330-69b67599-0c99-40b9-a3f2-7457227ebb2c.png">
+  <img width="400" height="400" src="assets/logo.png">
 </p>
 
-**WhoIsWhoAPT** is a threat intelligence analysis tool for comparing threat actors and TTP profiles using behavioral similarity. It helps malware analysts, threat hunters and researchers to interrelate APT groups (Advanced Persistent Threats) based on their tactics, techniques and procedures (TTP) from **MITRE ATT&CK®** (https://attack.mitre.org/) and **OpenCTI**, obtaining their relationship index and answering: *"Which known groups behave most like this incident?"* — without relying on labels, reporting bias, or manual cross-referencing.
+**WhoIsWhoAPT** is a threat intelligence analysis tool that helps malware analysts, threat hunters 
+and researchers to interrelate APT groups (Advanced Persistent Threats) based on their tactics, 
+techniques and procedures (TTP) from **MITRE ATT&CK®** (https://attack.mitre.org/) and/or 
+**OpenCTI**, obtaining their relationship index. It also allows you to compare your own TTP sets 
+against known threat actors, explore global similarity across all groups, and build custom profiles 
+from Navigator layers or OpenCTI reports.
 
 Hope you can find my tool useful and if you want to report any bugs, add/suggest new features or ask any questions do not hesitate to contact me on LinkedIn.
 <p>
@@ -53,10 +58,11 @@ Hope you can find my tool useful and if you want to report any bugs, add/suggest
 - Manual entry, ATT&CK Navigator import, or OpenCTI report import
 - Enrichment metadata: target sectors, countries, CVEs, motivation
 - Save and reuse across analyses
+- Inspect full profile details for both custom and built-in actors
 
 **Explore** — global similarity analysis across all actors:
 - Similarity heatmap with PNG export
-- Force-directed network graph with zoom, pan, drag
+- Force-directed network graph with zoom, pan, drag and PNG export
 - All-vs-all pair ranking with threshold slider
 - Enrichment filtering on graph and heatmap
 
