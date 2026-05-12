@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import sys
 import types
-from collections.abc import Generator
 from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
@@ -33,14 +32,13 @@ from app.database import Base  # noqa: E402
 from app.errors import AppError  # noqa: E402
 from app.ingestion import _replace_source_data, get_source_adapter  # noqa: E402
 from app.models import entities  # noqa: E402
+from app.models.schemas import Actor as ActorSchema  # noqa: E402
 from app.models.schemas import (  # noqa: E402
     ApplicationSettings,
     OpenCTISettings,
     Technique,
     TechniqueRef,
 )
-from app.models.schemas import Actor as ActorSchema  # noqa: E402
-
 
 # ---------------------------------------------------------------------------
 # Helpers

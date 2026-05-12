@@ -9,7 +9,7 @@ from __future__ import annotations
 import sys
 import types
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -30,7 +30,6 @@ from app.sources.opencti import (  # noqa: E402
     _tactic_from_item,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helper: build a fake OpenCTI attack-pattern dict
 # ---------------------------------------------------------------------------
@@ -44,10 +43,7 @@ def _ap(
     tactics: list[str] | None = None,
     kill_chain_key: str = "killChainPhases",
 ) -> dict[str, Any]:
-    phases = [
-        {"kill_chain_name": "mitre-attack", "phase_name": tactic}
-        for tactic in (tactics or ["execution"])
-    ]
+    phases = [{"kill_chain_name": "mitre-attack", "phase_name": tactic} for tactic in (tactics or ["execution"])]
     return {
         "id": octi_id,
         "x_mitre_id": mitre_id,

@@ -12,7 +12,6 @@ from __future__ import annotations
 import sys
 import types
 from collections.abc import Generator
-from typing import Any
 from unittest.mock import MagicMock, patch
 
 from fastapi.testclient import TestClient
@@ -22,7 +21,6 @@ from sqlalchemy.pool import StaticPool
 
 from app.database import Base, get_db_session
 from app.dependencies import get_settings_store
-from app.errors import AppError
 from app.main import create_app
 from app.models.schemas import ApplicationSettings, OpenCTISettings
 
@@ -163,7 +161,12 @@ def test_put_settings_switches_back_to_mitre() -> None:
         json={
             "active_source": "mitre",
             "mitre": {"auto_update": True, "update_frequency_hours": 168},
-            "opencti": {"url": "http://octi.test/", "api_token": "tok", "auto_update": True, "update_frequency_hours": 24},
+            "opencti": {
+                "url": "http://octi.test/",
+                "api_token": "tok",
+                "auto_update": True,
+                "update_frequency_hours": 24,
+            },
         },
     )
 
