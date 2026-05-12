@@ -181,7 +181,9 @@ class SourceLoadStatus(BaseModel):
     technique_count: int = 0
 
 
-SimilarityMetric = Literal["jaccard", "jaccard_weighted", "tactic_weighted_jaccard", "software_weighted_jaccard", "holistic"]
+SimilarityMetric = Literal[
+    "jaccard", "jaccard_weighted", "tactic_weighted_jaccard", "software_weighted_jaccard", "holistic"
+]
 
 
 class TacticBreakdown(BaseModel):
@@ -279,8 +281,8 @@ class CustomTTPSet(BaseModel):
 
     @field_validator("technique_ids", "target_sectors", "target_countries", "cves_exploited", mode="before")
     @classmethod
-    def coerce_none_to_list(cls, v: object) -> list:
-        return v if v is not None else []
+    def coerce_none_to_list(cls, v: object) -> list[Any]:
+        return v if v is not None else []  # type: ignore[return-value]
 
 
 class CustomComparisonRequest(BaseModel):

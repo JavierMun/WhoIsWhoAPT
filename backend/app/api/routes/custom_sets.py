@@ -102,7 +102,9 @@ def _validate_technique_ids(session: Session, technique_ids: list[str]) -> None:
         raise AppError("Custom TTP set must include at least one technique", status_code=422)
 
     existing_ids = set(
-        session.scalars(select(entities.Technique.technique_id).where(entities.Technique.technique_id.in_(technique_ids)))
+        session.scalars(
+            select(entities.Technique.technique_id).where(entities.Technique.technique_id.in_(technique_ids))
+        )
     )
     invalid_ids = sorted(set(technique_ids) - existing_ids)
     if invalid_ids:

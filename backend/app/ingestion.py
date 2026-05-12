@@ -7,7 +7,15 @@ from sqlalchemy.orm import Session
 
 from app.errors import AppError
 from app.models import entities
-from app.models.schemas import Actor, ApplicationSettings, Campaign, Software, SourceLoadStatus, Technique
+from app.models.schemas import (
+    Actor,
+    ApplicationSettings,
+    Campaign,
+    PrimarySourceName,
+    Software,
+    SourceLoadStatus,
+    Technique,
+)
 from app.settings_store import SettingsStore
 from app.sources.base import BaseSource
 from app.sources.mitre import MitreSource
@@ -81,7 +89,7 @@ def load_active_source(session: Session, settings_store: SettingsStore) -> Sourc
         raise AppError("Source ingestion failed", status_code=500, detail=str(exc)) from exc
 
 
-def read_source_status(session: Session, source_name: str) -> SourceLoadStatus:
+def read_source_status(session: Session, source_name: PrimarySourceName) -> SourceLoadStatus:
     """Return persisted ingestion status for a source."""
     status = session.get(entities.SourceLoadStatus, source_name)
     if status is None:
@@ -136,7 +144,7 @@ def _upsert_status(session: Session, source_name: str, **values: object) -> enti
 def _status_schema(status: entities.SourceLoadStatus) -> SourceLoadStatus:
     """Convert an ORM status row to its API schema."""
     return SourceLoadStatus(
-        source=status.source,
+        source=status.source,  # type: ignore[arg-type]
         status=status.status,
         version=status.version,
         last_loaded_at=status.last_loaded_at,

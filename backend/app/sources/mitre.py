@@ -11,7 +11,7 @@ import json
 from collections import defaultdict
 from datetime import date, datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 from urllib.error import URLError
 from urllib.request import urlopen
 from uuid import NAMESPACE_URL, uuid5
@@ -20,7 +20,7 @@ from app.errors import AppError
 from app.models.schemas import Actor, Campaign, Software, Technique, TechniqueRef
 from app.sources.base import BaseSource
 
-MITRE_SOURCE = "mitre"
+MITRE_SOURCE: Literal["mitre"] = "mitre"
 ENTERPRISE_ATTACK_URL = (
     "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json"
 )

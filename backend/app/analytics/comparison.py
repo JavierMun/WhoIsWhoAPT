@@ -16,14 +16,16 @@ from app.analytics.similarity import (
     weighted_jaccard_similarity,
 )
 
-SimilarityMetric = Literal["jaccard", "jaccard_weighted", "tactic_weighted_jaccard", "software_weighted_jaccard", "holistic"]
+SimilarityMetric = Literal[
+    "jaccard", "jaccard_weighted", "tactic_weighted_jaccard", "software_weighted_jaccard", "holistic"
+]
 
 # Default dimension weights for holistic scoring
 HOLISTIC_WEIGHTS: dict[str, float] = {
     "techniques": 0.60,
-    "sectors":    0.15,
-    "countries":  0.10,
-    "cves":       0.10,
+    "sectors": 0.15,
+    "countries": 0.10,
+    "cves": 0.10,
     "motivation": 0.05,
 }
 
@@ -129,8 +131,12 @@ def compare_pair(
 
     if metric == "holistic":
         score = _holistic_score(
-            input_techniques, candidate,
-            input_sectors, input_countries, input_cves, input_motivation,
+            input_techniques,
+            candidate,
+            input_sectors,
+            input_countries,
+            input_cves,
+            input_motivation,
         )
         technique_score = jaccard_similarity(input_techniques, candidate.techniques)
         software_score = jaccard_similarity(input_software or set(), candidate.software)

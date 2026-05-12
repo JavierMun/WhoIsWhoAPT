@@ -76,14 +76,16 @@ def compare_actor(
             input_name=actor.name,
             input_type="actor",
             metric=request.metric,
-            results=[_result_schema(result, software_lookup, explanation=explanation, enrichment=enr.get(result.matched_entity_id))],
+            results=[
+                _result_schema(
+                    result, software_lookup, explanation=explanation, enrichment=enr.get(result.matched_entity_id)
+                )
+            ],
         )
 
     is_holistic = request.metric == "holistic"
     candidates = (
-        _actor_candidates_holistic(session, active_source)
-        if is_holistic
-        else _actor_candidates(session, active_source)
+        _actor_candidates_holistic(session, active_source) if is_holistic else _actor_candidates(session, active_source)
     )
     if request.target_ids is not None:
         candidates = _target_actor_candidates(candidates, request.target_ids)
@@ -173,9 +175,7 @@ def compare_custom_techniques(
     tactic_scope = _normalize_tactic_scope(request.tactics)
     is_holistic = request.metric == "holistic"
     candidates = (
-        _actor_candidates_holistic(session, active_source)
-        if is_holistic
-        else _actor_candidates(session, active_source)
+        _actor_candidates_holistic(session, active_source) if is_holistic else _actor_candidates(session, active_source)
     )
     if isinstance(request, CustomComparisonRequest) and request.target_ids is not None:
         candidates = _target_actor_candidates(candidates, request.target_ids)
@@ -316,7 +316,9 @@ def _validate_technique_ids(session: Session, technique_ids: list[str]) -> None:
 
     requested_ids = set(technique_ids)
     existing_ids = set(
-        session.scalars(select(entities.Technique.technique_id).where(entities.Technique.technique_id.in_(requested_ids)))
+        session.scalars(
+            select(entities.Technique.technique_id).where(entities.Technique.technique_id.in_(requested_ids))
+        )
     )
     invalid_ids = sorted(requested_ids - existing_ids)
     if invalid_ids:
@@ -448,9 +450,7 @@ def _enrichment_lookup(session: Session, actor_ids: list[str]) -> dict[str, Acto
     """Batch-fetch enrichment data for a list of actor IDs in one query."""
     if not actor_ids:
         return {}
-    rows = session.scalars(
-        select(entities.Actor).where(entities.Actor.id.in_(actor_ids))
-    ).all()
+    rows = session.scalars(select(entities.Actor).where(entities.Actor.id.in_(actor_ids))).all()
     return {
         row.id: ActorEnrichment(
             description=row.description,

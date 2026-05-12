@@ -3,19 +3,15 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, status
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.database import get_db_session
 from app.dependencies import get_settings_store
 from app.errors import AppError
 from app.ingestion import load_active_source, read_source_status
-from app.models import entities
 from app.models.schemas import (
-
     ConnectionTestRequest,
     ConnectionTestResult,
-
     OpenCTIReport,
     ReportTechniquesResponse,
     SourceLoadStatus,
@@ -60,7 +56,7 @@ def search_reports(
 
     adapter = OpenCTIAdapter(str(cfg.url), cfg.api_token)
     results = adapter.search_reports(q)
-    return [OpenCTIReport(**r) for r in results]
+    return [OpenCTIReport.model_validate(r) for r in results]
 
 
 @router.get("/reports/{report_id}/techniques", response_model=ReportTechniquesResponse)
@@ -103,5 +99,3 @@ def test_connection(body: ConnectionTestRequest) -> ConnectionTestResult:
         return ConnectionTestResult(ok=False, detail=exc.message)
     except Exception as exc:
         return ConnectionTestResult(ok=False, detail=str(exc))
-
-

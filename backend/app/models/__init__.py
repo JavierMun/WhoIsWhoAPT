@@ -1,2 +1,1 @@
 """SQLAlchemy and Pydantic models."""
-

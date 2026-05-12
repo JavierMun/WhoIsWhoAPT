@@ -10,7 +10,7 @@ that Attack-Pattern objects carry an x_mitre_id field (e.g. "T1059.001").
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
-from typing import Any
+from typing import Any, Literal
 from uuid import NAMESPACE_URL, uuid5
 
 from pycti import OpenCTIApiClient
@@ -19,7 +19,7 @@ from app.errors import AppError
 from app.models.schemas import Actor, Campaign, Software, Technique, TechniqueRef
 from app.sources.base import BaseSource
 
-OPENCTI_SOURCE = "opencti"
+OPENCTI_SOURCE: Literal["opencti"] = "opencti"
 
 
 # ---------------------------------------------------------------------------
@@ -60,13 +60,15 @@ def _tactic_from_item(item: dict[str, Any]) -> str:
     duplicate entries after dedup.
     """
     phases = item.get("killChainPhases") or item.get("kill_chain_phases") or []
-    tactics = sorted({
-        p["phase_name"].strip().lower()
-        for p in phases
-        if isinstance(p, dict)
-        and (p.get("kill_chain_name") or "").startswith("mitre-attack")
-        and p.get("phase_name")
-    })
+    tactics = sorted(
+        {
+            p["phase_name"].strip().lower()
+            for p in phases
+            if isinstance(p, dict)
+            and (p.get("kill_chain_name") or "").startswith("mitre-attack")
+            and p.get("phase_name")
+        }
+    )
     return ", ".join(tactics) if tactics else "unknown"
 
 
@@ -130,11 +132,7 @@ def _targets_rels(client: OpenCTIApiClient) -> list[dict[str, Any]]:
 
 def _build_ap_mitre_map(ap_list: list[dict[str, Any]]) -> dict[str, str]:
     """Map OpenCTI attack-pattern ID → ATT&CK technique ID (T-numbers only)."""
-    return {
-        item["id"]: item["x_mitre_id"]
-        for item in ap_list
-        if (item.get("x_mitre_id") or "").startswith("T")
-    }
+    return {item["id"]: item["x_mitre_id"] for item in ap_list if (item.get("x_mitre_id") or "").startswith("T")}
 
 
 def _build_technique_refs(
@@ -201,13 +199,9 @@ class OpenCTIAdapter(BaseSource):
                         ssl_verify=True,
                     )
                 except Exception as exc:
-                    raise AppError(
-                        f"Failed to initialise OpenCTI client: {exc}", status_code=400
-                    ) from exc
+                    raise AppError(f"Failed to initialise OpenCTI client: {exc}", status_code=400) from exc
             except Exception as exc:
-                raise AppError(
-                    f"Failed to initialise OpenCTI client: {exc}", status_code=400
-                ) from exc
+                raise AppError(f"Failed to initialise OpenCTI client: {exc}", status_code=400) from exc
         return self._client
 
     # ------------------------------------------------------------------
@@ -240,13 +234,11 @@ class OpenCTIAdapter(BaseSource):
         try:
             raw: list[dict[str, Any]] = self._get_client().attack_pattern.list(getAll=True) or []
         except Exception as exc:
-            raise AppError(
-                f"Failed to fetch attack patterns from OpenCTI: {exc}", status_code=500
-            ) from exc
+            raise AppError(f"Failed to fetch attack patterns from OpenCTI: {exc}", status_code=500) from exc
 
         techniques: list[Technique] = []
         for item in raw:
-            mitre_id: str = (item.get("x_mitre_id") or "")
+            mitre_id: str = item.get("x_mitre_id") or ""
             if not mitre_id.startswith("T"):
                 continue
             is_sub = "." in mitre_id
@@ -272,9 +264,7 @@ class OpenCTIAdapter(BaseSource):
         try:
             ap_list: list[dict[str, Any]] = client.attack_pattern.list(getAll=True) or []
         except Exception as exc:
-            raise AppError(
-                f"Failed to fetch attack patterns from OpenCTI: {exc}", status_code=500
-            ) from exc
+            raise AppError(f"Failed to fetch attack patterns from OpenCTI: {exc}", status_code=500) from exc
         ap_mitre_map = _build_ap_mitre_map(ap_list)
 
         # Relationships used by actors
@@ -326,9 +316,7 @@ class OpenCTIAdapter(BaseSource):
         try:
             raw: list[dict[str, Any]] = client.intrusion_set.list(getAll=True) or []
         except Exception as exc:
-            raise AppError(
-                f"Failed to fetch actors from OpenCTI: {exc}", status_code=500
-            ) from exc
+            raise AppError(f"Failed to fetch actors from OpenCTI: {exc}", status_code=500) from exc
 
         actors: list[Actor] = []
         for item in raw:
@@ -343,9 +331,7 @@ class OpenCTIAdapter(BaseSource):
                     name=item.get("name", ""),
                     aliases=_aliases(item),
                     description=item.get("description"),
-                    last_updated=_parse_datetime(
-                        item.get("updated_at") or item.get("modified")
-                    ),
+                    last_updated=_parse_datetime(item.get("updated_at") or item.get("modified")),
                     techniques=_build_technique_refs(actor_ap_rels, ap_mitre_map, opencti_id),
                     campaigns=campaigns_by_actor.get(opencti_id, []),
                     software_used=actor_software.get(opencti_id, []),
@@ -376,11 +362,14 @@ class OpenCTIAdapter(BaseSource):
         # Targets relationships for campaigns
         campaign_target_rels: list[dict[str, Any]] = []
         try:
-            campaign_target_rels = client.stix_core_relationship.list(
-                relationship_type="targets",
-                fromTypes=["Campaign"],
-                getAll=True,
-            ) or []
+            campaign_target_rels = (
+                client.stix_core_relationship.list(
+                    relationship_type="targets",
+                    fromTypes=["Campaign"],
+                    getAll=True,
+                )
+                or []
+            )
         except Exception:
             pass
 
@@ -419,9 +408,7 @@ class OpenCTIAdapter(BaseSource):
         try:
             raw: list[dict[str, Any]] = client.campaign.list(getAll=True) or []
         except Exception as exc:
-            raise AppError(
-                f"Failed to fetch campaigns from OpenCTI: {exc}", status_code=500
-            ) from exc
+            raise AppError(f"Failed to fetch campaigns from OpenCTI: {exc}", status_code=500) from exc
 
         campaigns: list[Campaign] = []
         for item in raw:
@@ -436,9 +423,7 @@ class OpenCTIAdapter(BaseSource):
                     name=item.get("name", ""),
                     aliases=_aliases(item),
                     description=item.get("description"),
-                    last_updated=_parse_datetime(
-                        item.get("updated_at") or item.get("modified")
-                    ),
+                    last_updated=_parse_datetime(item.get("updated_at") or item.get("modified")),
                     actor_ids=campaign_actors.get(opencti_id, []),
                     techniques=_build_technique_refs(campaign_ap_rels, ap_mitre_map, opencti_id),
                     software_used=[],
@@ -490,9 +475,7 @@ class OpenCTIAdapter(BaseSource):
                         name=item.get("name", ""),
                         aliases=_aliases(item),
                         description=item.get("description"),
-                        last_updated=_parse_datetime(
-                            item.get("updated_at") or item.get("modified")
-                        ),
+                        last_updated=_parse_datetime(item.get("updated_at") or item.get("modified")),
                         software_type=sw_type,  # type: ignore[arg-type]
                         techniques=_build_technique_refs(sw_ap_rels, ap_mitre_map, opencti_id),
                         actor_ids=sw_actors.get(opencti_id, []),
@@ -503,16 +486,12 @@ class OpenCTIAdapter(BaseSource):
         try:
             _normalize(client.malware.list(getAll=True) or [], "malware")
         except Exception as exc:
-            raise AppError(
-                f"Failed to fetch malware from OpenCTI: {exc}", status_code=500
-            ) from exc
+            raise AppError(f"Failed to fetch malware from OpenCTI: {exc}", status_code=500) from exc
 
         try:
             _normalize(client.tool.list(getAll=True) or [], "tool")
         except Exception as exc:
-            raise AppError(
-                f"Failed to fetch tools from OpenCTI: {exc}", status_code=500
-            ) from exc
+            raise AppError(f"Failed to fetch tools from OpenCTI: {exc}", status_code=500) from exc
 
         return software_items
 
@@ -526,9 +505,7 @@ class OpenCTIAdapter(BaseSource):
         try:
             raw = client.report.list(search=query, first=25) or []
         except Exception as exc:
-            raise AppError(
-                f"Failed to search OpenCTI reports: {exc}", status_code=500
-            ) from exc
+            raise AppError(f"Failed to search OpenCTI reports: {exc}", status_code=500) from exc
         return [
             {
                 "id": r.get("id", ""),
@@ -557,6 +534,7 @@ class OpenCTIAdapter(BaseSource):
             raise AppError(f"Report not found: {report_id}", status_code=404)
 
         import re as _re
+
         _MITRE_ID_RE = _re.compile(r"^T\d{4}(?:\.\d{3})?$")
 
         report_name: str = report.get("name", "")
@@ -574,16 +552,19 @@ class OpenCTIAdapter(BaseSource):
         # Strategy 2: containedBy filter (may not work in all pycti/OpenCTI versions)
         if not technique_ids:
             try:
-                aps = client.attack_pattern.list(
-                    filters={
-                        "mode": "and",
-                        "filters": [{"key": "containedBy", "values": [report_id]}],
-                        "filterGroups": [],
-                    },
-                    getAll=True,
-                ) or []
+                aps = (
+                    client.attack_pattern.list(
+                        filters={
+                            "mode": "and",
+                            "filters": [{"key": "containedBy", "values": [report_id]}],
+                            "filterGroups": [],
+                        },
+                        getAll=True,
+                    )
+                    or []
+                )
                 for ap in aps:
-                    mitre_id = (ap.get("x_mitre_id") or ap.get("name") or "")
+                    mitre_id = ap.get("x_mitre_id") or ap.get("name") or ""
                     if _MITRE_ID_RE.match(mitre_id):
                         technique_ids.append(mitre_id)
             except Exception:
@@ -594,10 +575,9 @@ class OpenCTIAdapter(BaseSource):
         if not technique_ids:
             obj_ids = report.get("objectsIds", []) or []
             ap_ids_in_report = [
-                obj.get("id") for obj in (report.get("objects", []) or [])
-                if isinstance(obj, dict)
-                and obj.get("entity_type") == "Attack-Pattern"
-                and obj.get("id")
+                obj.get("id")
+                for obj in (report.get("objects", []) or [])
+                if isinstance(obj, dict) and obj.get("entity_type") == "Attack-Pattern" and obj.get("id")
             ]
             if not ap_ids_in_report and obj_ids:
                 # objectsIds contains all referenced object IDs; filter for known AP IDs
@@ -606,7 +586,7 @@ class OpenCTIAdapter(BaseSource):
                 try:
                     ap_full = client.attack_pattern.read(id=ap_id)
                     if ap_full:
-                        mitre_id = (ap_full.get("x_mitre_id") or ap_full.get("name") or "")
+                        mitre_id = ap_full.get("x_mitre_id") or ap_full.get("name") or ""
                         if _MITRE_ID_RE.match(mitre_id):
                             technique_ids.append(mitre_id)
                 except Exception:

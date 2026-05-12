@@ -12,4 +12,3 @@ def get_app_config() -> AppConfig:
 def get_settings_store() -> SettingsStore:
     """Return the settings persistence service."""
     return SettingsStore(get_config().settings_file)
-

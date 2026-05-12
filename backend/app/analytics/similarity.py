@@ -143,11 +143,13 @@ def tactic_breakdown(
     breakdown: list[TacticBreakdown] = []
     for tactic in tactics:
         input_for_tactic = {
-            technique_id for technique_id in input_techniques
+            technique_id
+            for technique_id in input_techniques
             if _primary_tactic_for(technique_id, technique_tactics) == tactic
         }
         matched_for_tactic = {
-            technique_id for technique_id in matched_techniques
+            technique_id
+            for technique_id in matched_techniques
             if _primary_tactic_for(technique_id, technique_tactics) == tactic
         }
         union_for_tactic = input_for_tactic | matched_for_tactic

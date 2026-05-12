@@ -26,9 +26,7 @@ def update_settings(
     """Persist application settings and return the saved value."""
     saved = store.save(settings)
     hours = (
-        saved.opencti.update_frequency_hours
-        if saved.active_source == "opencti"
-        else saved.mitre.update_frequency_hours
+        saved.opencti.update_frequency_hours if saved.active_source == "opencti" else saved.mitre.update_frequency_hours
     )
     scheduler.reschedule(hours)
     return saved

@@ -35,4 +35,3 @@ class SettingsStore:
             config_file.write(settings.model_dump_json(indent=2))
             config_file.write("\n")
         return settings
-
