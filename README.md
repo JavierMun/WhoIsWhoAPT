@@ -1,8 +1,25 @@
-# WhoIsWhoAPT
+# WhoIsWhoAPT [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0) [![Open Source Love](https://badges.frapsoft.com/os/v1/open-source.png?v=103)](https://github.com/ellerbrock/open-source-badges/)
 
-A threat intelligence analysis tool for comparing threat actors and TTP profiles using behavioral similarity.
 
-Analysts use it to answer: *"Which known groups behave most like this incident?"* — without relying on labels, reporting bias, or manual cross-referencing.
+## About
+
+<p align="center">
+  <img width="400" height="400" src="assets/logo.png">
+</p>
+
+**WhoIsWhoAPT** is a threat intelligence analysis tool that helps malware analysts, threat hunters 
+and researchers to interrelate APT groups (Advanced Persistent Threats) based on their tactics, 
+techniques and procedures (TTP) from **MITRE ATT&CK®** (https://attack.mitre.org/) and/or 
+**OpenCTI**, obtaining their relationship index. It also allows you to compare your own TTP sets 
+against known threat actors, explore global similarity across all groups, and build custom profiles 
+from Navigator layers or OpenCTI reports.
+
+Hope you can find my tool useful and if you want to report any bugs, add/suggest new features or ask any questions do not hesitate to contact me on LinkedIn.
+<p>
+  <a href="https://www.linkedin.com/in/javier-mu%C3%B1oz-alc%C3%A1zar-644b11162" rel="nofollow noreferrer">
+    <img src="https://i.stack.imgur.com/gVE0j.png" alt="linkedin"> My LinkedIn
+  </a>
+</p>
 
 ---
 
@@ -41,10 +58,11 @@ Analysts use it to answer: *"Which known groups behave most like this incident?"
 - Manual entry, ATT&CK Navigator import, or OpenCTI report import
 - Enrichment metadata: target sectors, countries, CVEs, motivation
 - Save and reuse across analyses
+- Inspect full profile details for both custom and built-in actors
 
 **Explore** — global similarity analysis across all actors:
 - Similarity heatmap with PNG export
-- Force-directed network graph with zoom, pan, drag
+- Force-directed network graph with zoom, pan, drag and PNG export
 - All-vs-all pair ranking with threshold slider
 - Enrichment filtering on graph and heatmap
 
@@ -58,13 +76,13 @@ Analysts use it to answer: *"Which known groups behave most like this incident?"
 
 ---
 
-## Quick Start
+## Installation
 
 ### Requirements
 
 - [Docker](https://docs.docker.com/get-docker/) and Docker Compose
 
-### Run
+### Quick Start
 
 ```bash
 git clone https://github.com/JavierMun/WhoIsWhoAPT.git
@@ -75,6 +93,8 @@ docker compose up --build
 Open **http://localhost:5173** in your browser.
 
 On first startup the backend automatically downloads and ingests the MITRE ATT&CK dataset (~30 seconds). No manual data loading needed.
+
+> **Note:** Although it is not necessary, you can pre-download the `resources` folder to avoid the tool having to download the latest MITRE ATT&CK version on its first run.
 
 ---
 
@@ -149,12 +169,6 @@ cd frontend
 npm run build   # type-check + build
 npm run lint
 ```
-
----
-
-## Author
-
-Made by [Javier Muñoz](https://www.linkedin.com/in/javiermunoznavarro). Feedback and bug reports welcome via LinkedIn or GitHub Issues.
 
 ---
 
