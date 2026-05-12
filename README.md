@@ -1,228 +1,135 @@
-# WhoIsWhoAPT v2
+# WhoIsWhoAPT
 
-## Overview
+A threat intelligence analysis tool for comparing threat actors and TTP profiles using behavioral similarity.
 
-WhoIsWhoAPT is a threat intelligence analysis tool designed to help analysts understand relationships between threat actors, campaigns, and techniques based on their TTPs (Tactics, Techniques, and Procedures).
-
-The tool enables structured comparison, similarity analysis, and visualization of threat actor behavior using MITRE ATT&CK data and custom-defined profiles.
+Analysts use it to answer: *"Which known groups behave most like this incident?"* — without relying on labels, reporting bias, or manual cross-referencing.
 
 ---
 
-## Problem It Solves
+## Features
 
-Threat intelligence analysis often requires:
+**Compare** — rank threat actors by behavioral similarity to any input profile:
+- Multiple metrics: Jaccard, Weighted Jaccard, Tactic-weighted, Software-weighted, Holistic
+- Tactic-scoped analysis (filter by Initial Access, Execution, Persistence…)
+- Auto-generated insight per result (top tactics, shared sectors, rare techniques)
+- Enrichment filter: pre-filter candidates by sector or country before scoring
+- Technique breakdown: shared / input-only / target-only, collapsible per row
 
-* Comparing threat actors based on behavior rather than labels
-* Understanding how an incident aligns with known actors
-* Identifying overlaps in techniques across campaigns or groups
-* Exploring relationships between actors in a structured way
+**TTP Profiles** — build custom profiles and compare them like any actor:
+- Manual entry, ATT&CK Navigator import, or OpenCTI report import
+- Enrichment metadata: target sectors, countries, CVEs, motivation
+- Save and reuse across analyses
 
-This process is typically manual, fragmented, and difficult to scale.
+**Explore** — global similarity analysis across all actors:
+- Similarity heatmap with PNG export
+- Force-directed network graph with zoom, pan, drag
+- All-vs-all pair ranking with threshold slider
+- Enrichment filtering on graph and heatmap
 
-WhoIsWhoAPT addresses this by providing a unified framework to:
+**Saved Analyses** — persist and revisit comparison results:
+- Save with name, re-run, inspect, delete
+- Paginated list with enrichment filter badge
 
-* Correlate actors using TTPs
-* Analyze incidents against known behavior
-* Visualize relationships between actors
-* Support early-stage attribution and threat hunting
-
----
-
-## Core Capabilities
-
-### Actor Comparison
-
-* Compare one actor against all or a selected subset
-* Multiple similarity metrics:
-
-  * Jaccard
-  * Rarity-weighted Jaccard
-  * Tactic-weighted Jaccard
-  * Software-aware similarity
-* Detailed explainability:
-
-  * Shared techniques
-  * Unique techniques
-  * Tactic breakdown
-  * Rare techniques
+**Data sources**:
+- MITRE ATT&CK (built-in, auto-loaded on first run)
+- OpenCTI (optional, configure URL + API token in Settings)
 
 ---
 
-### TTP Profiles
+## Quick Start
 
-* Create custom profiles from:
+### Requirements
 
-  * Manual input
-  * Technique selection
-  * ATT&CK Navigator import
-* Add description and metadata
-* Reuse profiles for analysis
-* Compare profiles against actors
+- [Docker](https://docs.docker.com/get-docker/) and Docker Compose
 
----
+### Run
 
-### Tactic-Scoped Analysis
-
-* Filter similarity by specific ATT&CK tactics:
-
-  * Initial Access
-  * Execution
-  * Persistence
-  * Command & Control
-  * Collection
-  * Exfiltration
-* Enables phase-specific analysis
-
----
-
-### Visual Analysis
-
-#### Ranking View
-
-* Ranked similarity results
-* Explainable scoring
-
-#### Heatmap
-
-* Actor-to-actor similarity visualization
-* Global similarity matrix
-* Color-coded intensity
-
-#### Graph
-
-* Network graph of actor relationships
-* Clustering visualization
-* Threshold-based filtering
-* Interactive (zoom, pan, reset)
-
----
-
-### Incident Analysis (via TTP Profiles)
-
-* Map observed techniques to known actors
-* Identify closest matches
-* Support attribution workflows
-
----
-
-## How It Works
-
-The system follows a simple model:
-
-```
-Input → Analysis Engine → Output
+```bash
+git clone https://github.com/YOUR_USERNAME/WhoIsWhoAPT.git
+cd WhoIsWhoAPT
+docker compose up --build
 ```
 
-### Input
+Open **http://localhost:5173** in your browser.
 
-* Actor
-* TTP Profile (custom or imported)
+On first startup the backend automatically downloads and ingests the MITRE ATT&CK dataset (~30 seconds). No manual data loading needed.
 
-### Analysis Engine
+---
 
-* Similarity computation
-* Technique filtering (optional by tactic)
-* Weighting strategies
+## Configuration
 
-### Output
+All configuration is via environment variables (see `.env.example`).
 
-* Ranked matches
-* Heatmap visualization
-* Graph relationships
+| Variable | Default | Description |
+|---|---|---|
+| `WHOISWHOAPT_ENVIRONMENT` | `development` | Runtime environment |
+| `WHOISWHOAPT_LOG_LEVEL` | `INFO` | Log verbosity |
+| `WHOISWHOAPT_DATABASE_URL` | `sqlite:////data/whoiswhoapt.db` | SQLite path (inside container) |
+| `WHOISWHOAPT_SETTINGS_FILE` | `/data/config.json` | Persisted settings path |
+| `WHOISWHOAPT_CORS_ORIGINS` | `["http://localhost:5173"]` | Allowed frontend origins |
+
+To override, copy `.env.example` to `.env` and edit before running `docker compose up`.
+
+### OpenCTI (optional)
+
+In the app, go to **Settings → Source → OpenCTI** and enter your instance URL and API token. Click **Test connection** then **Save**, then **Load data**.
+
+The tool supports OpenCTI 7.x with pycti `7.260430.0`.
 
 ---
 
 ## Architecture
 
+```
+frontend/     React + Vite + TypeScript (port 5173)
+backend/      FastAPI + SQLite (port 8000)
+```
+
+The frontend proxies API calls to the backend at startup; no manual API URL configuration needed for local Docker use.
+
+**Backend stack:** FastAPI · SQLAlchemy · SQLite · mitreattack-python · pycti · APScheduler
+
+**Frontend stack:** React · Vite · TypeScript · D3-force · Lucide
+
+---
+
+## Development (without Docker)
+
 ### Backend
 
-* FastAPI (Python)
-* SQLAlchemy
-* SQLite
-* Modular analytics engine
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements.txt -r requirements-dev.txt
+uvicorn app.main:app --reload --port 8000
+```
 
 ### Frontend
 
-* React + Vite
-* Modular component architecture
-* D3-based graph visualization
+```bash
+cd frontend
+npm install
+VITE_API_BASE_URL=http://localhost:8000 npm run dev
+```
 
-### Data Sources
+The `VITE_API_BASE_URL` variable is needed outside Docker so the frontend reaches the local backend directly (in Docker it's proxied automatically).
 
-* MITRE ATT&CK (primary)
-* Navigator JSON (custom input)
+### Tests
 
----
+```bash
+cd backend
+pytest
+```
 
-## Current Limitations
-
-* No persistent storage of analysis results
-* Single active data source (no merging)
-* Limited enrichment (no external intel feeds)
-* No multi-user support
-* No real-time data ingestion
-* No OpenCTI integration yet
-
----
-
-## Roadmap
-
-### Phase 1 — Consolidation (Completed)
-
-* Unified UI modules
-* TTP Profiles
-* Comparison views (ranking, heatmap, graph)
-* Tactic filtering
-* UX improvements
+```bash
+cd frontend
+npm run build   # type-check + build
+npm run lint
+```
 
 ---
 
-### Phase 2 — Persistence
+## License
 
-* Save analysis results
-* History and re-execution
-* Stored graphs and comparisons
-
----
-
-### Phase 3 — OpenCTI Integration
-
-* Use OpenCTI as data source
-* Ingest actors, campaigns, software, CVEs
-* Improve data richness
-
----
-
-### Phase 4 — Intelligence Workflows
-
-* Attribution workflows
-* Hunting support
-* Campaign clustering
-
----
-
-### Phase 5 — Advanced Analysis
-
-* Enhanced explainability
-* Rare technique insights
-* Behavioral pattern detection
-
----
-
-## Future Vision
-
-WhoIsWhoAPT aims to evolve into a technical threat intelligence platform focused on:
-
-* Behavior-based correlation of threat actors
-* Analyst-driven investigation workflows
-* Explainable similarity and attribution support
-
-The goal is not to replace existing CTI platforms, but to provide a focused tool for behavioral analysis and actor comparison.
-
----
-
-## Status
-
-Active development — internal tool in evolution.
-
----
+See [LICENSE](LICENSE).
