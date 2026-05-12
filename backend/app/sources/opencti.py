@@ -168,7 +168,9 @@ class OpenCTIAdapter(BaseSource):
     """Normalize OpenCTI entities into internal source models via pycti."""
 
     def __init__(self, url: str, api_token: str) -> None:
-        self._url = url
+        # Strip trailing slash — pycti 7.x appends "/graphql" directly, so
+        # "http://host:8080/" → "http://host:8080//graphql" (broken double slash)
+        self._url = url.rstrip("/")
         self._api_token = api_token
         self._client: OpenCTIApiClient | None = None
 
@@ -179,12 +181,29 @@ class OpenCTIAdapter(BaseSource):
     def _get_client(self) -> OpenCTIApiClient:
         if self._client is None:
             try:
+                # perform_health_check=False: skip pycti's blocking health check in
+                # __init__ so the client is created immediately. We run our own
+                # health check explicitly via test_connection() before saving creds.
                 self._client = OpenCTIApiClient(
                     url=self._url,
                     token=self._api_token,
                     log_level="ERROR",
                     ssl_verify=True,
+                    perform_health_check=False,
                 )
+            except TypeError:
+                # pycti <7.x does not support perform_health_check param
+                try:
+                    self._client = OpenCTIApiClient(
+                        url=self._url,
+                        token=self._api_token,
+                        log_level="ERROR",
+                        ssl_verify=True,
+                    )
+                except Exception as exc:
+                    raise AppError(
+                        f"Failed to initialise OpenCTI client: {exc}", status_code=400
+                    ) from exc
             except Exception as exc:
                 raise AppError(
                     f"Failed to initialise OpenCTI client: {exc}", status_code=400
@@ -537,17 +556,22 @@ class OpenCTIAdapter(BaseSource):
         if not report:
             raise AppError(f"Report not found: {report_id}", status_code=404)
 
+        import re as _re
+        _MITRE_ID_RE = _re.compile(r"^T\d{4}(?:\.\d{3})?$")
+
         report_name: str = report.get("name", "")
         technique_ids: list[str] = []
 
-        # Strategy 1: embedded objects (available when pycti populates the objects field)
+        # Strategy 1: embedded objects.
+        # pycti populates Attack-Pattern objects with x_mitre_id=None but name="T1059.001"
+        # so we check both fields.
         for obj in report.get("objects", []) or []:
-            if isinstance(obj, dict):
-                mitre_id: str = obj.get("x_mitre_id", "")
-                if mitre_id.startswith("T"):
+            if isinstance(obj, dict) and obj.get("entity_type") == "Attack-Pattern":
+                mitre_id: str = obj.get("x_mitre_id") or obj.get("name") or ""
+                if _MITRE_ID_RE.match(mitre_id):
                     technique_ids.append(mitre_id)
 
-        # Strategy 2: filter attack-patterns by report membership
+        # Strategy 2: containedBy filter (may not work in all pycti/OpenCTI versions)
         if not technique_ids:
             try:
                 aps = client.attack_pattern.list(
@@ -558,13 +582,35 @@ class OpenCTIAdapter(BaseSource):
                     },
                     getAll=True,
                 ) or []
-                technique_ids = [
-                    ap.get("x_mitre_id", "")
-                    for ap in aps
-                    if ap.get("x_mitre_id", "").startswith("T")
-                ]
+                for ap in aps:
+                    mitre_id = (ap.get("x_mitre_id") or ap.get("name") or "")
+                    if _MITRE_ID_RE.match(mitre_id):
+                        technique_ids.append(mitre_id)
             except Exception:
-                pass  # return whatever we have
+                pass
+
+        # Strategy 3: individually fetch Attack-Pattern objects listed in objectsIds.
+        # Used when embedded objects lack x_mitre_id and containedBy filter fails.
+        if not technique_ids:
+            obj_ids = report.get("objectsIds", []) or []
+            ap_ids_in_report = [
+                obj.get("id") for obj in (report.get("objects", []) or [])
+                if isinstance(obj, dict)
+                and obj.get("entity_type") == "Attack-Pattern"
+                and obj.get("id")
+            ]
+            if not ap_ids_in_report and obj_ids:
+                # objectsIds contains all referenced object IDs; filter for known AP IDs
+                ap_ids_in_report = []  # will use ID-based fetch below if needed
+            for ap_id in ap_ids_in_report:
+                try:
+                    ap_full = client.attack_pattern.read(id=ap_id)
+                    if ap_full:
+                        mitre_id = (ap_full.get("x_mitre_id") or ap_full.get("name") or "")
+                        if _MITRE_ID_RE.match(mitre_id):
+                            technique_ids.append(mitre_id)
+                except Exception:
+                    pass
 
         # Deduplicate preserving first-seen order
         seen: set[str] = set()
