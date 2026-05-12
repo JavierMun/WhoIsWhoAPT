@@ -1,0 +1,465 @@
+import { AlertCircle, Camera, Grid3X3, Loader2, RefreshCw } from "lucide-react";
+import { useMemo, useState } from "react";
+
+import { computeMatrix, getMatrixResult } from "../api/client";
+import { clampScore, comparisonHeatColor } from "../api/comparisonViewUtils";
+import type { MatrixResponse, SimilarityMetric } from "../api/types";
+
+const DEFAULT_VISIBLE_ACTORS = 30;
+const MAX_VISIBLE_ACTORS = 80;
+
+export function ActorMatrixHeatmapPanel() {
+  const [metric, setMetric] = useState<SimilarityMetric>("jaccard");
+  const [visibleLimit, setVisibleLimit] = useState(DEFAULT_VISIBLE_ACTORS);
+  const [matrix, setMatrix] = useState<MatrixResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [loadingMode, setLoadingMode] = useState<"compute" | "retrieve">("compute");
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleCompute() {
+    setLoading(true);
+    setLoadingMode("compute");
+    setError(null);
+
+    try {
+      setMatrix(await computeMatrix(metric));
+    } catch (apiError) {
+      setError(apiError instanceof Error ? apiError.message : "Unable to compute matrix");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleRetrieve() {
+    setLoading(true);
+    setLoadingMode("retrieve");
+    setError(null);
+
+    try {
+      setMatrix(await getMatrixResult());
+    } catch (apiError) {
+      setError(apiError instanceof Error ? apiError.message : "Unable to retrieve matrix");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <section className="comparison-workspace matrix-workspace" aria-labelledby="matrix-title">
+      <div className="workspace-header">
+        <div>
+          <p className="eyebrow">Similarity Matrix</p>
+          <h1 id="matrix-title">Actor heatmap</h1>
+        </div>
+      </div>
+
+      <div className="matrix-layout">
+        <form
+          className="control-panel matrix-controls"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handleCompute();
+          }}
+        >
+          <label className="field-group" htmlFor="matrix-metric-select">
+            <span>Metric</span>
+            <select
+              id="matrix-metric-select"
+              value={metric}
+              onChange={(event) => {
+                setMetric(event.target.value as SimilarityMetric);
+              }}
+            >
+              <option value="jaccard">Jaccard</option>
+              <option value="jaccard_weighted">Weighted Jaccard</option>
+              <option value="tactic_weighted_jaccard">Tactic weighted</option>
+              <option value="software_weighted_jaccard">Software weighted</option>
+              <option value="holistic">Holistic</option>
+            </select>
+          </label>
+
+
+
+          <label className="field-group" htmlFor="matrix-visible-limit">
+            <span>Top actors</span>
+            <input
+              id="matrix-visible-limit"
+              type="number"
+              min={1}
+              max={MAX_VISIBLE_ACTORS}
+              value={visibleLimit}
+              onChange={(event) => {
+                const nextValue = Number(event.target.value);
+                setVisibleLimit(
+                  Number.isFinite(nextValue)
+                    ? Math.min(MAX_VISIBLE_ACTORS, Math.max(1, nextValue))
+                    : DEFAULT_VISIBLE_ACTORS
+                );
+              }}
+            />
+          </label>
+
+          <button className="primary-action" type="submit" disabled={loading}>
+            {loading && loadingMode === "compute" ? (
+              <Loader2 className="spin" size={18} aria-hidden="true" />
+            ) : (
+              <Grid3X3 size={18} aria-hidden="true" />
+            )}
+            <span>{loading && loadingMode === "compute" ? "Computing" : "Compute matrix"}</span>
+          </button>
+
+          <button className="secondary-action" type="button" disabled={loading} onClick={() => void handleRetrieve()}>
+            {loading && loadingMode === "retrieve" ? (
+              <Loader2 className="spin" size={18} aria-hidden="true" />
+            ) : (
+              <RefreshCw size={18} aria-hidden="true" />
+            )}
+            <span>{loading && loadingMode === "retrieve" ? "Retrieving" : "Retrieve latest"}</span>
+          </button>
+
+          <HeatmapLegend />
+          {error ? <StatusMessage tone="error" message={error} /> : null}
+        </form>
+
+        <HeatmapPanel matrix={matrix} actorQuery="" visibleLimit={visibleLimit} loading={loading} />
+      </div>
+    </section>
+  );
+}
+
+function HeatmapPanel({
+  matrix,
+  actorQuery,
+  visibleLimit,
+  loading
+}: {
+  matrix: MatrixResponse | null;
+  actorQuery: string;
+  visibleLimit: number;
+  loading: boolean;
+}) {
+  const visibleIndexes = useVisibleActorIndexes(matrix, actorQuery, visibleLimit);
+
+  if (loading) {
+    return (
+      <section className="results-panel heatmap-panel" aria-live="polite">
+        <div className="empty-state">
+          <Loader2 className="spin" size={22} aria-hidden="true" />
+          <p>Loading matrix</p>
+        </div>
+      </section>
+    );
+  }
+
+  if (!matrix) {
+    return (
+      <section className="results-panel heatmap-panel">
+        <div className="empty-state">
+          <Grid3X3 size={24} aria-hidden="true" />
+          <p>Compute or retrieve a matrix.</p>
+        </div>
+      </section>
+    );
+  }
+
+  if (matrix.actors.length === 0) {
+    return (
+      <section className="results-panel heatmap-panel">
+        <div className="empty-state">
+          <Grid3X3 size={24} aria-hidden="true" />
+          <p>No actors available in the active source.</p>
+        </div>
+      </section>
+    );
+  }
+
+  if (visibleIndexes.length === 0) {
+    return (
+      <section className="results-panel heatmap-panel">
+        <HeatmapHeader matrix={matrix} visibleCount={0} capped={false} />
+        <div className="empty-state compact-empty">
+          <Grid3X3 size={24} aria-hidden="true" />
+          <p>No actors match the filter.</p>
+        </div>
+      </section>
+    );
+  }
+
+  if (visibleIndexes.length === 1) {
+    return (
+      <section className="results-panel heatmap-panel">
+        <HeatmapHeader matrix={matrix} visibleCount={1} capped={true} />
+        <div className="empty-state compact-empty">
+          <Grid3X3 size={24} aria-hidden="true" />
+          <p>Only one actor matches — broaden the filter to compare at least two actors.</p>
+        </div>
+      </section>
+    );
+  }
+
+  const capped = visibleIndexes.length < matrix.actors.length;
+  const n = visibleIndexes.length;
+  const cellSize = n <= 15 ? 34 : n <= 25 ? 24 : n <= 40 ? 18 : 14;
+  // Show text in cells: always for large cells, only non-zero for small ones
+  const showText = cellSize >= 18;
+  const textSize = cellSize >= 24 ? "0.58rem" : "0.48rem";
+
+  function exportHeatmapImage() {
+    if (!matrix) return;
+    const LABEL_W = 120;
+    const LABEL_H = 100;
+    const CELL = Math.max(cellSize, 14);
+    const w = LABEL_W + n * CELL;
+    const h = LABEL_H + n * CELL;
+    const canvas = document.createElement("canvas");
+    canvas.width = w * 2; canvas.height = h * 2;
+    const ctx = canvas.getContext("2d")!;
+    ctx.scale(2, 2);
+
+    // Background
+    ctx.fillStyle = "#0e1318";
+    ctx.fillRect(0, 0, w, h);
+
+    const fontSize = Math.max(7, Math.min(11, CELL * 0.5));
+    ctx.font = `500 ${fontSize}px ui-sans-serif, system-ui, sans-serif`;
+
+    // Row labels
+    ctx.fillStyle = "#a8b4c0";
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+    visibleIndexes.forEach((rowIndex, ri) => {
+      const name = matrix.actors[rowIndex].name;
+      const label = name.length > 18 ? `${name.slice(0, 16)}…` : name;
+      ctx.fillText(label, LABEL_W - 4, LABEL_H + ri * CELL + CELL / 2);
+    });
+
+    // Column labels (rotated)
+    visibleIndexes.forEach((colIndex, ci) => {
+      const name = matrix.actors[colIndex].name;
+      const label = name.length > 14 ? `${name.slice(0, 12)}…` : name;
+      ctx.save();
+      ctx.translate(LABEL_W + ci * CELL + CELL / 2, LABEL_H - 4);
+      ctx.rotate(-Math.PI / 2);
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = "#a8b4c0";
+      ctx.fillText(label, 0, 0);
+      ctx.restore();
+    });
+
+    // Cells
+    visibleIndexes.forEach((rowIndex, ri) => {
+      visibleIndexes.forEach((colIndex, ci) => {
+        const value = clampScore(matrix.matrix[rowIndex]?.[colIndex] ?? 0);
+        const isDiag = rowIndex === colIndex;
+        const color = isDiag ? "#ff8a4c" : comparisonHeatColor(value);
+        ctx.fillStyle = color;
+        ctx.fillRect(LABEL_W + ci * CELL, LABEL_H + ri * CELL, CELL - 1, CELL - 1);
+
+        // % text
+        if (!isDiag && value > 0 && CELL >= 16) {
+          const pct = Math.round(value * 100);
+          ctx.fillStyle = value > 0.45 ? "#fff" : value > 0.2 ? "#e8edf2" : "#aab";
+          ctx.font = `700 ${Math.max(6, CELL * 0.4)}px ui-monospace, monospace`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(`${pct}%`, LABEL_W + ci * CELL + CELL / 2, LABEL_H + ri * CELL + CELL / 2);
+          ctx.font = `500 ${fontSize}px ui-sans-serif, system-ui, sans-serif`;
+        }
+      });
+    });
+
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = "whoiswhoapt-heatmap.png";
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    }, "image/png");
+  }
+
+  return (
+    <section className="results-panel heatmap-panel" aria-live="polite">
+      <HeatmapHeader matrix={matrix} visibleCount={n} capped={capped} onExport={exportHeatmapImage} />
+      <div className="heatmap-scroll">
+        <table className="heatmap-table" aria-label="Actor similarity heatmap" style={{ "--cell-size": `${cellSize}px` } as React.CSSProperties}>
+          <thead>
+            <tr>
+              <th className="corner-cell" scope="col" />
+              {visibleIndexes.map((columnIndex) => {
+                const actor = matrix.actors[columnIndex];
+                return (
+                  <th className="column-actor" key={actor.id} scope="col" title={actor.name}>
+                    <div className="column-actor-label">{actor.name}</div>
+                  </th>
+                );
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {visibleIndexes.map((rowIndex) => {
+              const rowActor = matrix.actors[rowIndex];
+              return (
+                <tr key={rowActor.id}>
+                  <th className="row-actor" scope="row" title={rowActor.name}>
+                    {rowActor.name}
+                  </th>
+                  {visibleIndexes.map((columnIndex) => {
+                    const columnActor = matrix.actors[columnIndex];
+                    const value = clampScore(matrix.matrix[rowIndex]?.[columnIndex] ?? 0);
+                    const pct = Math.round(value * 100);
+                    const isDiag = rowIndex === columnIndex;
+                    return (
+                      <td
+                        className={`heatmap-cell${isDiag ? " heatmap-cell--self" : ""}`}
+                        key={columnActor.id}
+                        style={{ backgroundColor: isDiag ? "#ff8a4c" : comparisonHeatColor(value) }}
+                        title={`${rowActor.name} → ${columnActor.name}: ${pct}%`}
+                      >
+                        {showText && !isDiag && pct > 0 ? (
+                          <span
+                            className="heatmap-cell-text"
+                            style={{
+                              color: value > 0.45 ? "#fff" : value > 0.2 ? "#e8edf2" : "#aab",
+                              fontSize: textSize
+                            }}
+                          >
+                            {pct}%
+                          </span>
+                        ) : null}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function HeatmapHeader({
+  matrix,
+  visibleCount,
+  capped,
+  onExport
+}: {
+  matrix: MatrixResponse;
+  visibleCount: number;
+  capped: boolean;
+  onExport?: () => void;
+}) {
+  return (
+    <div className="results-header heatmap-header">
+      <div>
+        <p className="panel-label">Generated {formatDate(matrix.metadata.generated_at)}</p>
+        <h2>{visibleCount}/{matrix.metadata.actor_count} actors</h2>
+      </div>
+      <div className="results-actions">
+        {capped ? <span className="matrix-note">Limited view</span> : null}
+        <span className="metric-label">{metricLabel(matrix.metadata.metric)}</span>
+        {onExport ? (
+          <button type="button" title="Export heatmap as PNG image" onClick={onExport}>
+            <Camera size={15} aria-hidden="true" />
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function HeatmapLegend() {
+  // Matches the comparisonHeatColor stops
+  const stops = [
+    { pct: 0,   color: "#0e1318", label: "0%" },
+    { pct: 10,  color: "rgb(15,50,60)" },
+    { pct: 30,  color: "rgb(10,100,90)" },
+    { pct: 55,  color: "rgb(120,80,40)" },
+    { pct: 75,  color: "rgb(180,90,50)" },
+    { pct: 100, color: "rgb(220,100,60)", label: "100%" },
+  ];
+  const gradient = `linear-gradient(90deg, ${stops.map(s => `${s.color} ${s.pct}%`).join(", ")})`;
+
+  return (
+    <div className="heatmap-legend" aria-label="Similarity color legend">
+      <span className="heatmap-legend-label">Similarity</span>
+      <div className="heatmap-legend-track">
+        <div className="heatmap-legend-bar" style={{ background: gradient }} aria-hidden="true" />
+        <div className="heatmap-legend-ticks">
+          <span>0%</span>
+          <span>25%</span>
+          <span>50%</span>
+          <span>75%</span>
+          <span>100%</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StatusMessage({ tone, message }: { tone: "error"; message: string }) {
+  return (
+    <div className={`status-message ${tone}`}>
+      <AlertCircle size={17} aria-hidden="true" />
+      <span>{message}</span>
+    </div>
+  );
+}
+
+function useVisibleActorIndexes(
+  matrix: MatrixResponse | null,
+  actorQuery: string,
+  visibleLimit: number
+): number[] {
+  return useMemo(() => {
+    if (!matrix) {
+      return [];
+    }
+
+    const normalizedQuery = actorQuery.trim().toLowerCase();
+    const actorScores = matrix.actors
+      .map((actor, index) => {
+        const row = matrix.matrix[index] ?? [];
+        const comparableValues = row.filter((_, columnIndex) => columnIndex !== index);
+        const averageSimilarity =
+          comparableValues.length > 0
+            ? comparableValues.reduce((total, value) => total + clampScore(value), 0) / comparableValues.length
+            : 0;
+        return { actor, index, averageSimilarity };
+      })
+      .filter(({ actor }) => !normalizedQuery || actor.name.toLowerCase().includes(normalizedQuery));
+
+    return actorScores
+      .sort((left, right) => right.averageSimilarity - left.averageSimilarity || left.actor.name.localeCompare(right.actor.name))
+      .slice(0, visibleLimit)
+      .map((item) => item.index);
+  }, [actorQuery, matrix, visibleLimit]);
+}
+
+function formatScore(score: number): string {
+  return `${Math.round(clampScore(score) * 100)}%`;
+}
+
+function metricLabel(metric: SimilarityMetric): string {
+  if (metric === "jaccard_weighted") {
+    return "Weighted Jaccard";
+  }
+  if (metric === "tactic_weighted_jaccard") {
+    return "Tactic weighted";
+  }
+  if (metric === "software_weighted_jaccard") {
+    return "Software weighted";
+  }
+  return "Jaccard";
+}
+
+function formatDate(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return date.toLocaleString();
+}

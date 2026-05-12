@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+.venv/
+venv/
+*.egg
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+*.db
+*.db-journal
+
+# Node
+node_modules/
+dist/
+.env.local
+.npm/
+
+# Secrets / environment
+.env
+*.env
+!.env.example
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Internal development notes
+docs/
+resources/
+
+# Local tooling state
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db

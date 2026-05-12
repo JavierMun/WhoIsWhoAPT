@@ -1,0 +1,2 @@
+"""WhoIsWhoAPT backend application package."""
+
