@@ -138,4 +138,4 @@ Made by [Javier Muñoz](https://www.linkedin.com/in/javiermunoznavarro). Feedbac
 
 ## License
 
-GPL v3 — see [LICENSE](LICENSE).
+AGPL-3.0 — see [LICENSE](LICENSE).
