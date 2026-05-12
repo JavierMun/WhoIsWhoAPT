@@ -9,7 +9,7 @@ that Attack-Pattern objects carry an x_mitre_id field (e.g. "T1059.001").
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from typing import Any, Literal
 from uuid import NAMESPACE_URL, uuid5
 
@@ -33,11 +33,11 @@ def _internal_id(opencti_id: str) -> str:
 
 def _parse_datetime(value: str | None) -> datetime:
     if not value:
-        return datetime.now(timezone.utc)
+        return datetime.now(UTC)
     try:
         return datetime.fromisoformat(value.replace("Z", "+00:00"))
     except (ValueError, AttributeError):
-        return datetime.now(timezone.utc)
+        return datetime.now(UTC)
 
 
 def _parse_date(value: str | None) -> date | None:
@@ -476,7 +476,7 @@ class OpenCTIAdapter(BaseSource):
                         aliases=_aliases(item),
                         description=item.get("description"),
                         last_updated=_parse_datetime(item.get("updated_at") or item.get("modified")),
-                        software_type=sw_type,  # type: ignore[arg-type]
+                        software_type=sw_type,
                         techniques=_build_technique_refs(sw_ap_rels, ap_mitre_map, opencti_id),
                         actor_ids=sw_actors.get(opencti_id, []),
                         campaign_ids=[],

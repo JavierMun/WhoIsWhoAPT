@@ -1,19 +1,19 @@
 """FastAPI application entrypoint."""
 
 import logging
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app import scheduler
 from app.api.router import api_router
 from app.config import get_config
 from app.database import init_db
 from app.dependencies import get_settings_store
 from app.errors import register_exception_handlers
 from app.logging_config import configure_logging
-from app import scheduler
 
 logger = logging.getLogger("whoiswhoapt")
 

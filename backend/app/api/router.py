@@ -3,8 +3,8 @@
 from fastapi import APIRouter
 
 from app.api.routes import (
-    analysis,
     actors,
+    analysis,
     analyze,
     clusters,
     compare,

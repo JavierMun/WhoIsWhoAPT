@@ -185,9 +185,9 @@ def compare_custom_techniques(
     candidate_techniques_by_id = {candidate.id: candidate.techniques for candidate in candidates}
 
     # Holistic enrichment from saved custom set
-    cst_sectors: frozenset = frozenset()
-    cst_countries: frozenset = frozenset()
-    cst_cves: frozenset = frozenset()
+    cst_sectors: frozenset[str] = frozenset()
+    cst_countries: frozenset[str] = frozenset()
+    cst_cves: frozenset[str] = frozenset()
     cst_motivation: str | None = None
     if is_holistic and isinstance(request, CustomComparisonRequest) and request.custom_set_id is not None:
         cs = session.get(entities.CustomTTPSet, request.custom_set_id)
@@ -291,7 +291,9 @@ def _actor_candidates_holistic(session: Session, source: str) -> list[EntityTech
     return [_actor_entity(row, holistic=True) for row in rows]
 
 
-def _source_enrichment(session: Session, actor_id: str) -> tuple[frozenset, frozenset, frozenset, str | None]:
+def _source_enrichment(
+    session: Session, actor_id: str
+) -> tuple[frozenset[str], frozenset[str], frozenset[str], str | None]:
     """Fetch enrichment fields for the source actor (holistic metric)."""
     actor = session.get(entities.Actor, actor_id)
     if actor is None:

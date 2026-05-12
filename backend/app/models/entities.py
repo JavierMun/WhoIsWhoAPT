@@ -1,6 +1,6 @@
 """SQLAlchemy entities for the normalized local data model."""
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from typing import Any
 from uuid import uuid4
 
@@ -144,4 +144,4 @@ class Analysis(Base):
     filter_countries: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
     top_n: Mapped[int] = mapped_column(Integer)
     results_json: Mapped[str] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))

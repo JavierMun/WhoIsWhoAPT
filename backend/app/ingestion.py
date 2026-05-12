@@ -144,7 +144,7 @@ def _upsert_status(session: Session, source_name: str, **values: object) -> enti
 def _status_schema(status: entities.SourceLoadStatus) -> SourceLoadStatus:
     """Convert an ORM status row to its API schema."""
     return SourceLoadStatus(
-        source=status.source,  # type: ignore[arg-type]
+        source=status.source,
         status=status.status,
         version=status.version,
         last_loaded_at=status.last_loaded_at,

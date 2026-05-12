@@ -1,7 +1,7 @@
 """Persisted comparison analysis endpoints."""
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated, Any, cast
 
 from fastapi import APIRouter, Depends, status
@@ -31,7 +31,7 @@ def save_analysis(
         target_ids=request.target_ids,
         top_n=request.top_n,
         results_json=json.dumps(request.results, separators=(",", ":"), ensure_ascii=False),
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     session.add(analysis)
     session.commit()
@@ -104,5 +104,5 @@ def _analysis_detail(analysis: entities.Analysis) -> AnalysisDetail:
 def _utc_datetime(value: datetime) -> datetime:
     """Return stored datetimes as timezone-aware UTC values."""
     if value.tzinfo is None:
-        return value.replace(tzinfo=timezone.utc)
-    return value.astimezone(timezone.utc)
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)

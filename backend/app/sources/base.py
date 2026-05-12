@@ -33,5 +33,5 @@ class BaseSource(ABC):
         """Return a source version string used for change detection."""
         raise NotImplementedError
 
-    def test_connection(self) -> None:
+    def test_connection(self) -> None:  # noqa: B027
         """Verify the source is reachable. Override for sources that require credentials."""
