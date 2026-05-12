@@ -1,8 +1,20 @@
-# WhoIsWhoAPT
+# WhoIsWhoAPT [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0) [![Open Source Love](https://badges.frapsoft.com/os/v1/open-source.png?v=103)](https://github.com/ellerbrock/open-source-badges/)
 
-A threat intelligence analysis tool for comparing threat actors and TTP profiles using behavioral similarity.
 
-Analysts use it to answer: *"Which known groups behave most like this incident?"* — without relying on labels, reporting bias, or manual cross-referencing.
+## About
+
+<p align="center">
+  <img width="500" height="324" src="https://user-images.githubusercontent.com/113699569/191086330-69b67599-0c99-40b9-a3f2-7457227ebb2c.png">
+</p>
+
+**WhoIsWhoAPT** is a threat intelligence analysis tool for comparing threat actors and TTP profiles using behavioral similarity. It helps malware analysts, threat hunters and researchers to interrelate APT groups (Advanced Persistent Threats) based on their tactics, techniques and procedures (TTP) from **MITRE ATT&CK®** (https://attack.mitre.org/) and **OpenCTI**, obtaining their relationship index and answering: *"Which known groups behave most like this incident?"* — without relying on labels, reporting bias, or manual cross-referencing.
+
+Hope you can find my tool useful and if you want to report any bugs, add/suggest new features or ask any questions do not hesitate to contact me on LinkedIn.
+<p>
+  <a href="https://www.linkedin.com/in/javier-mu%C3%B1oz-alc%C3%A1zar-644b11162" rel="nofollow noreferrer">
+    <img src="https://i.stack.imgur.com/gVE0j.png" alt="linkedin"> My LinkedIn
+  </a>
+</p>
 
 ---
 
@@ -58,13 +70,13 @@ Analysts use it to answer: *"Which known groups behave most like this incident?"
 
 ---
 
-## Quick Start
+## Installation
 
 ### Requirements
 
 - [Docker](https://docs.docker.com/get-docker/) and Docker Compose
 
-### Run
+### Quick Start
 
 ```bash
 git clone https://github.com/JavierMun/WhoIsWhoAPT.git
@@ -75,6 +87,8 @@ docker compose up --build
 Open **http://localhost:5173** in your browser.
 
 On first startup the backend automatically downloads and ingests the MITRE ATT&CK dataset (~30 seconds). No manual data loading needed.
+
+> **Note:** Although it is not necessary, you can pre-download the `resources` folder to avoid the tool having to download the latest MITRE ATT&CK version on its first run.
 
 ---
 
@@ -149,12 +163,6 @@ cd frontend
 npm run build   # type-check + build
 npm run lint
 ```
-
----
-
-## Author
-
-Made by [Javier Muñoz](https://www.linkedin.com/in/javiermunoznavarro). Feedback and bug reports welcome via LinkedIn or GitHub Issues.
 
 ---
 
