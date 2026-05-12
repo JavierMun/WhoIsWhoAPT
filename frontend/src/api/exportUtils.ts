@@ -1,5 +1,5 @@
 import type { ActorComparisonResponse, ComparisonResult } from "./types";
-import { techniqueLabel, type TechniqueLookup } from "./ttpProfileUtils";
+import { type TechniqueLookup } from "./ttpProfileUtils";
 
 type ExportMetadata = {
   source: string;
@@ -112,9 +112,6 @@ export function comparisonCsv(payload: ExportPayload, techniqueLookup?: Techniqu
   return `${infoSection}\n${resultsSection}`;
 }
 
-function formatTechnique(techniqueId: string, techniqueLookup?: TechniqueLookup): string {
-  return techniqueLookup ? techniqueLabel(techniqueId, techniqueLookup) : techniqueId;
-}
 
 export function comparisonNavigatorLayer(payload: ExportPayload, techniqueLookup?: TechniqueLookup): Record<string, unknown> {
   const techniques = navigatorTechniques(payload.comparison.results, techniqueLookup);

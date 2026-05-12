@@ -16,7 +16,6 @@ import {
   buildComparableProfiles,
   filterComparableProfiles,
   groupComparableProfiles,
-  profileDetail,
   profileTypeLabel,
   type ComparableProfile
 } from "../api/profileLibraryUtils";

@@ -14,7 +14,6 @@ type ComparisonView = "ranking" | "heatmap" | "graph";
 export function ComparisonResultTabs({
   comparison,
   topN,
-  comparisonScopeLabel,
   tacticScopeLabel,
   tactics,
   targetIds,

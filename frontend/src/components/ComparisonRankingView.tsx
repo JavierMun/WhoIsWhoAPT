@@ -2,7 +2,7 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import { useState } from "react";
 
 import { formatTactic, techniqueName, techniqueTitle, type TechniqueLookup } from "../api/ttpProfileUtils";
-import type { ActorComparisonResponse, ActorEnrichment, ComparisonResult, SoftwareSummary, TacticBreakdown } from "../api/types";
+import type { ActorComparisonResponse, ActorEnrichment, ComparisonResult, TacticBreakdown } from "../api/types";
 
 export function ComparisonRankingView({
   comparison,
@@ -65,8 +65,6 @@ function ResultRow({
   alias?: string;
   techniqueLookup: TechniqueLookup;
 }) {
-  const enrichment = result.enrichment;
-
   return (
     <li className="result-row">
       <div className="rank">
@@ -185,17 +183,6 @@ function InsightLine({ result, inputSectors }: { result: ComparisonResult; input
   );
 }
 
-function SoftwarePreview({ software }: { software: SoftwareSummary[] }) {
-  if (software.length === 0) return null;
-  const visible = software.slice(0, 6).map((item) => item.name);
-  const hiddenCount = software.length - visible.length;
-  return (
-    <p className="software-preview">
-      <strong>Shared software</strong> {visible.join(", ")}
-      {hiddenCount > 0 ? ` +${hiddenCount} more` : ""}
-    </p>
-  );
-}
 
 function TacticBreakdownList({ items }: { items: TacticBreakdown[]; techniqueLookup?: TechniqueLookup }) {
   const visibleItems = items.filter((item) => item.union_technique_count > 0);

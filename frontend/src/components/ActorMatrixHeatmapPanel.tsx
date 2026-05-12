@@ -439,9 +439,6 @@ function useVisibleActorIndexes(
   }, [actorQuery, matrix, visibleLimit]);
 }
 
-function formatScore(score: number): string {
-  return `${Math.round(clampScore(score) * 100)}%`;
-}
 
 function metricLabel(metric: SimilarityMetric): string {
   if (metric === "jaccard_weighted") {

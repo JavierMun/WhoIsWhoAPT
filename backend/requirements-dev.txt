@@ -1,3 +1,7 @@
 -r requirements.txt
 pytest==8.3.5
 httpx==0.28.1
+ruff==0.11.10
+black==25.1.0
+mypy==1.15.0
+pydantic[mypy]>=2.0

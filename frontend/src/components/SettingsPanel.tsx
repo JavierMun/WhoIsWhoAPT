@@ -27,7 +27,7 @@ function formatDateTime(iso: string | null): string {
 }
 
 function sourceName(source: PrimarySourceName): string {
-  return source === "mitre" ? "MITRE ATT\&CK" : "OpenCTI";
+  return source === "mitre" ? "MITRE ATT&CK" : "OpenCTI";
 }
 
 function statusBadgeClass(status: string): string {

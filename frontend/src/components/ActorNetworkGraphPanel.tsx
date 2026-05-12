@@ -166,7 +166,6 @@ function NetworkPanel({
   loading: boolean;
 }) {
   const graph = useGraphData(matrix, clusters, threshold, nodeLimit);
-  const canExport = Boolean(matrix && clusters && graph.nodes.length > 0);
 
   if (loading) {
     return (
@@ -211,8 +210,6 @@ function NetworkPanel({
         edgeCount={graph.totalEdgeCount}
         renderedEdgeCount={graph.links.length}
         limited={graph.nodes.length < matrix.actors.length}
-        canExport={canExport}
-        onExport={() => downloadGraphExport(matrix, clusters, graph, threshold)}
       />
       {graph.omittedEdgeCount > 0 ? (
         <div className="graph-notice">{graph.omittedEdgeCount} weaker edges hidden to keep the graph readable.</div>
@@ -232,8 +229,6 @@ function NetworkHeader({
   edgeCount,
   renderedEdgeCount,
   limited,
-  canExport,
-  onExport
 }: {
   matrix: MatrixResponse;
   clusters: ClusterResponse;
@@ -241,8 +236,6 @@ function NetworkHeader({
   edgeCount: number;
   renderedEdgeCount?: number;
   limited: boolean;
-  canExport?: boolean;
-  onExport?: () => void;
 }) {
   return (
     <div className="results-header network-header">
@@ -644,51 +637,7 @@ function formatScore(score: number): string {
   return `${Math.round(clampScore(score) * 100)}%`;
 }
 
-function downloadGraphExport(
-  matrix: MatrixResponse,
-  clusters: ClusterResponse,
-  graph: ReturnType<typeof buildGraphData>,
-  threshold: number
-) {
-  const payload = {
-    metadata: {
-      source: matrix.metadata.source,
-      metric: matrix.metadata.metric,
-      matrix_generated_at: matrix.metadata.generated_at,
-      cluster_generated_at: clusters.generated_at,
-      edge_threshold: threshold,
-      cluster_min_similarity: clusters.min_similarity,
-      actor_count: matrix.metadata.actor_count,
-      node_count: graph.nodes.length,
-      edge_count: graph.totalEdgeCount,
-      rendered_edge_count: graph.links.length
-    },
-    nodes: graph.nodes.map((node) => ({
-      id: node.id,
-      name: node.name,
-      cluster_id: node.clusterId,
-      average_similarity: node.averageSimilarity
-    })),
-    edges: graph.links.map((link) => ({
-      source: endpointId(link.source),
-      target: endpointId(link.target),
-      similarity: link.similarity
-    }))
-  };
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = `actor-network-${matrix.metadata.metric}.json`;
-  document.body.append(anchor);
-  anchor.click();
-  anchor.remove();
-  URL.revokeObjectURL(url);
-}
 
-function endpointId(endpoint: string | GraphNode): string {
-  return typeof endpoint === "string" ? endpoint : endpoint.id;
-}
 
 function metricLabel(metric: SimilarityMetric): string {
   if (metric === "jaccard_weighted") {
