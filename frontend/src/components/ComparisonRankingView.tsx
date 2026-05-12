@@ -94,6 +94,8 @@ function ResultRow({
 
         <TacticBreakdownList items={result.tactic_breakdown} techniqueLookup={techniqueLookup} />
 
+        <InsightLine result={result} inputSectors={inputSectors} />
+
         <SharedContextRow
           enrichment={result.enrichment}
           inputSectors={inputSectors}
@@ -118,6 +120,68 @@ function ResultRow({
 
       <ScoreBadge score={result.score} />
     </li>
+  );
+}
+
+function generateInsight(result: ComparisonResult, inputSectors: string[]): string | null {
+  const parts: string[] = [];
+
+  const topTactics = result.tactic_breakdown
+    .filter((t) => t.shared_technique_count > 0)
+    .sort((a, b) => b.score_contribution - a.score_contribution)
+    .slice(0, 3);
+
+  if (topTactics.length > 0) {
+    const names = topTactics.map((t) => formatTactic(t.tactic));
+    const total = result.shared_techniques.length;
+    const level = result.score >= 0.5 ? "Strong overlap" : result.score >= 0.25 ? "Moderate overlap" : "Partial overlap";
+    if (names.length === 1) {
+      parts.push(`${level} on ${names[0]} (${topTactics[0].shared_technique_count} shared).`);
+    } else if (names.length === 2) {
+      parts.push(`${level} on ${names[0]} and ${names[1]} (${total} shared techniques).`);
+    } else {
+      parts.push(`${level} on ${names[0]}, ${names[1]}, and ${names[2]} (${total} shared techniques).`);
+    }
+  } else if (result.shared_techniques.length > 0) {
+    parts.push(`${result.shared_techniques.length} technique${result.shared_techniques.length > 1 ? "s" : ""} in common.`);
+  }
+
+  // Pick the single most informative extra signal: sectors > rare techniques > software
+  if (inputSectors.length > 0 && result.enrichment) {
+    const inputSet = new Set(inputSectors.map((s) => s.toLowerCase()));
+    const shared = result.enrichment.target_sectors.filter((s) => inputSet.has(s.toLowerCase()));
+    if (shared.length === 1) {
+      parts.push(`Both operate against ${shared[0]}.`);
+    } else if (shared.length === 2) {
+      parts.push(`Both operate against ${shared[0]} and ${shared[1]}.`);
+    } else if (shared.length > 2) {
+      parts.push(`Both operate against ${shared[0]}, ${shared[1]}, and ${shared.length - 2} more sector${shared.length - 2 > 1 ? "s" : ""}.`);
+    }
+  }
+
+  if (parts.length < 2 && result.rare_shared_techniques.length >= 2) {
+    parts.push(`${result.rare_shared_techniques.length} rare techniques in common — potential capability fingerprint.`);
+  } else if (parts.length < 2 && result.rare_shared_techniques.length === 1) {
+    parts.push("1 rare technique in common.");
+  }
+
+  if (parts.length < 2 && result.shared_software.length > 0) {
+    const names = result.shared_software.slice(0, 3).map((sw) => sw.name);
+    const extra = result.shared_software.length - names.length;
+    parts.push(`Common tooling: ${names.join(", ")}${extra > 0 ? ` +${extra} more` : ""}.`);
+  }
+
+  return parts.length > 0 ? parts.slice(0, 2).join(" ") : null;
+}
+
+function InsightLine({ result, inputSectors }: { result: ComparisonResult; inputSectors: string[] }) {
+  const insight = generateInsight(result, inputSectors);
+  if (!insight) return null;
+  return (
+    <p className="result-insight">
+      <span className="result-insight-icon" aria-hidden="true">◈</span>
+      {insight}
+    </p>
   );
 }
 

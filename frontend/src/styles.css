@@ -1574,6 +1574,28 @@ input, select, textarea { font-family: var(--sans); }
   margin-right: 2px;
 }
 
+/* ── Result insight (template-generated) ────────────────────────────── */
+.result-insight {
+  margin: 8px 0 0;
+  font-size: 0.79rem;
+  color: var(--info);
+  background: var(--info-dim);
+  padding: 5px 8px;
+  border-radius: var(--radius-sm);
+  border-left: 2px solid rgba(108, 182, 255, 0.35);
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  line-height: 1.45;
+}
+
+.result-insight-icon {
+  font-size: 0.68rem;
+  opacity: 0.7;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
 /* ── Result explanation ──────────────────────────────────────────────── */
 .result-explanation {
   margin: 6px 0 0;
