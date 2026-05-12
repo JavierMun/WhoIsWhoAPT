@@ -20,6 +20,9 @@ Analysts use it to answer: *"Which known groups behave most like this incident?"
 **Explore — actor relationship graph**
 ![Explore graph](screenshots/explore-graph.png)
 
+**Explore — similarity heatmap**
+![Explore heatmap](screenshots/explore-heatmap.png)
+
 **Explore — all-vs-all pair ranking**
 ![Explore all-vs-all](screenshots/explore-allvsall.png)
 
