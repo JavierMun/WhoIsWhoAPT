@@ -45,7 +45,7 @@ Analysts use it to answer: *"Which known groups behave most like this incident?"
 ### Run
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/WhoIsWhoAPT.git
+git clone https://github.com/JavierMun/WhoIsWhoAPT.git
 cd WhoIsWhoAPT
 docker compose up --build
 ```
@@ -130,6 +130,12 @@ npm run lint
 
 ---
 
+## Author
+
+Made by [Javier Muñoz](https://www.linkedin.com/in/javiermunoznavarro). Feedback and bug reports welcome via LinkedIn or GitHub Issues.
+
+---
+
 ## License
 
-See [LICENSE](LICENSE).
+GPL v3 — see [LICENSE](LICENSE).
