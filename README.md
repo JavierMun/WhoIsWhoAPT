@@ -6,6 +6,25 @@ Analysts use it to answer: *"Which known groups behave most like this incident?"
 
 ---
 
+## Screenshots
+
+**Compare — actor vs all actors**
+![Compare actor](screenshots/compare-actor.png)
+
+**Compare — custom TTP profile (incident response)**
+![Compare custom profile](screenshots/compare-custom.png)
+
+**Compare — holistic metric (TTPs + sectors + countries)**
+![Compare holistic](screenshots/compare-holistic.png)
+
+**Explore — actor relationship graph**
+![Explore graph](screenshots/explore-graph.png)
+
+**Explore — all-vs-all pair ranking**
+![Explore all-vs-all](screenshots/explore-allvsall.png)
+
+---
+
 ## Features
 
 **Compare** — rank threat actors by behavioral similarity to any input profile:
